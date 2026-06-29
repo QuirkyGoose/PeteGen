@@ -94,9 +94,10 @@ function parseAlbumPage(html) {
 // Scrape all pages of an album
 async function scrapeAlbum(albumHex, galleryId) {
   const allImages = [];
+  const seenIds = new Set(); // track unique IDs across all pages
   let page = 1;
   let hasMore = true;
-  const MAX_PAGES = 20; // safety cap — 20 pages × 48 = 960 images max per gallery
+  const MAX_PAGES = 20;
   
   while (hasMore && page <= MAX_PAGES) {
     const url = page === 1 
@@ -113,26 +114,18 @@ async function scrapeAlbum(albumHex, galleryId) {
         console.log(` 0 images, done.`);
         hasMore = false;
       } else {
-        allImages.push(...images);
-        console.log(` ${images.length} images found.`);
+        // Only keep images we haven't seen before
+        const newImages = images.filter(img => !seenIds.has(img.id));
+        newImages.forEach(img => seenIds.add(img.id));
         
-        // Detect last page: check if this page returned the same images as
-        // the previous page (postimg returns the last page's content for
-        // any page number beyond the actual last page)
-        if (page > 1) {
-          const prevStart = (page - 2) * 48;
-          const prevBatch = allImages.slice(prevStart, prevStart + 48);
-          const currentIds = new Set(images.map(i => i.id));
-          const isDuplicate = prevBatch.every(i => currentIds.has(i.id));
-          if (isDuplicate) {
-            console.log(`  Duplicate page detected — reached the end.`);
-            // Remove the duplicate images we just added
-            allImages.splice(allImages.length - images.length, images.length);
-            hasMore = false;
-          }
-        }
+        allImages.push(...newImages);
+        console.log(` ${images.length} on page, ${newImages.length} new.`);
         
-        if (hasMore) {
+        // Stop if this page had zero new images (we've seen everything)
+        if (newImages.length === 0) {
+          console.log(`  All images already seen — reached the end.`);
+          hasMore = false;
+        } else {
           page++;
           await sleep(DELAY_MS);
         }
@@ -143,6 +136,7 @@ async function scrapeAlbum(albumHex, galleryId) {
     }
   }
   
+  console.log(`  Total unique: ${allImages.length} images`);
   return allImages;
 }
 
@@ -229,25 +223,29 @@ async function main() {
     process.exit(0); // exit 0 = success, no changes (not an error)
   }
   
-  // Merge: keep existing image data where possible (preserves any manual edits),
-  // but add new images from the scrape
+  // Merge: for each gallery, start with ALL existing works, then add any
+  // new ones from the scrape. This ensures the gallery never shrinks —
+  // even if the scraper misses some pages, existing images are preserved.
   for (const gallery of GALLERIES) {
-    const newGallery = newData.galleries[gallery.id];
     const oldGallery = existing.galleries[gallery.id];
+    const newGallery = newData.galleries[gallery.id];
     
     if (oldGallery && oldGallery.works) {
-      // For images that already exist, keep the old data (in case of manual edits)
-      // For new images, use the scraped data
-      const oldById = {};
-      oldGallery.works.forEach(w => { oldById[w.id] = w; });
+      // Start with all existing works
+      const existingWorks = oldGallery.works.slice();
+      const existingIds = new Set(existingWorks.map(w => w.id));
       
-      newGallery.works = newGallery.works.map(w => {
-        if (oldById[w.id]) {
-          // Keep old data but update any missing fields from scrape
-          return { ...w, ...oldById[w.id] };
-        }
-        return w;
-      });
+      // Add any scraped works that aren't already in the gallery
+      const newWorks = (newGallery.works || []).filter(w => !existingIds.has(w.id));
+      
+      newGallery.works = existingWorks.concat(newWorks);
+    }
+    
+    // Ensure gallery metadata is preserved
+    if (oldGallery) {
+      newGallery.name = oldGallery.name || newGallery.name;
+      newGallery.tagline = oldGallery.tagline || newGallery.tagline;
+      newGallery.wallClass = oldGallery.wallClass || newGallery.wallClass;
     }
   }
   
