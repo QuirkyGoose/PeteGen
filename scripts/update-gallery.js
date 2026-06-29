@@ -96,8 +96,9 @@ async function scrapeAlbum(albumHex, galleryId) {
   const allImages = [];
   let page = 1;
   let hasMore = true;
+  const MAX_PAGES = 20; // safety cap — 20 pages × 48 = 960 images max per gallery
   
-  while (hasMore) {
+  while (hasMore && page <= MAX_PAGES) {
     const url = page === 1 
       ? `https://postimg.cc/gallery/${albumHex}`
       : `https://postimg.cc/gallery/${albumHex}/${page}`;
@@ -114,10 +115,24 @@ async function scrapeAlbum(albumHex, galleryId) {
       } else {
         allImages.push(...images);
         console.log(` ${images.length} images found.`);
-        // If we got fewer than 48, we've reached the last page
-        if (images.length < 48) {
-          hasMore = false;
-        } else {
+        
+        // Detect last page: check if this page returned the same images as
+        // the previous page (postimg returns the last page's content for
+        // any page number beyond the actual last page)
+        if (page > 1) {
+          const prevStart = (page - 2) * 48;
+          const prevBatch = allImages.slice(prevStart, prevStart + 48);
+          const currentIds = new Set(images.map(i => i.id));
+          const isDuplicate = prevBatch.every(i => currentIds.has(i.id));
+          if (isDuplicate) {
+            console.log(`  Duplicate page detected — reached the end.`);
+            // Remove the duplicate images we just added
+            allImages.splice(allImages.length - images.length, images.length);
+            hasMore = false;
+          }
+        }
+        
+        if (hasMore) {
           page++;
           await sleep(DELAY_MS);
         }
@@ -211,7 +226,7 @@ async function main() {
   
   if (totalNew === 0) {
     console.log('\nGallery is up to date. No changes needed.');
-    process.exit(1); // exit 1 = no changes
+    process.exit(0); // exit 0 = success, no changes (not an error)
   }
   
   // Merge: keep existing image data where possible (preserves any manual edits),
