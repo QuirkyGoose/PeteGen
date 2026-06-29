@@ -134,13 +134,26 @@
 
     var route = parseRoute();
     routeEl.innerHTML = '';
-    window.scrollTo(0, 0);
+
+    // Don't scroll to top when rendering search results — the user is
+    // actively typing in the search bar and scrolling would dismiss the
+    // mobile keyboard and collapse the expanded search overlay.
+    if (route.name !== 'search') {
+      window.scrollTo(0, 0);
+    }
 
     if (route.name === 'landing') {
       footerEl.style.display = 'flex';
+      lastSearchQuery = '';
+      if (searchInput) searchInput.value = '';
       renderLanding();
     } else if (route.name === 'gallery') {
       footerEl.style.display = 'none';
+      // Clear search when navigating to a gallery (but not when coming from search)
+      if (searchInput && searchInput.value && route.name !== 'search') {
+        lastSearchQuery = '';
+        searchInput.value = '';
+      }
       renderGallery(route.room);
     } else if (route.name === 'artwork') {
       footerEl.style.display = 'none';
@@ -961,7 +974,7 @@
     '<div class="artwork-view screen">' +
       '<div class="artwork-detail">' +
         '<div class="artwork-image-wrap" id="artworkImageWrap" style="aspect-ratio: ' + aspect.toFixed(3) + ';">' +
-          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="lazy" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
+          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
           '<div class="artwork-zoom-hint">Click to expand</div>' +
         '</div>' +
         '<div class="artwork-sidebar">' +
@@ -1000,6 +1013,16 @@
     '</div>';
 
     routeEl.innerHTML = html;
+
+    // Preload the full-res image in the background so the lightbox
+    // opens instantly when clicked. The thumbnail loads first (fast),
+    // then the full-res version loads silently behind it.
+    if (w.imageUrl && w.imageUrl !== w.thumbUrl) {
+      var preloader = new Image();
+      preloader.decoding = 'async';
+      preloader.referrerPolicy = 'no-referrer';
+      preloader.src = w.imageUrl;
+    }
 
     // Wire image click → lightbox
     var imgWrap = document.getElementById('artworkImageWrap');
@@ -1263,10 +1286,19 @@
 
   // Wire up the search input
   var searchInput = document.getElementById('searchInput');
+  var searchWrap = document.getElementById('searchWrap');
   var searchTimer = null;
+  var lastSearchQuery = ''; // preserve input value across re-renders
+
   if (searchInput) {
+    // Restore previous search value if we navigated away and back
+    if (lastSearchQuery) {
+      searchInput.value = lastSearchQuery;
+    }
+
     searchInput.addEventListener('input', function () {
       var q = this.value.trim();
+      lastSearchQuery = this.value; // save raw input (not trimmed)
       if (searchTimer) clearTimeout(searchTimer);
       if (q.length < 2) return; // need at least 2 chars
       searchTimer = setTimeout(function () {
@@ -1279,7 +1311,50 @@
         var q = this.value.trim();
         if (q.length >= 1) navigate('#/search/' + encodeURIComponent(q));
       }
+      // Escape collapses the expanded search on mobile
+      if (e.key === 'Escape' && searchWrap) {
+        searchWrap.classList.remove('expanded');
+        searchInput.blur();
+      }
     });
+
+    // Mobile: tap the search icon to expand the search bar
+    if (searchWrap) {
+      // Use a flag to prevent the document click handler from immediately
+      // collapsing the search when it was just expanded by the same tap.
+      var searchJustExpanded = false;
+
+      searchWrap.addEventListener('click', function (e) {
+        // Only intercept clicks on the icon area, not on the input itself
+        if (e.target === searchWrap || e.target.tagName === 'svg' || e.target.tagName === 'path' || e.target.tagName === 'circle') {
+          if (window.innerWidth <= 600 && !searchWrap.classList.contains('expanded')) {
+            e.preventDefault();
+            e.stopPropagation();
+            searchWrap.classList.add('expanded');
+            searchJustExpanded = true;
+            setTimeout(function () {
+              searchInput.focus();
+              searchJustExpanded = false;
+            }, 150);
+          }
+        }
+      });
+
+      // Collapse when clicking elsewhere — but not if we just expanded
+      document.addEventListener('click', function (e) {
+        if (searchJustExpanded) return;
+        if (searchWrap.classList.contains('expanded') && !searchWrap.contains(e.target)) {
+          searchWrap.classList.remove('expanded');
+        }
+      }, true); // use capture phase so we run before other handlers
+
+      // Don't collapse when the input itself gains focus or receives input
+      searchInput.addEventListener('focus', function () {
+        if (window.innerWidth <= 600) {
+          searchWrap.classList.add('expanded');
+        }
+      });
+    }
   }
 
   // ====================================================================
@@ -1927,114 +2002,10 @@
   }
 
   // ====================================================================
-  // GOO CONTROLS PANEL
+  // KEYBOARD SHORTCUTS (Slideshow only — goo controls removed for release)
   // ====================================================================
 
-  var gooPanel = document.getElementById('gooControls');
-  var gooHint = document.getElementById('gooControlsHint');
-  var gooClose = document.getElementById('gooControlsClose');
-  var gooCountInput = document.getElementById('gooCount');
-  var gooSizeInput = document.getElementById('gooSize');
-  var gooOpacityInput = document.getElementById('gooOpacity');
-  var gooSpeedInput = document.getElementById('gooSpeed');
-  var gooBlurInput = document.getElementById('gooBlur');
-  var gooResetBtn = document.getElementById('gooResetBtn');
-
-  var GOO_DEFAULTS = { count: 6, size: 60, opacity: 0.35, speed: 0.45, blur: 22 };
-
-  // Load saved settings from localStorage
-  function loadGooSettings() {
-    try {
-      var s = localStorage.getItem('goo_settings');
-      if (s) return JSON.parse(s);
-    } catch (e) {}
-    return null;
-  }
-
-  function saveGooSettings(s) {
-    try { localStorage.setItem('goo_settings', JSON.stringify(s)); } catch (e) {}
-  }
-
-  function syncGooControlsUI(s) {
-    gooCountInput.value = s.count;
-    gooSizeInput.value = s.size;
-    gooOpacityInput.value = s.opacity;
-    gooSpeedInput.value = s.speed;
-    gooBlurInput.value = s.blur;
-    document.getElementById('gooCountVal').textContent = s.count;
-    document.getElementById('gooSizeVal').textContent = s.size;
-    document.getElementById('gooOpacityVal').textContent = s.opacity;
-    document.getElementById('gooSpeedVal').textContent = s.speed;
-    document.getElementById('gooBlurVal').textContent = s.blur;
-  }
-
-  function applyGooFromControls() {
-    var s = {
-      count: parseInt(gooCountInput.value, 10),
-      size: parseInt(gooSizeInput.value, 10),
-      opacity: parseFloat(gooOpacityInput.value),
-      speed: parseFloat(gooSpeedInput.value),
-      blur: parseInt(gooBlurInput.value, 10)
-    };
-    syncGooControlsUI(s);
-    saveGooSettings(s);
-
-    // Apply to PARAMS
-    PARAMS.count = s.count;
-    PARAMS.speed = s.speed;
-
-    // Update blur
-    var blurEl = document.getElementById('goo-blur');
-    if (blurEl) blurEl.setAttribute('stdDeviation', s.blur);
-
-    // Rebuild with new size + count
-    size.w = window.innerWidth;
-    size.h = Math.max(window.innerHeight, document.body.scrollHeight);
-    metaballs = [];
-    for (var i = 0; i < s.count; i++) {
-      var r = s.size + Math.random() * (s.size * 1.4);
-      metaballs.push({
-        x: r + Math.random() * Math.max(1, size.w - 2 * r),
-        y: r + Math.random() * Math.max(1, size.h - 2 * r),
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        r: r
-      });
-    }
-    while (group.firstChild) group.removeChild(group.firstChild);
-    circleEls = [];
-    var SVGNS = 'http://www.w3.org/2000/svg';
-    for (var j = 0; j < s.count; j++) {
-      var c = document.createElementNS(SVGNS, 'circle');
-      c.setAttribute('cx', size.w / 2);
-      c.setAttribute('cy', size.h / 2);
-      c.setAttribute('r', s.size);
-      c.setAttribute('fill', 'url(#metaballGrad)');
-      c.setAttribute('opacity', s.opacity);
-      group.appendChild(c);
-      circleEls.push(c);
-    }
-  }
-
-  // Wire up events
-  if (gooHint) gooHint.addEventListener('click', function () {
-    gooPanel.classList.add('open');
-    gooHint.style.display = 'none';
-  });
-  if (gooClose) gooClose.addEventListener('click', function () {
-    gooPanel.classList.remove('open');
-    gooHint.style.display = '';
-  });
-  [gooCountInput, gooSizeInput, gooOpacityInput, gooSpeedInput, gooBlurInput].forEach(function (input) {
-    if (input) input.addEventListener('input', applyGooFromControls);
-  });
-  if (gooResetBtn) gooResetBtn.addEventListener('click', function () {
-    syncGooControlsUI(GOO_DEFAULTS);
-    saveGooSettings(GOO_DEFAULTS);
-    applyGooFromControls();
-  });
-
-  // Keyboard shortcuts: G for goo, S for slideshow, arrows/Esc/Space in slideshow
+  // Keyboard shortcuts: S for slideshow, arrows/Esc/Space in slideshow
   document.addEventListener('keydown', function (e) {
     var tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
@@ -2050,32 +2021,12 @@
       return;
     }
 
-    // G for goo controls
-    if (e.key === 'g' || e.key === 'G') {
-      e.preventDefault();
-      if (gooPanel.classList.contains('open')) {
-        gooPanel.classList.remove('open');
-        gooHint.style.display = '';
-      } else {
-        gooPanel.classList.add('open');
-        gooHint.style.display = 'none';
-      }
-    }
-
     // S for slideshow
     if (e.key === 's' || e.key === 'S') {
       e.preventDefault();
       startSlideshowFromCurrentGallery();
     }
   });
-
-  // Apply saved settings on load
-  var savedGoo = loadGooSettings();
-  if (savedGoo) {
-    syncGooControlsUI(savedGoo);
-    // Apply after a short delay so the initial metaballs have been built
-    setTimeout(applyGooFromControls, 100);
-  }
 
   // Render on hash change (will be a no-op until data loads)
   window.addEventListener('hashchange', function () {

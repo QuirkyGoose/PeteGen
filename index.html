@@ -438,6 +438,47 @@
     .search-wrap { max-width: 150px; }
     .search-input { font-size: 11px; padding: 6px 10px 6px 30px; }
   }
+  /* On very small screens, collapse the search into an icon that expands on tap */
+  @media (max-width: 600px) {
+    .search-wrap {
+      max-width: none;
+      flex: 0 1 auto;
+      transition: max-width 0.3s ease, flex 0.3s ease;
+    }
+    .search-wrap:not(.expanded) {
+      max-width: 36px;
+    }
+    .search-wrap:not(.expanded) .search-input {
+      opacity: 0;
+      padding-left: 36px;
+      pointer-events: none;
+    }
+    .search-wrap.expanded {
+      flex: 1;
+      max-width: 100%;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      padding: 8px 16px;
+      background: rgba(5, 5, 7, 0.95);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+      z-index: 60;
+    }
+    .search-wrap.expanded .search-input {
+      opacity: 1;
+      pointer-events: auto;
+      font-size: 14px;
+      padding: 10px 14px 10px 36px;
+    }
+    .search-wrap.expanded > svg {
+      width: 16px;
+      height: 16px;
+      left: 28px;
+    }
+  }
 
   /* ======================================================================
      TOP BAR — Gallery Switcher Dropdown
@@ -1536,130 +1577,6 @@
   }
 
   /* ======================================================================
-     GOO CONTROLS PANEL
-     ====================================================================== */
-  .goo-controls-hint {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 50;
-    width: 36px;
-    height: 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    color: var(--t3);
-    background: rgba(8, 8, 10, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: border-color 0.2s ease, color 0.2s ease;
-  }
-  .goo-controls-hint:hover { border-color: rgba(255,255,255,0.35); color: var(--t1); }
-  .goo-controls-hint svg { width: 16px; height: 16px; }
-
-  .goo-controls {
-    position: fixed;
-    bottom: 65px;
-    right: 20px;
-    z-index: 60;
-    width: 280px;
-    background: rgba(8, 8, 10, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 18px 48px rgba(0,0,0,0.55);
-    transform: translateY(10px) scale(0.98);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.2,0.7,0.2,1);
-  }
-  .goo-controls.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-
-  .goo-controls-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px 10px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .goo-controls-title {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--t1);
-  }
-  .goo-controls-close {
-    width: 26px; height: 26px;
-    display: inline-flex; align-items: center; justify-content: center;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    color: var(--t2);
-    transition: border-color 0.2s ease, color 0.2s ease;
-  }
-  .goo-controls-close:hover { border-color: rgba(255,255,255,0.35); color: var(--t1); }
-  .goo-controls-close svg { width: 12px; height: 12px; }
-
-  .goo-controls-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
-
-  .goo-ctrl { display: flex; flex-direction: column; gap: 6px; }
-  .goo-ctrl-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--t3);
-    display: flex;
-    justify-content: space-between;
-  }
-  .goo-ctrl-label b { color: var(--amber); font-weight: 500; }
-  .goo-ctrl input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 4px;
-    background: var(--line);
-    border-radius: 2px;
-    outline: none;
-  }
-  .goo-ctrl input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: var(--amber);
-    cursor: pointer;
-    border: 2px solid var(--bg);
-  }
-  .goo-ctrl input[type="range"]::-moz-range-thumb {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: var(--amber);
-    cursor: pointer;
-    border: 2px solid var(--bg);
-  }
-  .goo-reset-btn {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--t2);
-    padding: 8px 12px;
-    border: 1px solid var(--line);
-    border-radius: 100px;
-    background: var(--panel);
-    cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease;
-  }
-  .goo-reset-btn:hover { border-color: rgba(255,255,255,0.3); color: var(--t1); }
-
-  /* ======================================================================
      SCHEDULE PAGE
      ====================================================================== */
   .schedule-view {
@@ -2527,43 +2444,6 @@
   </svg>
 </div>
 <div class="bg-fade"></div>
-
-<!-- ====== Goo controls panel (toggle with G) ====== -->
-<button class="goo-controls-hint" id="gooControlsHint" title="Adjust background (G)" aria-label="Adjust background">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="5" r="2"/><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
-</button>
-
-<aside class="goo-controls" id="gooControls" aria-hidden="true">
-  <div class="goo-controls-header">
-    <span class="goo-controls-title">Background</span>
-    <button class="goo-controls-close" id="gooControlsClose" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-    </button>
-  </div>
-  <div class="goo-controls-body">
-    <label class="goo-ctrl">
-      <span class="goo-ctrl-label">Blob count <b id="gooCountVal">6</b></span>
-      <input type="range" id="gooCount" min="3" max="20" value="6" />
-    </label>
-    <label class="goo-ctrl">
-      <span class="goo-ctrl-label">Blob size <b id="gooSizeVal">60</b></span>
-      <input type="range" id="gooSize" min="30" max="200" value="60" />
-    </label>
-    <label class="goo-ctrl">
-      <span class="goo-ctrl-label">Opacity <b id="gooOpacityVal">0.35</b></span>
-      <input type="range" id="gooOpacity" min="0.1" max="1" value="0.35" step="0.05" />
-    </label>
-    <label class="goo-ctrl">
-      <span class="goo-ctrl-label">Drift speed <b id="gooSpeedVal">0.45</b></span>
-      <input type="range" id="gooSpeed" min="0" max="2" value="0.45" step="0.05" />
-    </label>
-    <label class="goo-ctrl">
-      <span class="goo-ctrl-label">Goo blur <b id="gooBlurVal">22</b></span>
-      <input type="range" id="gooBlur" min="5" max="50" value="22" />
-    </label>
-    <button class="goo-reset-btn" id="gooResetBtn">Reset to defaults</button>
-  </div>
-</aside>
 
 <!-- ====== App shell ====== -->
 <div id="app">
