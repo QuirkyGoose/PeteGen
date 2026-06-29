@@ -1,0 +1,38 @@
+name: Update Gallery
+
+on:
+  # Run twice a week — Thursday and Saturday at 4am UTC
+  # (catches new pics from Wednesday and Friday Peet Pics streams)
+  schedule:
+    - cron: '0 4 * * 4,6'
+  # Allow manual trigger from the GitHub Actions tab
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Scrape postimg albums and update gallery-data.js
+        run: node scripts/update-gallery.js
+      
+      - name: Commit and push if changes
+        run: |
+          git config user.name "Gallery Bot"
+          git config user.email "actions@github.com"
+          git add gallery-data.js
+          if git diff --cached --quiet; then
+            echo "No changes — gallery is up to date"
+          else
+            git commit -m "Auto-update: new Pete Pics found on postimg"
+            git push
+            echo "Changes pushed — Cloudflare will auto-deploy"
+          fi
