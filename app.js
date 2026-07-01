@@ -412,7 +412,14 @@
       pagesHtml +
       rvHtml +
       '<div class="nav-dropdown-section" style="margin-top: 6px;">Home</div>' +
-      landingHtml;
+      landingHtml +
+      '<div class="nav-dropdown-section" style="margin-top: 6px;">Admin</div>' +
+      '<a class="nav-dropdown-item" href="admin.html" style="text-decoration:none;">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>' +
+        '<span class="nav-item-name">Admin</span>' +
+        '<span class="nav-item-tag">Manage site</span>' +
+        '<span class="nav-item-count">★</span>' +
+      '</a>';
 
     // Wire up item clicks
     navMenu.querySelectorAll('.nav-dropdown-item').forEach(function (btn) {

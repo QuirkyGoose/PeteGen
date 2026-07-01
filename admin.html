@@ -82,7 +82,7 @@
   <div id="dashboard" class="hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
       <h1>Pete<em>Gen</em> Admin</h1>
-      <a href="#/" class="btn btn-secondary btn-sm">← Back to site</a>
+      <a href="index.html" class="btn btn-secondary btn-sm">← Back to site</a>
     </div>
 
     <!-- GitHub PAT setup -->
@@ -302,37 +302,96 @@ var nackyData = null;
 var galleryData = null;
 
 async function loadAllData() {
-  // Load gallery data for stats + nacky
+  var hasPat = !!getPat();
+
+  // Try loading from GitHub API first (gets the latest committed version)
+  // Fall back to fetching the local JSON files (gets the currently deployed version)
+  // The local fetch always works — it's the same files the site serves
+
+  // Load gallery data for stats
   try {
-    var g = await ghGetFile('gallery-data.js');
-    var sandbox = {};
-    new Function('window', g.content + '\nreturn window.GALLERY_DATA;')(sandbox);
-    galleryData = sandbox.GALLERY_DATA;
-    document.getElementById('statTotal').textContent = galleryData.totalWorks.toLocaleString();
-    document.getElementById('statGalleries').textContent = Object.keys(galleryData.galleries).length;
+    if (hasPat) {
+      var g = await ghGetFile('gallery-data.js');
+      var sandbox = {};
+      new Function('window', g.content + '\nreturn window.GALLERY_DATA;')(sandbox);
+      galleryData = sandbox.GALLERY_DATA;
+    } else {
+      // Fallback: load the local gallery-data.js
+      var r = await fetch('gallery-data.js');
+      var text = await r.text();
+      var sandbox2 = {};
+      new Function('window', text + '\nreturn window.GALLERY_DATA;')(sandbox2);
+      galleryData = sandbox2.GALLERY_DATA;
+    }
+    if (galleryData) {
+      document.getElementById('statTotal').textContent = galleryData.totalWorks.toLocaleString();
+      document.getElementById('statGalleries').textContent = Object.keys(galleryData.galleries).length;
+    }
   } catch(e) { console.warn('Could not load gallery data:', e.message); }
 
-  // Load schedule
+  // Load schedule — try GitHub API, fall back to local fetch
   try {
-    var s = await ghGetFile('schedule.json');
-    scheduleData = JSON.parse(s.content);
+    if (hasPat) {
+      var s = await ghGetFile('schedule.json');
+      scheduleData = JSON.parse(s.content);
+    } else {
+      var r2 = await fetch('schedule.json');
+      scheduleData = await r2.json();
+    }
     renderScheduleEditor();
-  } catch(e) { console.warn('Could not load schedule:', e.message); }
+  } catch(e) {
+    console.warn('Could not load schedule from GitHub or local:', e.message);
+    // Last resort: use hardcoded defaults
+    scheduleData = [
+      { day: 'Monday', shows: [{ title: "Cait's Wide Hole", host: 'Cait', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Culture, chat, and chaos with Cait.' }] },
+      { day: 'Tuesday', shows: [{ title: 'Puzzle Tuesday', host: 'Dr Plem', time: 'Evening', hour: 19, minute: 0, desc: 'Puzzles, brain teasers, and Peet.' }] },
+      { day: 'Wednesday', shows: [
+        { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'The main event.' },
+        { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night edition.' }
+      ]},
+      { day: 'Thursday', shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Prestlers.' }] },
+      { day: 'Friday', shows: [
+        { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'Friday edition.' },
+        { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night Friday.' }
+      ]},
+      { day: 'Saturday', shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Saturday wrestling.' }] },
+      { day: 'Sunday', shows: [{ title: 'Bobots', host: 'Pete', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Sunday Bobots.' }] }
+    ];
+    renderScheduleEditor();
+  }
 
-  // Load friends
+  // Load friends — try GitHub API, fall back to local fetch
   try {
-    var f = await ghGetFile('friends.json');
-    friendsData = JSON.parse(f.content);
+    if (hasPat) {
+      var f = await ghGetFile('friends.json');
+      friendsData = JSON.parse(f.content);
+    } else {
+      var r3 = await fetch('friends.json');
+      friendsData = await r3.json();
+    }
     document.getElementById('statFriends').textContent = friendsData.length;
     renderFriendsEditor();
-  } catch(e) { console.warn('Could not load friends:', e.message); }
+  } catch(e) {
+    console.warn('Could not load friends:', e.message);
+    friendsData = [];
+    renderFriendsEditor();
+  }
 
-  // Load nacky
+  // Load nacky — try GitHub API, fall back to local fetch
   try {
-    var n = await ghGetFile('nacky.json');
-    nackyData = JSON.parse(n.content);
+    if (hasPat) {
+      var n = await ghGetFile('nacky.json');
+      nackyData = JSON.parse(n.content);
+    } else {
+      var r4 = await fetch('nacky.json');
+      nackyData = await r4.json();
+    }
     renderNackyEditor();
-  } catch(e) { console.warn('Could not load nacky:', e.message); }
+  } catch(e) {
+    console.warn('Could not load nacky:', e.message);
+    nackyData = { mode: 'random', count: 48, ids: [] };
+    renderNackyEditor();
+  }
 }
 
 // ─── Tab switching ──────────────────────────────────────────────
