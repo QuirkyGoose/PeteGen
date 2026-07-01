@@ -570,6 +570,22 @@
     closeNavDropdown();
   });
 
+  // NSFW blur — click any blurred image to reveal it
+  document.addEventListener('click', function (e) {
+    var nsfwImg = e.target.closest('img[data-nsfw="1"]');
+    if (nsfwImg) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (nsfwImg.style.filter) {
+        nsfwImg.style.filter = '';
+        nsfwImg.classList.add('nsfw-revealed');
+      } else {
+        nsfwImg.style.filter = 'blur(20px)';
+        nsfwImg.classList.remove('nsfw-revealed');
+      }
+    }
+  });
+
   // ====================================================================
   // IMAGE HELPERS
   // ====================================================================
@@ -609,6 +625,15 @@
     imgs.forEach(function (img) { obs.observe(img); });
   }
 
+  // IDs of artworks that should be blurred (NSFW) until clicked
+  // Loaded from nsfw.json at runtime, defaults to ['7CDPpB70']
+  var NSFW_IDS = ['7CDPpB70'];
+  var NSFW_SET = new Set(NSFW_IDS);
+
+  function isNsfw(work) {
+    return NSFW_SET.has(work.id);
+  }
+
   function imgTag(work, cls, alt, loading) {
     var url = work.thumbUrl || work.imageUrl;
     var w = work.width || '';
@@ -616,17 +641,21 @@
     var aspect = (w && h) ? (w / h) : 1;
     var altText = alt || escapeHtml(work.title || '');
     cls = cls || '';
+    var nsfw = isNsfw(work);
+    var nsfwClass = nsfw ? ' nsfw-blur' : '';
+    var nsfwAttr = nsfw ? ' data-nsfw="1"' : '';
     // Render an empty <img> with data-src — IntersectionObserver assigns
     // src when the image is within 400px of the viewport.
     return '<img' +
-      (cls ? ' class="' + cls + '"' : '') +
+      (cls ? ' class="' + cls + nsfwClass + '"' : '') +
       ' alt="' + altText + '"' +
       ' loading="lazy"' +
       ' decoding="async"' +
       ' referrerpolicy="no-referrer"' +
       ' data-src="' + escapeHtml(url) + '"' +
       ' data-aspect="' + aspect.toFixed(3) + '"' +
-      ' style="opacity:0;transition:opacity 0.4s ease;"' +
+      nsfwAttr +
+      ' style="opacity:0;transition:opacity 0.4s ease;' + (nsfw ? 'filter:blur(20px);' : '') + '"' +
       ' onload="this.style.opacity=1"' +
       ' onerror="this.style.opacity=0.12;this.alt=\'unavailable\'"' +
       '>';
@@ -733,7 +762,7 @@
           '</div>' +
           '<a class="potd-card" href="#/artwork/' + encodeURIComponent(potd.id) + '">' +
             '<div class="potd-image">' +
-              '<img src="' + escapeHtml(potd.imageUrl || potd.thumbUrl) + '" alt="' + escapeHtml(potd.title || 'Untitled') + '" loading="lazy" referrerpolicy="no-referrer">' +
+              '<img src="' + escapeHtml(potd.imageUrl || potd.thumbUrl) + '" alt="' + escapeHtml(potd.title || 'Untitled') + '" loading="lazy" referrerpolicy="no-referrer"' + (isNsfw(potd) ? ' data-nsfw="1" style="filter:blur(20px);cursor:pointer;"' : '') + '>' +
               '<div class="potd-image-overlay"></div>' +
               '<div class="potd-badge">' + escapeHtml(potd.galleryName || 'Vault') + '</div>' +
             '</div>' +
@@ -993,7 +1022,7 @@
     '<div class="artwork-view screen">' +
       '<div class="artwork-detail">' +
         '<div class="artwork-image-wrap" id="artworkImageWrap" style="aspect-ratio: ' + aspect.toFixed(3) + ';">' +
-          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
+          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;' + (isNsfw(w) ? 'filter:blur(20px);cursor:pointer;' : '') + '"' + (isNsfw(w) ? ' data-nsfw="1"' : '') + ' onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
           '<div class="artwork-zoom-hint">Click to expand</div>' +
         '</div>' +
         '<div class="artwork-sidebar">' +
@@ -1094,10 +1123,15 @@
       fetch('schedule.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('friends.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nacky.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('nsfw.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
       if (results[0]) SCHEDULE = results[0];
       if (results[1]) FRIENDS = results[1];
       if (results[2]) NACKY_CONFIG = results[2];
+      if (results[3] && Array.isArray(results[3])) {
+        NSFW_IDS = results[3];
+        NSFW_SET = new Set(NSFW_IDS);
+      }
       // Re-render if we're on a relevant page
       var route = parseRoute();
       if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
