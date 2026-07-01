@@ -122,6 +122,7 @@
     if (parts[0] === 'friends') return { name: 'friends' };
     if (parts[0] === 'shop') return { name: 'shop' };
     if (parts[0] === 'search') return { name: 'search', query: decodeURIComponent(parts[1] || '') };
+    if (parts[0] === 'admin') return { name: 'admin' };
     return { name: 'landing' };
   }
 
@@ -170,6 +171,9 @@
     } else if (route.name === 'search') {
       footerEl.style.display = 'none';
       renderSearch(route.query);
+    } else if (route.name === 'admin') {
+      window.location.href = 'admin.html';
+      return;
     }
 
     // Show/hide the back button based on route
@@ -788,10 +792,18 @@
     var hex = '#d4a853';
 
     if (room && roomId === 'nacky') {
-      // Nacky Nook — curated random selection from all galleries (the most "unhinged" works)
-      // Pick 48 random works across all collections for a chaotic mix
-      var allShuffled = ARTWORKS.slice().sort(function () { return Math.random() - 0.5; });
-      works = allShuffled.slice(0, Math.min(48, allShuffled.length));
+      // Nacky Nook — curated selection or random based on nacky.json config
+      if (NACKY_CONFIG && NACKY_CONFIG.ids && NACKY_CONFIG.ids.length > 0) {
+        // Use curated IDs
+        works = NACKY_CONFIG.ids.map(function(id) {
+          return ARTWORKS_BY_ID[id];
+        }).filter(function(w) { return w; }); // remove any not found
+      } else {
+        // Random mode — pick N random works across all collections
+        var nackyCount = (NACKY_CONFIG && NACKY_CONFIG.count) || 48;
+        var allShuffled = ARTWORKS.slice().sort(function () { return Math.random() - 0.5; });
+        works = allShuffled.slice(0, Math.min(nackyCount, allShuffled.length));
+      }
       title = room.name;
       tagline = room.tagline;
       hex = room.hex;
@@ -1035,25 +1047,36 @@
   // SCHEDULE PAGE
   // ====================================================================
 
-  var SCHEDULE = [
-    { day: 'Monday',    shows: [{ title: "Cait's Wide Hole", host: 'Cait',     time: '~8:00 PM',  hour: 20, minute: 0, desc: 'Culture, chat, and chaos with Cait.' }] },
-    { day: 'Tuesday',   shows: [{ title: 'Puzzle Tuesday',        host: 'Dr Plem', time: 'Evening',   hour: 19, minute: 0, desc: 'Puzzles, brain teasers, and Peet.' }] },
-    { day: 'Wednesday', shows: [
-      { title: 'Peet Pics',      host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'The main event — live Peet Pics drawing.' },
-      { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night edition. Same energy, later hour.' },
-    ]},
-    { day: 'Thursday',  shows: [{ title: 'Wrestling',  host: 'Pete', time: '~7:30 PM',  hour: 19, minute: 30, desc: 'Prestlers, squared circles, and beyond.' }] },
-    { day: 'Friday',    shows: [
-      { title: 'Peet Pics',      host: 'Pete', time: '~4:30 PM',  hour: 16, minute: 30, desc: 'Friday edition of the main Peet Pics stream.' },
-      { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night Friday vibes.' },
-    ]},
-    { day: 'Saturday',  shows: [{ title: 'Wrestling',  host: 'Pete', time: '~7:30 PM',  hour: 19, minute: 30, desc: 'Saturday wrestling night.' }] },
-    { day: 'Sunday',    shows: [{ title: 'Bobots',     host: 'Pete', time: '~8:00 PM',  hour: 20, minute: 0, desc: 'Sunday Bobots — robots, Peets, the intersection thereof.' }] },
-  ];
+  var SCHEDULE = null;
+  var FRIENDS = null;
+  var NACKY_CONFIG = null;
+
+  // Load schedule, friends, and nacky config from JSON files
+  // Falls back to defaults if files aren't found
+  function loadConfigData() {
+    Promise.all([
+      fetch('schedule.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('friends.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('nacky.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+    ]).then(function(results) {
+      if (results[0]) SCHEDULE = results[0];
+      if (results[1]) FRIENDS = results[1];
+      if (results[2]) NACKY_CONFIG = results[2];
+      // Re-render if we're on a relevant page
+      var route = parseRoute();
+      if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
+        render();
+      }
+    });
+  }
 
   var DAY_INDEX = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
   function renderSchedule() {
+    if (!SCHEDULE) {
+      routeEl.innerHTML = '<div class="schedule-view screen"><div class="gallery-empty"><h3>Loading schedule…</h3></div></div>';
+      return;
+    }
     var today = new Date().getDay(); // 0=Sunday
     // Reorder SCHEDULE so today is first
     var todayName = Object.keys(DAY_INDEX).find(function (k) { return DAY_INDEX[k] === today; });
@@ -1100,21 +1123,13 @@
   // FRIENDS PAGE
   // ====================================================================
 
-  var FRIENDS = [
-    { name: 'FizzyCait',  channel: 'https://twitch.tv/FizzyCait',    handle: 'FizzyCait',  desc: "Cait's Wide Hole co-host. Culture, chat, and chaos." },
-    { name: 'Dr Plem',    channel: 'https://twitch.tv/dr_plem',          handle: 'dr_plem',    desc: 'Puzzle Tuesday co-host. Puzzles, brain teasers, and Peet.' },
-    { name: 'Harry Hardy',channel: 'https://twitch.tv/harryhardy',   handle: 'harryhardy', desc: 'Peet Pics community member and frequent contributor to the vault.' },
-    { name: 'Bekabyx',    channel: 'https://twitch.tv/bekabyx',      handle: 'bekabyx',    desc: 'Peet Pics community member and streamer.' },
-    { name: 'grgrsmth',   channel: 'https://twitch.tv/grgrsmth',     handle: 'grgrsmth',   desc: 'Peet Pics community member and streamer.' },
-    { name: 'BreadSanta', channel: 'https://twitch.tv/breadsanta',   handle: 'breadsanta', desc: 'Peet Pics community member and streamer.' },
-    { name: 'Albrot',     channel: 'https://twitch.tv/albrot',       handle: 'albrot',     desc: 'Peet Pics community member and streamer.' },
-    { name: 'JosieRustle',channel: 'https://twitch.tv/josierustle',  handle: 'josierustle',desc: 'Peet Pics community member and streamer.' },
-    { name: 'AngelInterceptor', channel: 'https://twitch.tv/angelinterceptor', handle: 'angelinterceptor', desc: 'Peet Pics community member and streamer.' },
-    { name: 'AliDooLalli', channel: 'https://twitch.tv/alidoolalli',  handle: 'alidoolalli', desc: 'Peet Pics community member and streamer.' },
-    { name: 'AlexKiddInShinobiWorld', channel: 'https://twitch.tv/alexkiddinshinobiworld', handle: 'alexkiddinshinobiworld', desc: 'Peet Pics community member and streamer.' },
-  ];
+  var FRIENDS = null;
 
   function renderFriends() {
+    if (!FRIENDS) {
+      routeEl.innerHTML = '<div class="friends-view screen"><div class="gallery-empty"><h3>Loading friends…</h3></div></div>';
+      return;
+    }
     var cardsHtml = FRIENDS.map(function (f) {
       return '<a class="friend-card" href="' + escapeHtml(f.channel) + '" target="_blank" rel="noopener" data-handle="' + escapeHtml(f.handle) + '">' +
         '<div class="friend-card-bg" aria-hidden="true"></div>' +
@@ -1627,6 +1642,8 @@
       // work counts per room), then render the current route.
       buildNavDropdown();
       render();
+      // Load schedule, friends, and nacky config from JSON files
+      loadConfigData();
       // Resize the background multiple times after render to catch
       // the page height changing as content/images load
       setTimeout(resize, 100);

@@ -1,0 +1,15 @@
+[
+  { "day": "Monday", "shows": [{ "title": "Cait's Wide Hole", "host": "Cait", "time": "~8:00 PM", "hour": 20, "minute": 0, "desc": "Culture, chat, and chaos with Cait." }] },
+  { "day": "Tuesday", "shows": [{ "title": "Puzzle Tuesday", "host": "Dr Plem", "time": "Evening", "hour": 19, "minute": 0, "desc": "Puzzles, brain teasers, and Peet." }] },
+  { "day": "Wednesday", "shows": [
+    { "title": "Peet Pics", "host": "Pete", "time": "~4:30 PM", "hour": 16, "minute": 30, "desc": "The main event — live Peet Pics drawing." },
+    { "title": "Late Nite Pite", "host": "Pete", "time": "~10:00 PM", "hour": 22, "minute": 0, "desc": "Late-night edition. Same energy, later hour." }
+  ]},
+  { "day": "Thursday", "shows": [{ "title": "Wrestling", "host": "Pete", "time": "~7:30 PM", "hour": 19, "minute": 30, "desc": "Prestlers, squared circles, and beyond." }] },
+  { "day": "Friday", "shows": [
+    { "title": "Peet Pics", "host": "Pete", "time": "~4:30 PM", "hour": 16, "minute": 30, "desc": "Friday edition of the main Peet Pics stream." },
+    { "title": "Late Nite Pite", "host": "Pete", "time": "~10:00 PM", "hour": 22, "minute": 0, "desc": "Late-night Friday vibes." }
+  ]},
+  { "day": "Saturday", "shows": [{ "title": "Wrestling", "host": "Pete", "time": "~7:30 PM", "hour": 19, "minute": 30, "desc": "Saturday wrestling night." }] },
+  { "day": "Sunday", "shows": [{ "title": "Bobots", "host": "Pete", "time": "~8:00 PM", "hour": 20, "minute": 0, "desc": "Sunday Bobots — robots, Peets, the intersection thereof." }] }
+]

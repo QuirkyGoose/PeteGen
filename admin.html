@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PeteGen Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050507; --panel: rgba(8,8,10,0.55); --line: rgba(255,255,255,0.08);
+    --t1: rgba(255,255,255,0.96); --t2: rgba(255,255,255,0.6); --t3: rgba(255,255,255,0.38);
+    --amber: #d4a853; --sage: #9bbf9b; --rose: #d9a3b8; --danger: #ff7a6b;
+    --display: 'Newsreader', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --maxw: 900px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--t1); font-family: var(--mono); font-size: 14px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  ::selection { background: rgba(212,168,83,0.3); }
+  .app { max-width: var(--maxw); margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-family: var(--display); font-size: 32px; font-weight: 400; color: #fff; margin-bottom: 8px; }
+  h1 em { color: var(--amber); font-style: italic; }
+  h2 { font-family: var(--display); font-size: 22px; font-weight: 400; color: var(--t1); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  h3 { font-family: var(--display); font-size: 16px; color: var(--t2); margin-bottom: 8px; }
+  p { color: var(--t2); line-height: 1.6; margin-bottom: 12px; }
+  a { color: var(--amber); text-decoration: none; }
+  .label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--t3); margin-bottom: 4px; display: block; }
+  input, textarea, select { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; color: var(--t1); font-family: var(--mono); font-size: 13px; margin-bottom: 10px; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--amber); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid; border-radius: 100px; cursor: pointer; transition: all 0.2s ease; }
+  .btn-primary { background: #fff; color: #000; border-color: #fff; }
+  .btn-primary:hover { background: var(--amber); border-color: var(--amber); }
+  .btn-secondary { background: transparent; color: var(--t2); border-color: var(--line); }
+  .btn-secondary:hover { color: var(--t1); border-color: rgba(255,255,255,0.3); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: rgba(255,122,107,0.3); }
+  .btn-danger:hover { background: rgba(255,122,107,0.1); }
+  .btn-sm { padding: 6px 14px; font-size: 11px; }
+  .panel { background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .stat { text-align: center; padding: 16px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 8px; }
+  .stat-val { font-family: var(--display); font-size: 28px; color: var(--amber); }
+  .stat-lbl { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--t3); margin-top: 4px; }
+  .row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--line); border-radius: 8px; }
+  .row input, .row textarea { margin-bottom: 0; }
+  .row .col { flex: 1; }
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(40px); padding: 12px 20px; background: rgba(8,8,10,0.95); border: 1px solid var(--line); border-radius: 100px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--t1); opacity: 0; transition: all 0.3s ease; z-index: 200; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: var(--sage); color: var(--sage); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+  .hidden { display: none; }
+  .login-wrap { max-width: 400px; margin: 80px auto; text-align: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.2); border-radius: 100px; font-size: 10px; color: var(--amber); margin-bottom: 16px; }
+  .nav-tabs { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; }
+  .nav-tab { padding: 8px 16px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--t3); cursor: pointer; border-radius: 100px; border: 1px solid transparent; transition: all 0.2s; }
+  .nav-tab:hover { color: var(--t1); }
+  .nav-tab.active { color: var(--amber); background: rgba(212,168,83,0.08); border-color: rgba(212,168,83,0.3); }
+  .show-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; }
+  .show-card .col { flex: 1; }
+  .icon-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; cursor: pointer; color: var(--t3); transition: all 0.2s; flex-shrink: 0; }
+  .icon-btn:hover { color: var(--danger); border-color: var(--danger); }
+  .icon-btn svg { width: 14px; height: 14px; }
+  @media (max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } .row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- Login screen -->
+  <div class="login-wrap" id="loginScreen">
+    <div class="pill">★ Admin Access</div>
+    <h1>Pete<em>Gen</em> Admin</h1>
+    <p>Enter the admin password to manage schedule, friends, and gallery settings.</p>
+    <input type="password" id="pwInput" placeholder="Password…" onkeydown="if(event.key==='Enter')checkPw()">
+    <br><br>
+    <button class="btn btn-primary" onclick="checkPw()">Enter</button>
+  </div>
+
+  <!-- Admin dashboard (hidden until login) -->
+  <div id="dashboard" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h1>Pete<em>Gen</em> Admin</h1>
+      <a href="#/" class="btn btn-secondary btn-sm">← Back to site</a>
+    </div>
+
+    <!-- GitHub PAT setup -->
+    <div class="panel" id="patPanel">
+      <h2>GitHub Connection</h2>
+      <p>To save changes, you need a GitHub Personal Access Token scoped to <code>QuirkyGoose/PeteGen</code>. It's stored in your browser only.</p>
+      <div class="grid-2">
+        <div>
+          <span class="label">GitHub Token (ghp_…)</span>
+          <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxx">
+        </div>
+        <div>
+          <span class="label">Status</span>
+          <div id="patStatus" style="padding:8px 0;color:var(--t3);">Not connected</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="savePat()">Save Token</button>
+      <button class="btn btn-secondary btn-sm" onclick="testPat()">Test Connection</button>
+    </div>
+
+    <!-- Dashboard stats -->
+    <div class="panel">
+      <h2>Dashboard</h2>
+      <div class="grid-3" id="statsGrid">
+        <div class="stat"><div class="stat-val" id="statTotal">—</div><div class="stat-lbl">Total Works</div></div>
+        <div class="stat"><div class="stat-val" id="statGalleries">—</div><div class="stat-lbl">Galleries</div></div>
+        <div class="stat"><div class="stat-val" id="statFriends">—</div><div class="stat-lbl">Friends</div></div>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary btn-sm" onclick="scrapeNow()">🔄 Scrape postimg Now</button>
+        <span id="scrapeStatus" style="margin-left:12px;color:var(--t3);font-size:11px;"></span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-tab="schedule" onclick="showTab('schedule')">Schedule</div>
+      <div class="nav-tab" data-tab="friends" onclick="showTab('friends')">Friends</div>
+      <div class="nav-tab" data-tab="nacky" onclick="showTab('nacky')">Nacky Nook</div>
+    </div>
+
+    <!-- Schedule editor -->
+    <div class="panel" id="tab-schedule">
+      <h2>Stream Schedule</h2>
+      <p>Edit the weekly schedule. Changes go live for everyone when you click Save.</p>
+      <div id="scheduleEditor"></div>
+      <button class="btn btn-primary btn-sm" onclick="addShow()">+ Add Show</button>
+      <br><br>
+      <button class="btn btn-primary" onclick="saveSchedule()">Save Schedule</button>
+    </div>
+
+    <!-- Friends editor -->
+    <div class="panel hidden" id="tab-friends">
+      <h2>Friends</h2>
+      <p>Edit the friends list. Each friend needs a name, Twitch handle, and description.</p>
+      <div id="friendsEditor"></div>
+      <button class="btn btn-primary btn-sm" onclick="addFriend()">+ Add Friend</button>
+      <br><br>
+      <button class="btn btn-primary" onclick="saveFriends()">Save Friends</button>
+    </div>
+
+    <!-- Nacky Nook editor -->
+    <div class="panel hidden" id="tab-nacky">
+      <h2>Nacky Nook</h2>
+      <p>Control what appears in the Nacky Nook gallery. Use "random" mode for a chaotic mix, or "curated" mode to pick specific artwork IDs.</p>
+      <div class="grid-2">
+        <div>
+          <span class="label">Mode</span>
+          <select id="nackyMode">
+            <option value="random">Random (pick N random pics)</option>
+            <option value="curated">Curated (specific artwork IDs)</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">Count (random mode only)</span>
+          <input type="number" id="nackyCount" value="48" min="1" max="200">
+        </div>
+      </div>
+      <div id="nackyCuratedSection" class="hidden">
+        <span class="label">Artwork IDs (one per line)</span>
+        <textarea id="nackyIds" rows="10" placeholder="MMtxmbkk&#10;DJhygw82&#10;RWj0WRms&#10;…" style="font-family:var(--mono);font-size:12px;"></textarea>
+      </div>
+      <br>
+      <button class="btn btn-primary" onclick="saveNacky()">Save Nacky Nook</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Config ─────────────────────────────────────────────────────
+var REPO = 'QuirkyGoose/PeteGen';
+var BRANCH = 'main';
+// SHA-256 hash of the password — computed at runtime
+var PASSWORD_HASH = null; // Will be set on load
+
+// ─── Helpers ────────────────────────────────────────────────────
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(function() { t.className = 'toast'; }, 3000);
+}
+
+async function sha256(text) {
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ─── Password gate ──────────────────────────────────────────────
+async function initPassword() {
+  PASSWORD_HASH = await sha256('hvvAC5dQ74V!^w52pyD8');
+  // Check if already logged in this session
+  if (sessionStorage.getItem('petegen_admin') === '1') {
+    showDashboard();
+  }
+}
+
+async function checkPw() {
+  var input = document.getElementById('pwInput').value;
+  var hash = await sha256(input);
+  if (hash === PASSWORD_HASH) {
+    sessionStorage.setItem('petegen_admin', '1');
+    showDashboard();
+  } else {
+    showToast('Wrong password', 'error');
+    document.getElementById('pwInput').value = '';
+  }
+}
+
+function showDashboard() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  // Load PAT status
+  var pat = localStorage.getItem('petegen_pat');
+  if (pat) {
+    document.getElementById('patInput').value = pat;
+    document.getElementById('patStatus').textContent = 'Token saved (untested)';
+    document.getElementById('patStatus').style.color = 'var(--amber)';
+  }
+  // Load data
+  loadAllData();
+}
+
+// ─── GitHub API ─────────────────────────────────────────────────
+function getPat() { return localStorage.getItem('petegen_pat') || ''; }
+
+function savePat() {
+  var pat = document.getElementById('patInput').value.trim();
+  if (!pat) { showToast('Enter a token first', 'error'); return; }
+  localStorage.setItem('petegen_pat', pat);
+  document.getElementById('patStatus').textContent = 'Token saved (untested)';
+  document.getElementById('patStatus').style.color = 'var(--amber)';
+  showToast('Token saved');
+}
+
+async function testPat() {
+  var pat = getPat();
+  if (!pat) { showToast('No token saved', 'error'); return; }
+  try {
+    var r = await fetch('https://api.github.com/repos/' + REPO, {
+      headers: { 'Authorization': 'token ' + pat, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (r.ok) {
+      var data = await r.json();
+      document.getElementById('patStatus').textContent = '✓ Connected to ' + data.full_name;
+      document.getElementById('patStatus').style.color = 'var(--sage)';
+      showToast('Connected successfully', 'success');
+    } else {
+      document.getElementById('patStatus').textContent = '✗ Failed (HTTP ' + r.status + ')';
+      document.getElementById('patStatus').style.color = 'var(--danger)';
+      showToast('Connection failed', 'error');
+    }
+  } catch(e) {
+    document.getElementById('patStatus').textContent = '✗ Error: ' + e.message;
+    document.getElementById('patStatus').style.color = 'var(--danger)';
+  }
+}
+
+async function ghGetFile(path) {
+  var pat = getPat();
+  var r = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + path + '?ref=' + BRANCH, {
+    headers: { 'Authorization': 'token ' + pat, 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (!r.ok) throw new Error('GET ' + path + ' failed: ' + r.status);
+  var data = await r.json();
+  return { sha: data.sha, content: atob(data.content.replace(/\n/g, '')) };
+}
+
+async function ghPutFile(path, content, message, sha) {
+  var pat = getPat();
+  var body = {
+    message: message,
+    content: btoa(unescape(encodeURIComponent(content))),
+    branch: BRANCH
+  };
+  if (sha) body.sha = sha;
+  var r = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + path, {
+    method: 'PUT',
+    headers: { 'Authorization': 'token ' + pat, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    var err = await r.json();
+    throw new Error('PUT ' + path + ' failed: ' + (err.message || r.status));
+  }
+  return await r.json();
+}
+
+// ─── Data loading ───────────────────────────────────────────────
+var scheduleData = null;
+var friendsData = null;
+var nackyData = null;
+var galleryData = null;
+
+async function loadAllData() {
+  // Load gallery data for stats + nacky
+  try {
+    var g = await ghGetFile('gallery-data.js');
+    var sandbox = {};
+    new Function('window', g.content + '\nreturn window.GALLERY_DATA;')(sandbox);
+    galleryData = sandbox.GALLERY_DATA;
+    document.getElementById('statTotal').textContent = galleryData.totalWorks.toLocaleString();
+    document.getElementById('statGalleries').textContent = Object.keys(galleryData.galleries).length;
+  } catch(e) { console.warn('Could not load gallery data:', e.message); }
+
+  // Load schedule
+  try {
+    var s = await ghGetFile('schedule.json');
+    scheduleData = JSON.parse(s.content);
+    renderScheduleEditor();
+  } catch(e) { console.warn('Could not load schedule:', e.message); }
+
+  // Load friends
+  try {
+    var f = await ghGetFile('friends.json');
+    friendsData = JSON.parse(f.content);
+    document.getElementById('statFriends').textContent = friendsData.length;
+    renderFriendsEditor();
+  } catch(e) { console.warn('Could not load friends:', e.message); }
+
+  // Load nacky
+  try {
+    var n = await ghGetFile('nacky.json');
+    nackyData = JSON.parse(n.content);
+    renderNackyEditor();
+  } catch(e) { console.warn('Could not load nacky:', e.message); }
+}
+
+// ─── Tab switching ──────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelector('.nav-tab[data-tab="' + name + '"]').classList.add('active');
+  ['schedule','friends','nacky'].forEach(function(t) {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  });
+}
+
+// ─── Schedule editor ────────────────────────────────────────────
+function renderScheduleEditor() {
+  if (!scheduleData) return;
+  var html = '';
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  days.forEach(function(day) {
+    var dayData = scheduleData.find(function(d) { return d.day === day; }) || { day: day, shows: [] };
+    html += '<h3>' + day + '</h3>';
+    dayData.shows.forEach(function(show, i) {
+      html += '<div class="show-card" data-day="' + day + '" data-idx="' + i + '">' +
+        '<div class="col" style="flex:2;"><span class="label">Title</span><input type="text" class="sch-title" value="' + (show.title||'').replace(/"/g,'&quot;') + '"></div>' +
+        '<div class="col"><span class="label">Host</span><input type="text" class="sch-host" value="' + (show.host||'').replace(/"/g,'&quot;') + '"></div>' +
+        '<div class="col"><span class="label">Time</span><input type="text" class="sch-time" value="' + (show.time||'').replace(/"/g,'&quot;') + '"></div>' +
+        '<div class="col"><span class="label">Hour</span><input type="number" class="sch-hour" value="' + (show.hour||0) + '" min="0" max="23"></div>' +
+        '<div class="col"><span class="label">Min</span><input type="number" class="sch-minute" value="' + (show.minute||0) + '" min="0" max="59"></div>' +
+        '<div class="icon-btn" onclick="removeShow(this)" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></div>' +
+        '<div class="col" style="flex:2;"><span class="label">Description</span><input type="text" class="sch-desc" value="' + (show.desc||'').replace(/"/g,'&quot;') + '"></div>' +
+      '</div>';
+    });
+    html += '<button class="btn btn-secondary btn-sm" onclick="addShowToDay(\'' + day + '\')" style="margin-bottom:16px;">+ Add show to ' + day + '</button>';
+  });
+  document.getElementById('scheduleEditor').innerHTML = html;
+}
+
+function addShow() { addShowToDay('Monday'); }
+
+function addShowToDay(day) {
+  if (!scheduleData) return;
+  var dayData = scheduleData.find(function(d) { return d.day === day; });
+  if (!dayData) { scheduleData.push({ day: day, shows: [] }); dayData = scheduleData[scheduleData.length-1]; }
+  dayData.shows.push({ title: 'New Show', host: 'Pete', time: '~8:00 PM', hour: 20, minute: 0, desc: '' });
+  renderScheduleEditor();
+}
+
+function removeShow(btn) {
+  var card = btn.closest('.show-card');
+  var day = card.dataset.day;
+  var idx = parseInt(card.dataset.idx);
+  var dayData = scheduleData.find(function(d) { return d.day === day; });
+  if (dayData) dayData.shows.splice(idx, 1);
+  renderScheduleEditor();
+}
+
+async function saveSchedule() {
+  // Read values from DOM
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  var newSchedule = [];
+  days.forEach(function(day) {
+    var cards = document.querySelectorAll('.show-card[data-day="' + day + '"]');
+    var shows = [];
+    cards.forEach(function(card) {
+      shows.push({
+        title: card.querySelector('.sch-title').value,
+        host: card.querySelector('.sch-host').value,
+        time: card.querySelector('.sch-time').value,
+        hour: parseInt(card.querySelector('.sch-hour').value) || 0,
+        minute: parseInt(card.querySelector('.sch-minute').value) || 0,
+        desc: card.querySelector('.sch-desc').value
+      });
+    });
+    if (shows.length > 0) newSchedule.push({ day: day, shows: shows });
+  });
+  scheduleData = newSchedule;
+  var json = JSON.stringify(newSchedule, null, 2);
+  try {
+    var existing = await ghGetFile('schedule.json');
+    await ghPutFile('schedule.json', json, 'Admin: update schedule', existing.sha);
+    showToast('Schedule saved — site will update in ~90s', 'success');
+  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+}
+
+// ─── Friends editor ─────────────────────────────────────────────
+function renderFriendsEditor() {
+  if (!friendsData) return;
+  var html = '';
+  friendsData.forEach(function(f, i) {
+    html += '<div class="row" data-idx="' + i + '">' +
+      '<div class="col"><span class="label">Name</span><input type="text" class="fr-name" value="' + (f.name||'').replace(/"/g,'&quot;') + '"></div>' +
+      '<div class="col"><span class="label">Handle</span><input type="text" class="fr-handle" value="' + (f.handle||'').replace(/"/g,'&quot;') + '"></div>' +
+      '<div class="col" style="flex:2;"><span class="label">Description</span><input type="text" class="fr-desc" value="' + (f.desc||'').replace(/"/g,'&quot;') + '"></div>' +
+      '<div class="icon-btn" onclick="removeFriend(' + i + ')" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></div>' +
+    '</div>';
+  });
+  document.getElementById('friendsEditor').innerHTML = html;
+}
+
+function addFriend() {
+  if (!friendsData) friendsData = [];
+  friendsData.push({ name: 'New Friend', channel: 'https://twitch.tv/', handle: 'handle', desc: 'Peet Pics community member.' });
+  renderFriendsEditor();
+}
+
+function removeFriend(idx) {
+  friendsData.splice(idx, 1);
+  renderFriendsEditor();
+}
+
+async function saveFriends() {
+  var rows = document.querySelectorAll('#friendsEditor .row');
+  var newFriends = [];
+  rows.forEach(function(row) {
+    var name = row.querySelector('.fr-name').value;
+    var handle = row.querySelector('.fr-handle').value;
+    var desc = row.querySelector('.fr-desc').value;
+    if (name && handle) {
+      newFriends.push({
+        name: name,
+        channel: 'https://twitch.tv/' + handle,
+        handle: handle,
+        desc: desc
+      });
+    }
+  });
+  friendsData = newFriends;
+  document.getElementById('statFriends').textContent = newFriends.length;
+  var json = JSON.stringify(newFriends, null, 2);
+  try {
+    var existing = await ghGetFile('friends.json');
+    await ghPutFile('friends.json', json, 'Admin: update friends', existing.sha);
+    showToast('Friends saved — site will update in ~90s', 'success');
+  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+}
+
+// ─── Nacky editor ───────────────────────────────────────────────
+function renderNackyEditor() {
+  if (!nackyData) return;
+  document.getElementById('nackyMode').value = nackyData.mode || 'random';
+  document.getElementById('nackyCount').value = nackyData.count || 48;
+  document.getElementById('nackyIds').value = (nackyData.ids || []).join('\n');
+  updateNackyMode();
+}
+
+function updateNackyMode() {
+  var mode = document.getElementById('nackyMode').value;
+  document.getElementById('nackyCuratedSection').classList.toggle('hidden', mode !== 'curated');
+}
+
+async function saveNacky() {
+  var mode = document.getElementById('nackyMode').value;
+  var count = parseInt(document.getElementById('nackyCount').value) || 48;
+  var ids = document.getElementById('nackyIds').value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+  nackyData = { mode: mode, count: count, ids: ids };
+  var json = JSON.stringify(nackyData, null, 2);
+  try {
+    var existing = await ghGetFile('nacky.json');
+    await ghPutFile('nacky.json', json, 'Admin: update nacky nook', existing.sha);
+    showToast('Nacky Nook saved — site will update in ~90s', 'success');
+  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+}
+
+// ─── Scrape now ─────────────────────────────────────────────────
+var SCRAPE_GALLERIES = [
+  { id: 'pobots',      albumHex: 'VML2tRn' },
+  { id: 'prestlers',   albumHex: 'RFbFrht' },
+  { id: 'cultural',    albumHex: 'HVYDkG8' },
+  { id: 'pisc',        albumHex: 'Yt9J3Xt' },
+  { id: 'submissions', albumHex: 'nMN0w6j' },
+];
+
+async function scrapeNow() {
+  if (!getPat()) { showToast('Need GitHub token first', 'error'); return; }
+  var status = document.getElementById('scrapeStatus');
+  status.textContent = 'Scraping…';
+  status.style.color = 'var(--amber)';
+
+  try {
+    // Get existing gallery-data.js
+    var existing = await ghGetFile('gallery-data.js');
+    var sandbox = {};
+    new Function('window', existing.content + '\nreturn window.GALLERY_DATA;')(sandbox);
+    var existingData = sandbox.GALLERY_DATA;
+    var existingIds = new Set();
+    Object.values(existingData.galleries).forEach(function(g) { g.works.forEach(function(w) { existingIds.add(w.id); }); });
+
+    var newData = { galleries: {}, totalWorks: 0 };
+    var totalNew = 0;
+
+    for (var gi = 0; gi < SCRAPE_GALLERIES.length; gi++) {
+      var gallery = SCRAPE_GALLERIES[gi];
+      status.textContent = 'Scraping ' + gallery.id + '…';
+      var allImages = [];
+      var page = 1;
+      var hasMore = true;
+
+      while (hasMore) {
+        var url = 'https://postimg.cc/json?action=list&page=' + page + '&album=' + gallery.albumHex;
+        var r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        var data = await r.json();
+        var images = data.images || [];
+        if (images.length === 0) { hasMore = false; break; }
+        for (var i = 0; i < images.length; i++) {
+          var img = images[i];
+          allImages.push({
+            id: img[0], title: img[2].replace(/-/g, ' '),
+            imageUrl: 'https://i.postimg.cc/' + img[1] + '/' + img[2] + '.' + img[3],
+            thumbUrl: img[6] || ('https://i.postimg.cc/' + img[0] + '/' + img[2] + '.' + img[3]),
+            width: img[4] || 0, height: img[5] || 0,
+            gallery: gallery.id, galleryName: gallery.id.charAt(0).toUpperCase() + gallery.id.slice(1)
+          });
+        }
+        hasMore = data.has_page_next === true;
+        if (hasMore) page++;
+      }
+
+      // Merge with existing
+      var oldGallery = existingData.galleries[gallery.id];
+      if (oldGallery && oldGallery.works) {
+        var existingWorks = oldGallery.works.slice();
+        var localIds = new Set(existingWorks.map(function(w) { return w.id; }));
+        var newWorks = allImages.filter(function(w) { return !localIds.has(w.id); });
+        totalNew += newWorks.length;
+        allImages = existingWorks.concat(newWorks);
+      }
+
+      newData.galleries[gallery.id] = { id: gallery.id, name: (oldGallery&&oldGallery.name)||gallery.id, tagline: (oldGallery&&oldGallery.tagline)||'', wallClass: (oldGallery&&oldGallery.wallClass)||'', works: allImages };
+      newData.totalWorks += allImages.length;
+    }
+
+    // Preserve non-scraped galleries (nacky)
+    Object.keys(existingData.galleries).forEach(function(gid) {
+      if (!newData.galleries[gid]) { newData.galleries[gid] = existingData.galleries[gid]; newData.totalWorks += existingData.galleries[gid].works.length; }
+    });
+
+    if (totalNew === 0) {
+      status.textContent = 'Gallery is up to date (0 new)';
+      status.style.color = 'var(--sage)';
+      showToast('No new images found', 'success');
+      return;
+    }
+
+    // Commit
+    var out = '/* Auto-generated from postimg.cc albums — ' + newData.totalWorks + ' works */\nwindow.GALLERY_DATA = ' + JSON.stringify(newData) + ';\n';
+    await ghPutFile('gallery-data.js', out, 'Admin: scrape found ' + totalNew + ' new images', existing.sha);
+    status.textContent = 'Done! ' + totalNew + ' new images added (' + newData.totalWorks + ' total)';
+    status.style.color = 'var(--sage)';
+    document.getElementById('statTotal').textContent = newData.totalWorks.toLocaleString();
+    showToast(totalNew + ' new images added', 'success');
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--danger)';
+    showToast('Scrape failed: ' + e.message, 'error');
+  }
+}
+
+// ─── Init ───────────────────────────────────────────────────────
+document.getElementById('nackyMode').addEventListener('change', updateNackyMode);
+initPassword();
+</script>
+</body>
+</html>
