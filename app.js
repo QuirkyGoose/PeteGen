@@ -376,7 +376,7 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>' +
         '<span class="nav-item-name">Friends</span>' +
         '<span class="nav-item-tag">Pete\'s collaborators</span>' +
-        '<span class="nav-item-count">' + FRIENDS.length + '</span>' +
+        '<span class="nav-item-count">' + (FRIENDS ? FRIENDS.length : 0) + '</span>' +
         SVG_ICONS.check +
       '</button>' +
       '<button class="nav-dropdown-item' + (shopActive ? ' is-active' : '') + '" ' +
@@ -1051,6 +1051,36 @@
   var FRIENDS = null;
   var NACKY_CONFIG = null;
 
+  // Default fallback data (used if JSON files aren't found)
+  var SCHEDULE_DEFAULT = [
+    { day: 'Monday',    shows: [{ title: "Cait's Wide Hole", host: 'Cait', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Culture, chat, and chaos with Cait.' }] },
+    { day: 'Tuesday',   shows: [{ title: 'Puzzle Tuesday', host: 'Dr Plem', time: 'Evening', hour: 19, minute: 0, desc: 'Puzzles, brain teasers, and Peet.' }] },
+    { day: 'Wednesday', shows: [
+      { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'The main event — live Peet Pics drawing.' },
+      { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night edition. Same energy, later hour.' }
+    ]},
+    { day: 'Thursday',  shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Prestlers, squared circles, and beyond.' }] },
+    { day: 'Friday',    shows: [
+      { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'Friday edition of the main Peet Pics stream.' },
+      { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night Friday vibes.' }
+    ]},
+    { day: 'Saturday',  shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Saturday wrestling night.' }] },
+    { day: 'Sunday',    shows: [{ title: 'Bobots', host: 'Pete', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Sunday Bobots — robots, Peets, the intersection thereof.' }] }
+  ];
+  var FRIENDS_DEFAULT = [
+    { name: 'FizzyCait', channel: 'https://twitch.tv/FizzyCait', handle: 'FizzyCait', desc: "Cait's Wide Hole co-host. Culture, chat, and chaos." },
+    { name: 'Dr Plem', channel: 'https://twitch.tv/dr_plem', handle: 'dr_plem', desc: 'Puzzle Tuesday co-host. Puzzles, brain teasers, and Peet.' },
+    { name: 'Harry Hardy', channel: 'https://twitch.tv/harryhardy', handle: 'harryhardy', desc: 'Peet Pics community member and frequent contributor to the vault.' },
+    { name: 'Bekabyx', channel: 'https://twitch.tv/bekabyx', handle: 'bekabyx', desc: 'Peet Pics community member and streamer.' },
+    { name: 'grgrsmth', channel: 'https://twitch.tv/grgrsmth', handle: 'grgrsmth', desc: 'Peet Pics community member and streamer.' },
+    { name: 'BreadSanta', channel: 'https://twitch.tv/breadsanta', handle: 'breadsanta', desc: 'Peet Pics community member and streamer.' },
+    { name: 'Albrot', channel: 'https://twitch.tv/albrot', handle: 'albrot', desc: 'Peet Pics community member and streamer.' },
+    { name: 'JosieRustle', channel: 'https://twitch.tv/josierustle', handle: 'josierustle', desc: 'Peet Pics community member and streamer.' },
+    { name: 'AngelInterceptor', channel: 'https://twitch.tv/angelinterceptor', handle: 'angelinterceptor', desc: 'Peet Pics community member and streamer.' },
+    { name: 'AliDooLalli', channel: 'https://twitch.tv/alidoolalli', handle: 'alidoolalli', desc: 'Peet Pics community member and streamer.' },
+    { name: 'AlexKiddInShinobiWorld', channel: 'https://twitch.tv/alexkiddinshinobiworld', handle: 'alexkiddinshinobiworld', desc: 'Peet Pics community member and streamer.' }
+  ];
+
   // Load schedule, friends, and nacky config from JSON files
   // Falls back to defaults if files aren't found
   function loadConfigData() {
@@ -1059,24 +1089,22 @@
       fetch('friends.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nacky.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
-      if (results[0]) SCHEDULE = results[0];
-      if (results[1]) FRIENDS = results[1];
-      if (results[2]) NACKY_CONFIG = results[2];
+      SCHEDULE = results[0] || SCHEDULE_DEFAULT;
+      FRIENDS = results[1] || FRIENDS_DEFAULT;
+      NACKY_CONFIG = results[2] || { mode: 'random', count: 48, ids: [] };
       // Re-render if we're on a relevant page
       var route = parseRoute();
       if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
         render();
       }
+      // Update next stream pill
+      if (typeof updateNextStreamPill === 'function') updateNextStreamPill();
     });
   }
 
   var DAY_INDEX = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
   function renderSchedule() {
-    if (!SCHEDULE) {
-      routeEl.innerHTML = '<div class="schedule-view screen"><div class="gallery-empty"><h3>Loading schedule…</h3></div></div>';
-      return;
-    }
     var today = new Date().getDay(); // 0=Sunday
     // Reorder SCHEDULE so today is first
     var todayName = Object.keys(DAY_INDEX).find(function (k) { return DAY_INDEX[k] === today; });
@@ -1126,10 +1154,6 @@
   var FRIENDS = null;
 
   function renderFriends() {
-    if (!FRIENDS) {
-      routeEl.innerHTML = '<div class="friends-view screen"><div class="gallery-empty"><h3>Loading friends…</h3></div></div>';
-      return;
-    }
     var cardsHtml = FRIENDS.map(function (f) {
       return '<a class="friend-card" href="' + escapeHtml(f.channel) + '" target="_blank" rel="noopener" data-handle="' + escapeHtml(f.handle) + '">' +
         '<div class="friend-card-bg" aria-hidden="true"></div>' +
@@ -1737,6 +1761,7 @@
   var nextStreamLabel = document.getElementById('nextStreamLabel');
 
   function getNextStream() {
+    if (!SCHEDULE) return null;
     var now = new Date();
     var nowDay = now.getDay(); // 0=Sunday
     var nowMinutes = now.getHours() * 60 + now.getMinutes();
