@@ -1047,11 +1047,6 @@
   // SCHEDULE PAGE
   // ====================================================================
 
-  var SCHEDULE = null;
-  var FRIENDS = null;
-  var NACKY_CONFIG = null;
-
-  // Default fallback data (used if JSON files aren't found)
   var SCHEDULE_DEFAULT = [
     { day: 'Monday',    shows: [{ title: "Cait's Wide Hole", host: 'Cait', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Culture, chat, and chaos with Cait.' }] },
     { day: 'Tuesday',   shows: [{ title: 'Puzzle Tuesday', host: 'Dr Plem', time: 'Evening', hour: 19, minute: 0, desc: 'Puzzles, brain teasers, and Peet.' }] },
@@ -1081,17 +1076,21 @@
     { name: 'AlexKiddInShinobiWorld', channel: 'https://twitch.tv/alexkiddinshinobiworld', handle: 'alexkiddinshinobiworld', desc: 'Peet Pics community member and streamer.' }
   ];
 
-  // Load schedule, friends, and nacky config from JSON files
-  // Falls back to defaults if files aren't found
+  // Start with defaults immediately — JSON files override these once loaded
+  var SCHEDULE = SCHEDULE_DEFAULT;
+  var FRIENDS = FRIENDS_DEFAULT;
+  var NACKY_CONFIG = { mode: 'random', count: 48, ids: [] };
+
+  // Load schedule, friends, and nacky config from JSON files (override defaults)
   function loadConfigData() {
     Promise.all([
       fetch('schedule.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('friends.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nacky.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
-      SCHEDULE = results[0] || SCHEDULE_DEFAULT;
-      FRIENDS = results[1] || FRIENDS_DEFAULT;
-      NACKY_CONFIG = results[2] || { mode: 'random', count: 48, ids: [] };
+      if (results[0]) SCHEDULE = results[0];
+      if (results[1]) FRIENDS = results[1];
+      if (results[2]) NACKY_CONFIG = results[2];
       // Re-render if we're on a relevant page
       var route = parseRoute();
       if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
@@ -1761,7 +1760,6 @@
   var nextStreamLabel = document.getElementById('nextStreamLabel');
 
   function getNextStream() {
-    if (!SCHEDULE) return null;
     var now = new Date();
     var nowDay = now.getDay(); // 0=Sunday
     var nowMinutes = now.getHours() * 60 + now.getMinutes();
