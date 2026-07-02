@@ -376,7 +376,7 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>' +
         '<span class="nav-item-name">Friends</span>' +
         '<span class="nav-item-tag">Pete\'s collaborators</span>' +
-        '<span class="nav-item-count">' + (FRIENDS ? FRIENDS.length : 0) + '</span>' +
+        '<span class="nav-item-count">' + (FRIENDS || []).length + '</span>' +
         SVG_ICONS.check +
       '</button>' +
       '<button class="nav-dropdown-item' + (shopActive ? ' is-active' : '') + '" ' +
@@ -412,14 +412,7 @@
       pagesHtml +
       rvHtml +
       '<div class="nav-dropdown-section" style="margin-top: 6px;">Home</div>' +
-      landingHtml +
-      '<div class="nav-dropdown-section" style="margin-top: 6px;">Admin</div>' +
-      '<a class="nav-dropdown-item" href="admin.html" style="text-decoration:none;">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>' +
-        '<span class="nav-item-name">Admin</span>' +
-        '<span class="nav-item-tag">Manage site</span>' +
-        '<span class="nav-item-count">★</span>' +
-      '</a>';
+      landingHtml;
 
     // Wire up item clicks
     navMenu.querySelectorAll('.nav-dropdown-item').forEach(function (btn) {
@@ -570,22 +563,6 @@
     closeNavDropdown();
   });
 
-  // NSFW blur — click any blurred image to reveal it
-  document.addEventListener('click', function (e) {
-    var nsfwImg = e.target.closest('img[data-nsfw="1"]');
-    if (nsfwImg) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (nsfwImg.style.filter) {
-        nsfwImg.style.filter = '';
-        nsfwImg.classList.add('nsfw-revealed');
-      } else {
-        nsfwImg.style.filter = 'blur(20px)';
-        nsfwImg.classList.remove('nsfw-revealed');
-      }
-    }
-  });
-
   // ====================================================================
   // IMAGE HELPERS
   // ====================================================================
@@ -625,15 +602,6 @@
     imgs.forEach(function (img) { obs.observe(img); });
   }
 
-  // IDs of artworks that should be blurred (NSFW) until clicked
-  // Loaded from nsfw.json at runtime, defaults to ['7CDPpB70']
-  var NSFW_IDS = ['7CDPpB70'];
-  var NSFW_SET = new Set(NSFW_IDS);
-
-  function isNsfw(work) {
-    return NSFW_SET.has(work.id);
-  }
-
   function imgTag(work, cls, alt, loading) {
     var url = work.thumbUrl || work.imageUrl;
     var w = work.width || '';
@@ -641,21 +609,17 @@
     var aspect = (w && h) ? (w / h) : 1;
     var altText = alt || escapeHtml(work.title || '');
     cls = cls || '';
-    var nsfw = isNsfw(work);
-    var nsfwClass = nsfw ? ' nsfw-blur' : '';
-    var nsfwAttr = nsfw ? ' data-nsfw="1"' : '';
     // Render an empty <img> with data-src — IntersectionObserver assigns
     // src when the image is within 400px of the viewport.
     return '<img' +
-      (cls ? ' class="' + cls + nsfwClass + '"' : '') +
+      (cls ? ' class="' + cls + '"' : '') +
       ' alt="' + altText + '"' +
       ' loading="lazy"' +
       ' decoding="async"' +
       ' referrerpolicy="no-referrer"' +
       ' data-src="' + escapeHtml(url) + '"' +
       ' data-aspect="' + aspect.toFixed(3) + '"' +
-      nsfwAttr +
-      ' style="opacity:0;transition:opacity 0.4s ease;' + (nsfw ? 'filter:blur(20px);' : '') + '"' +
+      ' style="opacity:0;transition:opacity 0.4s ease;"' +
       ' onload="this.style.opacity=1"' +
       ' onerror="this.style.opacity=0.12;this.alt=\'unavailable\'"' +
       '>';
@@ -762,7 +726,7 @@
           '</div>' +
           '<a class="potd-card" href="#/artwork/' + encodeURIComponent(potd.id) + '">' +
             '<div class="potd-image">' +
-              '<img src="' + escapeHtml(potd.imageUrl || potd.thumbUrl) + '" alt="' + escapeHtml(potd.title || 'Untitled') + '" loading="lazy" referrerpolicy="no-referrer"' + (isNsfw(potd) ? ' data-nsfw="1" style="filter:blur(20px);cursor:pointer;"' : '') + '>' +
+              '<img src="' + escapeHtml(potd.imageUrl || potd.thumbUrl) + '" alt="' + escapeHtml(potd.title || 'Untitled') + '" loading="lazy" referrerpolicy="no-referrer">' +
               '<div class="potd-image-overlay"></div>' +
               '<div class="potd-badge">' + escapeHtml(potd.galleryName || 'Vault') + '</div>' +
             '</div>' +
@@ -1022,7 +986,7 @@
     '<div class="artwork-view screen">' +
       '<div class="artwork-detail">' +
         '<div class="artwork-image-wrap" id="artworkImageWrap" style="aspect-ratio: ' + aspect.toFixed(3) + ';">' +
-          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;' + (isNsfw(w) ? 'filter:blur(20px);cursor:pointer;' : '') + '"' + (isNsfw(w) ? ' data-nsfw="1"' : '') + ' onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
+          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
           '<div class="artwork-zoom-hint">Click to expand</div>' +
         '</div>' +
         '<div class="artwork-sidebar">' +
@@ -1083,73 +1047,43 @@
   // SCHEDULE PAGE
   // ====================================================================
 
-  var SCHEDULE_DEFAULT = [
-    { day: 'Monday',    shows: [{ title: "Cait's Wide Hole", host: 'Cait', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Culture, chat, and chaos with Cait.' }] },
-    { day: 'Tuesday',   shows: [{ title: 'Puzzle Tuesday', host: 'Dr Plem', time: 'Evening', hour: 19, minute: 0, desc: 'Puzzles, brain teasers, and Peet.' }] },
-    { day: 'Wednesday', shows: [
-      { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'The main event — live Peet Pics drawing.' },
-      { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night edition. Same energy, later hour.' }
-    ]},
-    { day: 'Thursday',  shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Prestlers, squared circles, and beyond.' }] },
-    { day: 'Friday',    shows: [
-      { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'Friday edition of the main Peet Pics stream.' },
-      { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night Friday vibes.' }
-    ]},
-    { day: 'Saturday',  shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Saturday wrestling night.' }] },
-    { day: 'Sunday',    shows: [{ title: 'Bobots', host: 'Pete', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Sunday Bobots — robots, Peets, the intersection thereof.' }] }
-  ];
-  var FRIENDS_DEFAULT = [
-    { name: 'FizzyCait', channel: 'https://twitch.tv/FizzyCait', handle: 'FizzyCait', desc: "Cait's Wide Hole co-host. Culture, chat, and chaos." },
-    { name: 'Dr Plem', channel: 'https://twitch.tv/dr_plem', handle: 'dr_plem', desc: 'Puzzle Tuesday co-host. Puzzles, brain teasers, and Peet.' },
-    { name: 'Harry Hardy', channel: 'https://twitch.tv/harryhardy', handle: 'harryhardy', desc: 'Peet Pics community member and frequent contributor to the vault.' },
-    { name: 'Bekabyx', channel: 'https://twitch.tv/bekabyx', handle: 'bekabyx', desc: 'Peet Pics community member and streamer.' },
-    { name: 'grgrsmth', channel: 'https://twitch.tv/grgrsmth', handle: 'grgrsmth', desc: 'Peet Pics community member and streamer.' },
-    { name: 'BreadSanta', channel: 'https://twitch.tv/breadsanta', handle: 'breadsanta', desc: 'Peet Pics community member and streamer.' },
-    { name: 'Albrot', channel: 'https://twitch.tv/albrot', handle: 'albrot', desc: 'Peet Pics community member and streamer.' },
-    { name: 'JosieRustle', channel: 'https://twitch.tv/josierustle', handle: 'josierustle', desc: 'Peet Pics community member and streamer.' },
-    { name: 'AngelInterceptor', channel: 'https://twitch.tv/angelinterceptor', handle: 'angelinterceptor', desc: 'Peet Pics community member and streamer.' },
-    { name: 'AliDooLalli', channel: 'https://twitch.tv/alidoolalli', handle: 'alidoolalli', desc: 'Peet Pics community member and streamer.' },
-    { name: 'AlexKiddInShinobiWorld', channel: 'https://twitch.tv/alexkiddinshinobiworld', handle: 'alexkiddinshinobiworld', desc: 'Peet Pics community member and streamer.' }
-  ];
+  var SCHEDULE = null;
+  var FRIENDS = null;
+  var NACKY_CONFIG = null;
 
-  // Start with defaults immediately — JSON files override these once loaded
-  var SCHEDULE = SCHEDULE_DEFAULT;
-  var FRIENDS = FRIENDS_DEFAULT;
-  var NACKY_CONFIG = { mode: 'random', count: 48, ids: [] };
-
-  // Load schedule, friends, and nacky config from JSON files (override defaults)
+  // Load schedule, friends, and nacky config from JSON files
+  // Falls back to defaults if files aren't found
   function loadConfigData() {
     Promise.all([
       fetch('schedule.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('friends.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nacky.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
-      fetch('nsfw.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
       if (results[0]) SCHEDULE = results[0];
       if (results[1]) FRIENDS = results[1];
       if (results[2]) NACKY_CONFIG = results[2];
-      if (results[3] && Array.isArray(results[3])) {
-        NSFW_IDS = results[3];
-        NSFW_SET = new Set(NSFW_IDS);
-      }
       // Re-render if we're on a relevant page
       var route = parseRoute();
       if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
         render();
       }
-      // Update next stream pill
-      if (typeof updateNextStreamPill === 'function') updateNextStreamPill();
     });
   }
 
   var DAY_INDEX = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
   function renderSchedule() {
+    if (!SCHEDULE) {
+      routeEl.innerHTML = '<div class="schedule-view screen"><div class="gallery-empty"><h3>Loading schedule…</h3></div></div>';
+      return;
+    }
     var today = new Date().getDay(); // 0=Sunday
     // Reorder SCHEDULE so today is first
     var todayName = Object.keys(DAY_INDEX).find(function (k) { return DAY_INDEX[k] === today; });
-    var todayIdx = SCHEDULE.findIndex(function (d) { return d.day === todayName; });
-    var ordered = SCHEDULE.slice(todayIdx).concat(SCHEDULE.slice(0, todayIdx));
+    var todayIdx = (SCHEDULE || []).findIndex(function (d) { return d.day === todayName; });
+    var schedList = SCHEDULE || [];
+    if (todayIdx < 0) todayIdx = 0;
+    var ordered = schedList.slice(todayIdx).concat(schedList.slice(0, todayIdx));
 
     var cardsHtml = ordered.map(function (d) {
       var isToday = d.day === todayName;
@@ -1194,7 +1128,11 @@
   var FRIENDS = null;
 
   function renderFriends() {
-    var cardsHtml = FRIENDS.map(function (f) {
+    if (!FRIENDS) {
+      routeEl.innerHTML = '<div class="friends-view screen"><div class="gallery-empty"><h3>Loading friends…</h3></div></div>';
+      return;
+    }
+    var cardsHtml = (FRIENDS || []).map(function (f) {
       return '<a class="friend-card" href="' + escapeHtml(f.channel) + '" target="_blank" rel="noopener" data-handle="' + escapeHtml(f.handle) + '">' +
         '<div class="friend-card-bg" aria-hidden="true"></div>' +
         '<div class="friend-card-inner">' +
@@ -1236,7 +1174,7 @@
     // Uses DecAPI (https://decapi.me/twitch/avatar/<handle>) which returns
     // the CDN URL as plain text. On failure the card keeps its initial-letter
     // placeholder avatar and no background image.
-    FRIENDS.forEach(function (f) {
+    (FRIENDS || []).forEach(function (f) {
       var handle = f.handle;
       var avatarEl = routeEl.querySelector('.friend-avatar[data-avatar="' + CSS.escape(handle) + '"]');
       var cardEl = avatarEl && avatarEl.closest('.friend-card');
@@ -1810,7 +1748,7 @@
     for (var d = 0; d < 7; d++) {
       var checkDay = (nowDay + d) % 7;
       var dayName = Object.keys(DAY_INDEX).find(function (k) { return DAY_INDEX[k] === checkDay; });
-      var dayEntry = SCHEDULE.find(function (s) { return s.day === dayName; });
+      var dayEntry = (SCHEDULE || []).find(function (s) { return s.day === dayName; });
       if (!dayEntry) continue;
       for (var s = 0; s < dayEntry.shows.length; s++) {
         var show = dayEntry.shows[s];
@@ -1829,7 +1767,7 @@
       }
     }
     // Fallback: first show of the next week (Monday)
-    var monday = SCHEDULE.find(function (s) { return s.day === 'Monday'; });
+    var monday = (SCHEDULE || []).find(function (s) { return s.day === 'Monday'; });
     if (monday && monday.shows[0]) {
       return { title: monday.shows[0].title, time: monday.shows[0].time, day: 'Monday', daysAhead: 7, host: monday.shows[0].host };
     }

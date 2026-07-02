@@ -82,7 +82,7 @@
   <div id="dashboard" class="hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
       <h1>Pete<em>Gen</em> Admin</h1>
-      <a href="index.html" class="btn btn-secondary btn-sm">← Back to site</a>
+      <a href="#/" class="btn btn-secondary btn-sm">← Back to site</a>
     </div>
 
     <!-- GitHub PAT setup -->
@@ -122,7 +122,6 @@
       <div class="nav-tab active" data-tab="schedule" onclick="showTab('schedule')">Schedule</div>
       <div class="nav-tab" data-tab="friends" onclick="showTab('friends')">Friends</div>
       <div class="nav-tab" data-tab="nacky" onclick="showTab('nacky')">Nacky Nook</div>
-      <div class="nav-tab" data-tab="nsfw" onclick="showTab('nsfw')">NSFW List</div>
     </div>
 
     <!-- Schedule editor -->
@@ -168,19 +167,6 @@
       </div>
       <br>
       <button class="btn btn-primary" onclick="saveNacky()">Save Nacky Nook</button>
-    </div>
-
-    <!-- NSFW editor -->
-    <div class="panel hidden" id="tab-nsfw">
-      <h2>NSFW Blur List</h2>
-      <p>Artwork IDs listed here will be blurred in the gallery until clicked. One ID per line.</p>
-      <div id="nsfwEditor">
-        <span class="label">NSFW Artwork IDs</span>
-        <textarea id="nsfwIds" rows="12" placeholder="7CDPpB70&#10;DJhygw82&#10;…" style="font-family:var(--mono);font-size:12px;"></textarea>
-      </div>
-      <div id="nsfwPreview" style="margin-top:16px;"></div>
-      <br>
-      <button class="btn btn-primary" onclick="saveNsfw()">Save NSFW List</button>
     </div>
 
   </div>
@@ -313,123 +299,47 @@ async function ghPutFile(path, content, message, sha) {
 var scheduleData = null;
 var friendsData = null;
 var nackyData = null;
-var nsfwData = null;
 var galleryData = null;
 
 async function loadAllData() {
-  var hasPat = !!getPat();
-
-  // Try loading from GitHub API first (gets the latest committed version)
-  // Fall back to fetching the local JSON files (gets the currently deployed version)
-  // The local fetch always works — it's the same files the site serves
-
-  // Load gallery data for stats
+  // Load gallery data for stats + nacky
   try {
-    if (hasPat) {
-      var g = await ghGetFile('gallery-data.js');
-      var sandbox = {};
-      new Function('window', g.content + '\nreturn window.GALLERY_DATA;')(sandbox);
-      galleryData = sandbox.GALLERY_DATA;
-    } else {
-      // Fallback: load the local gallery-data.js
-      var r = await fetch('gallery-data.js');
-      var text = await r.text();
-      var sandbox2 = {};
-      new Function('window', text + '\nreturn window.GALLERY_DATA;')(sandbox2);
-      galleryData = sandbox2.GALLERY_DATA;
-    }
-    if (galleryData) {
-      document.getElementById('statTotal').textContent = galleryData.totalWorks.toLocaleString();
-      document.getElementById('statGalleries').textContent = Object.keys(galleryData.galleries).length;
-    }
+    var g = await ghGetFile('gallery-data.js');
+    var sandbox = {};
+    new Function('window', g.content + '\nreturn window.GALLERY_DATA;')(sandbox);
+    galleryData = sandbox.GALLERY_DATA;
+    document.getElementById('statTotal').textContent = galleryData.totalWorks.toLocaleString();
+    document.getElementById('statGalleries').textContent = Object.keys(galleryData.galleries).length;
   } catch(e) { console.warn('Could not load gallery data:', e.message); }
 
-  // Load schedule — try GitHub API, fall back to local fetch
+  // Load schedule
   try {
-    if (hasPat) {
-      var s = await ghGetFile('schedule.json');
-      scheduleData = JSON.parse(s.content);
-    } else {
-      var r2 = await fetch('schedule.json');
-      scheduleData = await r2.json();
-    }
+    var s = await ghGetFile('schedule.json');
+    scheduleData = JSON.parse(s.content);
     renderScheduleEditor();
-  } catch(e) {
-    console.warn('Could not load schedule from GitHub or local:', e.message);
-    // Last resort: use hardcoded defaults
-    scheduleData = [
-      { day: 'Monday', shows: [{ title: "Cait's Wide Hole", host: 'Cait', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Culture, chat, and chaos with Cait.' }] },
-      { day: 'Tuesday', shows: [{ title: 'Puzzle Tuesday', host: 'Dr Plem', time: 'Evening', hour: 19, minute: 0, desc: 'Puzzles, brain teasers, and Peet.' }] },
-      { day: 'Wednesday', shows: [
-        { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'The main event.' },
-        { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night edition.' }
-      ]},
-      { day: 'Thursday', shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Prestlers.' }] },
-      { day: 'Friday', shows: [
-        { title: 'Peet Pics', host: 'Pete', time: '~4:30 PM', hour: 16, minute: 30, desc: 'Friday edition.' },
-        { title: 'Late Nite Pite', host: 'Pete', time: '~10:00 PM', hour: 22, minute: 0, desc: 'Late-night Friday.' }
-      ]},
-      { day: 'Saturday', shows: [{ title: 'Wrestling', host: 'Pete', time: '~7:30 PM', hour: 19, minute: 30, desc: 'Saturday wrestling.' }] },
-      { day: 'Sunday', shows: [{ title: 'Bobots', host: 'Pete', time: '~8:00 PM', hour: 20, minute: 0, desc: 'Sunday Bobots.' }] }
-    ];
-    renderScheduleEditor();
-  }
+  } catch(e) { console.warn('Could not load schedule:', e.message); }
 
-  // Load friends — try GitHub API, fall back to local fetch
+  // Load friends
   try {
-    if (hasPat) {
-      var f = await ghGetFile('friends.json');
-      friendsData = JSON.parse(f.content);
-    } else {
-      var r3 = await fetch('friends.json');
-      friendsData = await r3.json();
-    }
+    var f = await ghGetFile('friends.json');
+    friendsData = JSON.parse(f.content);
     document.getElementById('statFriends').textContent = friendsData.length;
     renderFriendsEditor();
-  } catch(e) {
-    console.warn('Could not load friends:', e.message);
-    friendsData = [];
-    renderFriendsEditor();
-  }
+  } catch(e) { console.warn('Could not load friends:', e.message); }
 
-  // Load nacky — try GitHub API, fall back to local fetch
+  // Load nacky
   try {
-    if (hasPat) {
-      var n = await ghGetFile('nacky.json');
-      nackyData = JSON.parse(n.content);
-    } else {
-      var r4 = await fetch('nacky.json');
-      nackyData = await r4.json();
-    }
+    var n = await ghGetFile('nacky.json');
+    nackyData = JSON.parse(n.content);
     renderNackyEditor();
-  } catch(e) {
-    console.warn('Could not load nacky:', e.message);
-    nackyData = { mode: 'random', count: 48, ids: [] };
-    renderNackyEditor();
-  }
-
-  // Load NSFW list
-  try {
-    if (hasPat) {
-      var nsfw = await ghGetFile('nsfw.json');
-      nsfwData = JSON.parse(nsfw.content);
-    } else {
-      var r5 = await fetch('nsfw.json');
-      nsfwData = await r5.json();
-    }
-    renderNsfwEditor();
-  } catch(e) {
-    console.warn('Could not load nsfw:', e.message);
-    nsfwData = ['7CDPpB70'];
-    renderNsfwEditor();
-  }
+  } catch(e) { console.warn('Could not load nacky:', e.message); }
 }
 
 // ─── Tab switching ──────────────────────────────────────────────
 function showTab(name) {
   document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
   document.querySelector('.nav-tab[data-tab="' + name + '"]').classList.add('active');
-  ['schedule','friends','nacky','nsfw'].forEach(function(t) {
+  ['schedule','friends','nacky'].forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
   });
 }
@@ -481,27 +391,34 @@ async function saveSchedule() {
   // Read values from DOM
   var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   var newSchedule = [];
+  var skipped = 0;
   days.forEach(function(day) {
     var cards = document.querySelectorAll('.show-card[data-day="' + day + '"]');
     var shows = [];
     cards.forEach(function(card) {
+      var title = (card.querySelector('.sch-title').value || '').trim();
+      var host  = (card.querySelector('.sch-host').value || '').trim();
+      if (!title) { skipped++; return; } // skip empty-title rows
       shows.push({
-        title: card.querySelector('.sch-title').value,
-        host: card.querySelector('.sch-host').value,
-        time: card.querySelector('.sch-time').value,
-        hour: parseInt(card.querySelector('.sch-hour').value) || 0,
-        minute: parseInt(card.querySelector('.sch-minute').value) || 0,
-        desc: card.querySelector('.sch-desc').value
+        title: title,
+        host: host || 'Pete',
+        time: card.querySelector('.sch-time').value || '',
+        hour: Math.max(0, Math.min(23, parseInt(card.querySelector('.sch-hour').value) || 0)),
+        minute: Math.max(0, Math.min(59, parseInt(card.querySelector('.sch-minute').value) || 0)),
+        desc: card.querySelector('.sch-desc').value || ''
       });
     });
-    if (shows.length > 0) newSchedule.push({ day: day, shows: shows });
+    // Always push every day (even with 0 shows) so renderSchedule's findIndex never returns -1
+    newSchedule.push({ day: day, shows: shows });
   });
   scheduleData = newSchedule;
   var json = JSON.stringify(newSchedule, null, 2);
   try {
     var existing = await ghGetFile('schedule.json');
     await ghPutFile('schedule.json', json, 'Admin: update schedule', existing.sha);
-    showToast('Schedule saved — site will update in ~90s', 'success');
+    var msg = 'Schedule saved — site will update in ~90s';
+    if (skipped > 0) msg += ' (' + skipped + ' empty row' + (skipped > 1 ? 's' : '') + ' skipped)';
+    showToast(msg, 'success');
   } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
 }
 
@@ -534,18 +451,21 @@ function removeFriend(idx) {
 async function saveFriends() {
   var rows = document.querySelectorAll('#friendsEditor .row');
   var newFriends = [];
+  var skipped = 0;
   rows.forEach(function(row) {
-    var name = row.querySelector('.fr-name').value;
-    var handle = row.querySelector('.fr-handle').value;
-    var desc = row.querySelector('.fr-desc').value;
-    if (name && handle) {
-      newFriends.push({
-        name: name,
-        channel: 'https://twitch.tv/' + handle,
-        handle: handle,
-        desc: desc
-      });
-    }
+    var name = (row.querySelector('.fr-name').value || '').trim();
+    var handle = (row.querySelector('.fr-handle').value || '').trim();
+    var desc = (row.querySelector('.fr-desc').value || '').trim();
+    if (!name && !handle) { skipped++; return; } // skip fully empty rows
+    if (!name || !handle) { skipped++; return; } // require both name and handle
+    // Sanitize handle: lowercase, strip whitespace and @ prefix
+    handle = handle.replace(/^@/, '').replace(/\s+/g, '');
+    newFriends.push({
+      name: name,
+      channel: 'https://twitch.tv/' + encodeURIComponent(handle),
+      handle: handle,
+      desc: desc || 'Peet Pics community member.'
+    });
   });
   friendsData = newFriends;
   document.getElementById('statFriends').textContent = newFriends.length;
@@ -553,20 +473,18 @@ async function saveFriends() {
   try {
     var existing = await ghGetFile('friends.json');
     await ghPutFile('friends.json', json, 'Admin: update friends', existing.sha);
-    showToast('Friends saved — site will update in ~90s', 'success');
+    var msg = 'Friends saved — site will update in ~90s';
+    if (skipped > 0) msg += ' (' + skipped + ' incomplete row' + (skipped > 1 ? 's' : '') + ' skipped)';
+    showToast(msg, 'success');
   } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
 }
 
 // ─── Nacky editor ───────────────────────────────────────────────
 function renderNackyEditor() {
   if (!nackyData) return;
-  var modeEl = document.getElementById('nackyMode');
-  var countEl = document.getElementById('nackyCount');
-  var idsEl = document.getElementById('nackyIds');
-  if (!modeEl || !countEl || !idsEl) return;
-  modeEl.value = nackyData.mode || 'random';
-  countEl.value = nackyData.count || 48;
-  idsEl.value = (nackyData.ids || []).join('\n');
+  document.getElementById('nackyMode').value = nackyData.mode || 'random';
+  document.getElementById('nackyCount').value = nackyData.count || 48;
+  document.getElementById('nackyIds').value = (nackyData.ids || []).join('\n');
   updateNackyMode();
 }
 
@@ -585,52 +503,6 @@ async function saveNacky() {
     var existing = await ghGetFile('nacky.json');
     await ghPutFile('nacky.json', json, 'Admin: update nacky nook', existing.sha);
     showToast('Nacky Nook saved — site will update in ~90s', 'success');
-  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
-}
-
-// ─── NSFW editor ────────────────────────────────────────────────
-function renderNsfwEditor() {
-  if (!nsfwData) return;
-  var idsEl = document.getElementById('nsfwIds');
-  if (!idsEl) return;
-  idsEl.value = nsfwData.join('\n');
-
-  // Show preview of which artworks are flagged
-  var previewEl = document.getElementById('nsfwPreview');
-  if (previewEl && galleryData) {
-    var html = '<span class="label">Currently flagged (' + nsfwData.length + ')</span>';
-    nsfwData.forEach(function(id) {
-      // Find artwork in gallery data
-      var work = null;
-      Object.values(galleryData.galleries).forEach(function(g) {
-        var found = g.works.find(function(w) { return w.id === id; });
-        if (found) work = found;
-      });
-      if (work) {
-        html += '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
-          '<img src="' + (work.thumbUrl||work.imageUrl) + '" style="width:32px;height:32px;object-fit:cover;border-radius:4px;filter:blur(4px);" alt="">' +
-          '<span style="font-family:var(--mono);font-size:12px;color:var(--t2);">' + work.title + '</span>' +
-          '<span style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-left:auto;">' + id + '</span>' +
-        '</div>';
-      } else {
-        html += '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;">' +
-          '<span style="font-family:var(--mono);font-size:12px;color:var(--t3);">' + id + ' (not found in gallery)</span>' +
-        '</div>';
-      }
-    });
-    previewEl.innerHTML = html;
-  }
-}
-
-async function saveNsfw() {
-  var ids = document.getElementById('nsfwIds').value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
-  nsfwData = ids;
-  var json = JSON.stringify(ids, null, 2);
-  try {
-    var existing = await ghGetFile('nsfw.json');
-    await ghPutFile('nsfw.json', json, 'Admin: update NSFW list', existing.sha);
-    showToast('NSFW list saved (' + ids.length + ' images) — site will update in ~90s', 'success');
-    renderNsfwEditor();
   } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
 }
 
