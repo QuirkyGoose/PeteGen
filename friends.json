@@ -1,13 +1,74 @@
 [
-  { "name": "FizzyCait", "channel": "https://twitch.tv/FizzyCait", "handle": "FizzyCait", "desc": "Cait's Wide Hole co-host. Culture, chat, and chaos." },
-  { "name": "Dr Plem", "channel": "https://twitch.tv/dr_plem", "handle": "dr_plem", "desc": "Puzzle Tuesday co-host. Puzzles, brain teasers, and Peet." },
-  { "name": "Harry Hardy", "channel": "https://twitch.tv/harryhardy", "handle": "harryhardy", "desc": "Peet Pics community member and frequent contributor to the vault." },
-  { "name": "Bekabyx", "channel": "https://twitch.tv/bekabyx", "handle": "bekabyx", "desc": "Peet Pics community member and streamer." },
-  { "name": "grgrsmth", "channel": "https://twitch.tv/grgrsmth", "handle": "grgrsmth", "desc": "Peet Pics community member and streamer." },
-  { "name": "BreadSanta", "channel": "https://twitch.tv/breadsanta", "handle": "breadsanta", "desc": "Peet Pics community member and streamer." },
-  { "name": "Albrot", "channel": "https://twitch.tv/albrot", "handle": "albrot", "desc": "Peet Pics community member and streamer." },
-  { "name": "JosieRustle", "channel": "https://twitch.tv/josierustle", "handle": "josierustle", "desc": "Peet Pics community member and streamer." },
-  { "name": "AngelInterceptor", "channel": "https://twitch.tv/angelinterceptor", "handle": "angelinterceptor", "desc": "Peet Pics community member and streamer." },
-  { "name": "AliDooLalli", "channel": "https://twitch.tv/alidoolalli", "handle": "alidoolalli", "desc": "Peet Pics community member and streamer." },
-  { "name": "AlexKiddInShinobiWorld", "channel": "https://twitch.tv/alexkiddinshinobiworld", "handle": "alexkiddinshinobiworld", "desc": "Peet Pics community member and streamer." }
+  {
+    "name": "FizzyCait",
+    "channel": "https://twitch.tv/FizzyCait",
+    "handle": "FizzyCait",
+    "desc": "Cait's Wide Hole co-host. Culture, chat, and chaos."
+  },
+  {
+    "name": "Dr Plem",
+    "channel": "https://twitch.tv/dr_plem",
+    "handle": "dr_plem",
+    "desc": "Puzzle Tuesday co-host. Puzzles, brain teasers, and Peet."
+  },
+  {
+    "name": "Harry Hardy",
+    "channel": "https://twitch.tv/harryhardy",
+    "handle": "harryhardy",
+    "desc": "Peet Pics community member and frequent contributor to the vault."
+  },
+  {
+    "name": "Bekabyx",
+    "channel": "https://twitch.tv/bekabyx",
+    "handle": "bekabyx",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "grgrsmth",
+    "channel": "https://twitch.tv/grgrsmth",
+    "handle": "grgrsmth",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "BreadSanta",
+    "channel": "https://twitch.tv/breadsanta",
+    "handle": "breadsanta",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "Albrot",
+    "channel": "https://twitch.tv/albrot",
+    "handle": "albrot",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "JosieRustle",
+    "channel": "https://twitch.tv/josierustle",
+    "handle": "josierustle",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "AngelInterceptor",
+    "channel": "https://twitch.tv/angelinterceptor",
+    "handle": "angelinterceptor",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "AliDooLalli",
+    "channel": "https://twitch.tv/alidoolalli",
+    "handle": "alidoolalli",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "AlexKiddInShinobiWorld",
+    "channel": "https://twitch.tv/alexkiddinshinobiworld",
+    "handle": "alexkiddinshinobiworld",
+    "desc": "Peet Pics community member and streamer."
+  },
+  {
+    "name": "Smelly Frosty",
+    "channel": "https://twitch.tv/https%3A%2F%2Fwww.twitch.tv%2Ffrostytools",
+    "handle": "https://www.twitch.tv/frostytools",
+    "desc": "Complete idiot who should largely be ignored."
+  }
 ]
