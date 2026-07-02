@@ -387,6 +387,15 @@
         '<span class="nav-item-name">Shop</span>' +
         '<span class="nav-item-tag">Official merch on Fourthwall</span>' +
         SVG_ICONS.check +
+      '</button>' +
+      '<button class="nav-dropdown-item" ' +
+        'style="--dot-color: var(--t3);" ' +
+        'data-room="__admin" role="option" ' +
+        'aria-selected="false">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' +
+        '<span class="nav-item-name">Admin</span>' +
+        '<span class="nav-item-tag">Password-protected editor</span>' +
+        SVG_ICONS.check +
       '</button>';
 
     // Build recently viewed section (only if there are items)
@@ -427,6 +436,8 @@
           navigate('#/friends');
         } else if (room === '__shop') {
           navigate('#/shop');
+        } else if (room === '__admin') {
+          window.location.href = './admin.html';
         } else {
           navigate('#/gallery/' + room);
         }
