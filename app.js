@@ -698,10 +698,27 @@
     });
     var totalWorks = ARTWORKS.length;
 
-    // Build a small preview strip using a few real thumbnails from each room
+    // Build a small preview strip using a few real thumbnails from each room.
+    // NSFW works are filtered out of previews — tiny blurred thumbnails are
+    // useless, and the home page shouldn't feature them.
+    // Preview mode controlled by site-config.json: 'static' (first N works)
+    // or 'random' (N random works, re-rolled on each landing render).
+    var previewCount = (SITE_CONFIG && SITE_CONFIG.previewCount) || 3;
+    var previewMode = (SITE_CONFIG && SITE_CONFIG.previewMode) || 'static';
     var previewHtml = ROOMS.map(function (r) {
-      var works = WORKS_BY_ROOM[r.id] || [];
-      var sample = works.slice(0, 3);
+      var works = (WORKS_BY_ROOM[r.id] || []).filter(function (w) { return !isNsfw(w); });
+      var sample;
+      if (previewMode === 'random' && works.length > previewCount) {
+        // Pick N random works — re-rolled each render
+        var shuffled = works.slice();
+        for (var i = shuffled.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+        }
+        sample = shuffled.slice(0, previewCount);
+      } else {
+        sample = works.slice(0, previewCount);
+      }
       var thumbs = sample.map(function (w) {
         return '<div class="room-preview-thumb" style="background-image:url(\'' + escapeHtml(w.thumbUrl || w.imageUrl) + '\')"></div>';
       }).join('');
@@ -1099,6 +1116,7 @@
   var NSFW_IDS = []; // array of artwork IDs marked NSFW (loaded from nsfw.json)
   var NSFW_SET = new Set(); // lookup set, rebuilt when NSFW_IDS changes
   var NSFW_REVEALED = new Set(); // per-session: IDs the user has clicked to reveal
+  var SITE_CONFIG = null; // { previewMode: 'static'|'random', previewCount: N }
 
   function isNsfw(work) {
     if (!work || !work.id) return false;
@@ -1120,6 +1138,7 @@
       fetch('friends.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nacky.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nsfw.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('site-config.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
       if (results[0]) SCHEDULE = results[0];
       if (results[1]) FRIENDS = results[1];
@@ -1128,9 +1147,12 @@
         NSFW_IDS = results[3];
         rebuildNsfwSet();
       }
-      // Re-render if we're on a relevant page
+      if (results[4] && typeof results[4] === 'object') {
+        SITE_CONFIG = results[4];
+      }
+      // Re-render if we're on a relevant page (including landing for preview mode)
       var route = parseRoute();
-      if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
+      if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery' || route.name === 'landing') {
         render();
       }
       // Always refresh the next-stream pill when config loads

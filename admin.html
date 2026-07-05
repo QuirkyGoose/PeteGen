@@ -123,6 +123,7 @@
       <div class="nav-tab" data-tab="friends" onclick="showTab('friends')">Friends</div>
       <div class="nav-tab" data-tab="nacky" onclick="showTab('nacky')">Nacky Nook</div>
       <div class="nav-tab" data-tab="nsfw" onclick="showTab('nsfw')">NSFW Filter</div>
+      <div class="nav-tab" data-tab="site" onclick="showTab('site')">Site Settings</div>
     </div>
 
     <!-- Schedule editor -->
@@ -186,6 +187,31 @@
       </div>
       <br>
       <button class="btn btn-primary" onclick="saveNsfw()">Save NSFW List</button>
+    </div>
+
+    <!-- Site settings editor -->
+    <div class="panel hidden" id="tab-site">
+      <h2>Site Settings</h2>
+      <p>Control how the home page collection widgets behave.</p>
+      <div class="grid-2">
+        <div>
+          <span class="label">Collection Preview Mode</span>
+          <select id="sitePreviewMode" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--t1);font-family:var(--mono);font-size:12px;padding:8px 10px;">
+            <option value="static">Static — always show the first artworks in each collection</option>
+            <option value="random">Random — pick different artworks on each page visit</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">Thumbnails per collection</span>
+          <input type="number" id="sitePreviewCount" min="1" max="6" value="3" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--t1);font-family:var(--mono);font-size:12px;padding:8px 10px;">
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--t3);margin-top:12px;">
+        <b>Static</b>: the same 3 artworks always appear in each collection card. Predictable, curated feel.<br>
+        <b>Random</b>: 3 random artworks are picked each time someone loads the home page. The collection cards feel fresh and alive — viewers see different pieces each visit.
+      </p>
+      <br>
+      <button class="btn btn-primary" onclick="saveSiteConfig()">Save Site Settings</button>
     </div>
 
   </div>
@@ -319,6 +345,7 @@ var scheduleData = null;
 var friendsData = null;
 var nackyData = null;
 var nsfwData = null;
+var siteConfigData = null;
 var galleryData = null;
 
 async function loadAllData() {
@@ -365,13 +392,24 @@ async function loadAllData() {
     nsfwData = ['7CDPpB70']; // default: Poatse
     renderNsfwEditor();
   }
+
+  // Load site config
+  try {
+    var sc = await ghGetFile('site-config.json');
+    siteConfigData = JSON.parse(sc.content);
+    renderSiteConfigEditor();
+  } catch(e) {
+    console.warn('Could not load site-config.json — using defaults:', e.message);
+    siteConfigData = { previewMode: 'static', previewCount: 3 };
+    renderSiteConfigEditor();
+  }
 }
 
 // ─── Tab switching ──────────────────────────────────────────────
 function showTab(name) {
   document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
   document.querySelector('.nav-tab[data-tab="' + name + '"]').classList.add('active');
-  ['schedule','friends','nacky','nsfw'].forEach(function(t) {
+  ['schedule','friends','nacky','nsfw','site'].forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
   });
 }
@@ -565,6 +603,27 @@ async function saveNsfw() {
     var existing = await ghGetFile('nsfw.json');
     await ghPutFile('nsfw.json', json, 'Admin: update NSFW list', existing.sha);
     showToast('NSFW list saved (' + ids.length + ' items) — site will update in ~90s', 'success');
+  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+}
+
+// ─── Site config editor ────────────────────────────────────────
+function renderSiteConfigEditor() {
+  if (!siteConfigData) return;
+  document.getElementById('sitePreviewMode').value = siteConfigData.previewMode || 'static';
+  document.getElementById('sitePreviewCount').value = siteConfigData.previewCount || 3;
+}
+
+async function saveSiteConfig() {
+  var mode = document.getElementById('sitePreviewMode').value;
+  var count = parseInt(document.getElementById('sitePreviewCount').value) || 3;
+  // Clamp count to 1-6
+  count = Math.max(1, Math.min(6, count));
+  siteConfigData = { previewMode: mode, previewCount: count };
+  var json = JSON.stringify(siteConfigData, null, 2);
+  try {
+    var existing = await ghGetFile('site-config.json');
+    await ghPutFile('site-config.json', json, 'Admin: update site settings', existing.sha);
+    showToast('Site settings saved — site will update in ~90s', 'success');
   } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
 }
 
