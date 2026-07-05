@@ -620,21 +620,44 @@
     var aspect = (w && h) ? (w / h) : 1;
     var altText = alt || escapeHtml(work.title || '');
     cls = cls || '';
+    var nsfw = isNsfw(work);
+    var revealed = nsfw && NSFW_REVEALED.has(work.id);
     // Render an empty <img> with data-src — IntersectionObserver assigns
     // src when the image is within 400px of the viewport.
-    return '<img' +
-      (cls ? ' class="' + cls + '"' : '') +
+    var img = '<img' +
+      (cls ? ' class="' + cls + (nsfw && !revealed ? ' nsfw-blur' : '') + '"' : '') +
       ' alt="' + altText + '"' +
       ' loading="lazy"' +
       ' decoding="async"' +
       ' referrerpolicy="no-referrer"' +
       ' data-src="' + escapeHtml(url) + '"' +
       ' data-aspect="' + aspect.toFixed(3) + '"' +
-      ' style="opacity:0;transition:opacity 0.4s ease;"' +
+      ' style="opacity:0;transition:opacity 0.4s ease;' + (nsfw && !revealed ? 'filter:blur(20px);' : '') + '"' +
       ' onload="this.style.opacity=1"' +
       ' onerror="this.style.opacity=0.12;this.alt=\'unavailable\'"' +
       '>';
+    // If NSFW and not revealed, wrap with overlay
+    if (nsfw && !revealed) {
+      img = '<div class="nsfw-wrap" data-id="' + escapeHtml(work.id) + '" onclick="revealNsfw(\'' + escapeHtml(work.id) + '\');return false;">' +
+        img +
+        '<div class="nsfw-overlay">' +
+          '<div class="nsfw-tag">NSFW</div>' +
+          '<div class="nsfw-cta">Click to reveal</div>' +
+        '</div>' +
+      '</div>';
+    }
+    return img;
   }
+
+  // Reveal an NSFW image (per-session, not persisted)
+  function revealNsfw(id) {
+    if (!id) return;
+    NSFW_REVEALED.add(id);
+    // Re-render the current route so the image appears unblurred
+    render();
+  }
+  // Make revealNsfw globally callable (it's used in inline onclick)
+  window.revealNsfw = revealNsfw;
 
   // ====================================================================
   // LANDING RENDER
@@ -651,7 +674,10 @@
       String(d.getDate()).padStart(2, '0'),
       10
     );
-    return ARTWORKS[seed % ARTWORKS.length];
+    // Filter out NSFW works — the daily pick shouldn't be a blurred image
+    var safeArtworks = ARTWORKS.filter(function (w) { return !isNsfw(w); });
+    var pool = safeArtworks.length > 0 ? safeArtworks : ARTWORKS;
+    return pool[seed % pool.length];
   }
 
   // Pick a completely random artwork and navigate to its detail page
@@ -993,12 +1019,21 @@
     var next = idx < roomWorks.length - 1 ? roomWorks[idx + 1] : null;
 
     var aspect = (w.width && w.height) ? (w.width / w.height) : 1;
+    var nsfw = isNsfw(w);
+    var revealed = nsfw && NSFW_REVEALED.has(w.id);
+    var nsfwBlurStyle = (nsfw && !revealed) ? 'filter:blur(24px);' : '';
+    var nsfwOverlay = (nsfw && !revealed) ?
+      '<div class="nsfw-overlay nsfw-overlay-detail" onclick="revealNsfw(\'' + escapeHtml(w.id) + '\');return false;">' +
+        '<div class="nsfw-tag">NSFW</div>' +
+        '<div class="nsfw-cta">Click image to reveal</div>' +
+      '</div>' : '';
     var html = '' +
     '<div class="artwork-view screen">' +
       '<div class="artwork-detail">' +
-        '<div class="artwork-image-wrap" id="artworkImageWrap" style="aspect-ratio: ' + aspect.toFixed(3) + ';">' +
-          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
-          '<div class="artwork-zoom-hint">Click to expand</div>' +
+        '<div class="artwork-image-wrap" id="artworkImageWrap" style="aspect-ratio: ' + aspect.toFixed(3) + ';' + (nsfw && !revealed ? 'cursor:pointer;' : '') + '"' + (nsfw && !revealed ? ' onclick="revealNsfw(\'' + escapeHtml(w.id) + '\');return false;"' : '') + '>' +
+          '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;' + nsfwBlurStyle + '" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
+          nsfwOverlay +
+          '<div class="artwork-zoom-hint"' + (nsfw && !revealed ? ' style="display:none;"' : '') + '>Click to expand</div>' +
         '</div>' +
         '<div class="artwork-sidebar">' +
           '<div class="artwork-breadcrumb">' +
@@ -1061,8 +1096,20 @@
   var SCHEDULE = null;
   var FRIENDS = null;
   var NACKY_CONFIG = null;
+  var NSFW_IDS = []; // array of artwork IDs marked NSFW (loaded from nsfw.json)
+  var NSFW_SET = new Set(); // lookup set, rebuilt when NSFW_IDS changes
+  var NSFW_REVEALED = new Set(); // per-session: IDs the user has clicked to reveal
 
-  // Load schedule, friends, and nacky config from JSON files
+  function isNsfw(work) {
+    if (!work || !work.id) return false;
+    return NSFW_SET.has(work.id);
+  }
+
+  function rebuildNsfwSet() {
+    NSFW_SET = new Set(NSFW_IDS);
+  }
+
+  // Load schedule, friends, nacky config, and NSFW list from JSON files
   // Falls back to defaults if files aren't found
   // Cache-busting: appends ?v=<timestamp> so changes via admin area
   // appear without requiring users to hard-refresh.
@@ -1072,17 +1119,21 @@
       fetch('schedule.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('friends.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch('nacky.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('nsfw.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
       if (results[0]) SCHEDULE = results[0];
       if (results[1]) FRIENDS = results[1];
       if (results[2]) NACKY_CONFIG = results[2];
+      if (Array.isArray(results[3])) {
+        NSFW_IDS = results[3];
+        rebuildNsfwSet();
+      }
       // Re-render if we're on a relevant page
       var route = parseRoute();
       if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
         render();
       }
-      // Always refresh the next-stream pill when config loads —
-      // otherwise it stays stuck on "No schedule" until the next 60s tick
+      // Always refresh the next-stream pill when config loads
       if (typeof updateNextStreamPill === 'function') {
         updateNextStreamPill();
       }
@@ -1424,8 +1475,21 @@
     var w = ARTWORKS_BY_ID[currentLightboxId];
     if (!w) return;
     var idx = currentLightboxList.findIndex(function (x) { return x.id === currentLightboxId; });
-    lightboxContent.innerHTML = '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" style="max-width:90vw;max-height:85vh;object-fit:contain;opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">';
-    lightboxCaption.innerHTML = '<b>' + escapeHtml(w.title) + '</b> · ' + (idx + 1) + ' / ' + currentLightboxList.length;
+    var nsfw = isNsfw(w);
+    var revealed = nsfw && NSFW_REVEALED.has(w.id);
+    var blurStyle = (nsfw && !revealed) ? 'filter:blur(24px);' : '';
+    var nsfwBadge = nsfw ? ' <span style="color:var(--danger);font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;">· NSFW</span>' : '';
+    var overlayHtml = (nsfw && !revealed) ?
+      '<div class="nsfw-overlay nsfw-overlay-lightbox" onclick="revealNsfw(\'' + escapeHtml(w.id) + '\');return false;">' +
+        '<div class="nsfw-tag">NSFW</div>' +
+        '<div class="nsfw-cta">Click to reveal</div>' +
+      '</div>' : '';
+    lightboxContent.innerHTML =
+      '<div style="position:relative;">' +
+        '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" style="max-width:90vw;max-height:85vh;object-fit:contain;opacity:0;transition:opacity 0.4s ease;' + blurStyle + '" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
+        overlayHtml +
+      '</div>';
+    lightboxCaption.innerHTML = '<b>' + escapeHtml(w.title) + '</b>' + nsfwBadge + ' · ' + (idx + 1) + ' / ' + currentLightboxList.length;
   }
 
   function lightboxPrev() {

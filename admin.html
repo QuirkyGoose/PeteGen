@@ -122,6 +122,7 @@
       <div class="nav-tab active" data-tab="schedule" onclick="showTab('schedule')">Schedule</div>
       <div class="nav-tab" data-tab="friends" onclick="showTab('friends')">Friends</div>
       <div class="nav-tab" data-tab="nacky" onclick="showTab('nacky')">Nacky Nook</div>
+      <div class="nav-tab" data-tab="nsfw" onclick="showTab('nsfw')">NSFW Filter</div>
     </div>
 
     <!-- Schedule editor -->
@@ -167,6 +168,24 @@
       </div>
       <br>
       <button class="btn btn-primary" onclick="saveNacky()">Save Nacky Nook</button>
+    </div>
+
+    <!-- NSFW filter editor -->
+    <div class="panel hidden" id="tab-nsfw">
+      <h2>NSFW Filter</h2>
+      <p>Mark specific artworks as Not Safe For Work. Marked images appear blurred in galleries with a "Click to reveal" overlay. Users can click to view them per-session.</p>
+      <p style="font-size:11px;color:var(--t3);margin-bottom:18px;">Find the artwork ID in the URL when viewing a piece (e.g. <code>#/artwork/7CDPpB70</code> → ID is <code>7CDPpB70</code>). One ID per line.</p>
+      <div class="grid-2">
+        <div style="grid-column: span 2;">
+          <span class="label">NSFW Artwork IDs</span>
+          <textarea id="nsfwIds" rows="8" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--t1);font-family:var(--mono);font-size:12px;padding:10px 12px;resize:vertical;" placeholder="7CDPpB70&#10;MMtxmbkk"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:8px;color:var(--t3);font-size:11px;">
+        <span id="nsfwCount">0</span> artwork(s) currently marked NSFW
+      </div>
+      <br>
+      <button class="btn btn-primary" onclick="saveNsfw()">Save NSFW List</button>
     </div>
 
   </div>
@@ -299,6 +318,7 @@ async function ghPutFile(path, content, message, sha) {
 var scheduleData = null;
 var friendsData = null;
 var nackyData = null;
+var nsfwData = null;
 var galleryData = null;
 
 async function loadAllData() {
@@ -333,13 +353,25 @@ async function loadAllData() {
     nackyData = JSON.parse(n.content);
     renderNackyEditor();
   } catch(e) { console.warn('Could not load nacky:', e.message); }
+
+  // Load NSFW list
+  try {
+    var nx = await ghGetFile('nsfw.json');
+    nsfwData = JSON.parse(nx.content);
+    if (!Array.isArray(nsfwData)) nsfwData = [];
+    renderNsfwEditor();
+  } catch(e) {
+    console.warn('Could not load nsfw.json — starting with default list:', e.message);
+    nsfwData = ['7CDPpB70']; // default: Poatse
+    renderNsfwEditor();
+  }
 }
 
 // ─── Tab switching ──────────────────────────────────────────────
 function showTab(name) {
   document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
   document.querySelector('.nav-tab[data-tab="' + name + '"]').classList.add('active');
-  ['schedule','friends','nacky'].forEach(function(t) {
+  ['schedule','friends','nacky','nsfw'].forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
   });
 }
@@ -503,6 +535,36 @@ async function saveNacky() {
     var existing = await ghGetFile('nacky.json');
     await ghPutFile('nacky.json', json, 'Admin: update nacky nook', existing.sha);
     showToast('Nacky Nook saved — site will update in ~90s', 'success');
+  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+}
+
+// ─── NSFW editor ───────────────────────────────────────────────
+function renderNsfwEditor() {
+  if (!nsfwData) return;
+  document.getElementById('nsfwIds').value = nsfwData.join('\n');
+  document.getElementById('nsfwCount').textContent = nsfwData.length;
+}
+
+async function saveNsfw() {
+  var raw = document.getElementById('nsfwIds').value;
+  // Parse: split on newlines, trim, remove @ prefixes, dedupe, filter empty
+  var ids = raw.split('\n')
+    .map(function(s) { return s.trim().replace(/^#/, ''); })
+    .filter(Boolean);
+  // Dedupe (case-sensitive — IDs are case-sensitive)
+  var seen = {};
+  ids = ids.filter(function(id) {
+    if (seen[id]) return false;
+    seen[id] = true;
+    return true;
+  });
+  nsfwData = ids;
+  document.getElementById('nsfwCount').textContent = ids.length;
+  var json = JSON.stringify(ids, null, 2);
+  try {
+    var existing = await ghGetFile('nsfw.json');
+    await ghPutFile('nsfw.json', json, 'Admin: update NSFW list', existing.sha);
+    showToast('NSFW list saved (' + ids.length + ' items) — site will update in ~90s', 'success');
   } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
 }
 
