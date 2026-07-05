@@ -1064,11 +1064,14 @@
 
   // Load schedule, friends, and nacky config from JSON files
   // Falls back to defaults if files aren't found
+  // Cache-busting: appends ?v=<timestamp> so changes via admin area
+  // appear without requiring users to hard-refresh.
   function loadConfigData() {
+    var cacheBust = '?v=' + Date.now();
     Promise.all([
-      fetch('schedule.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
-      fetch('friends.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
-      fetch('nacky.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('schedule.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('friends.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch('nacky.json' + cacheBust).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
       if (results[0]) SCHEDULE = results[0];
       if (results[1]) FRIENDS = results[1];
@@ -1077,6 +1080,15 @@
       var route = parseRoute();
       if (route.name === 'schedule' || route.name === 'friends' || route.name === 'gallery') {
         render();
+      }
+      // Always refresh the next-stream pill when config loads —
+      // otherwise it stays stuck on "No schedule" until the next 60s tick
+      if (typeof updateNextStreamPill === 'function') {
+        updateNextStreamPill();
+      }
+      // Also rebuild the nav dropdown so the Friends count badge updates
+      if (typeof buildNavDropdown === 'function') {
+        buildNavDropdown();
       }
     });
   }
@@ -1804,7 +1816,15 @@
   }
 
   updateNextStreamPill();
-  setInterval(updateNextStreamPill, 60000); // update every minute
+  setInterval(updateNextStreamPill, 60000); // update every minute (recomputes next show from loaded SCHEDULE)
+
+  // Periodically re-fetch schedule.json so admin edits appear without
+  // requiring users to hard-refresh. Cloudflare Pages deploys ~90s after
+  // a GitHub commit, so a 5-minute poll is more than fast enough to catch
+  // the deployed change.
+  setInterval(function() {
+    if (typeof loadConfigData === 'function') loadConfigData();
+  }, 5 * 60 * 1000);
 
   // ====================================================================
   // SCROLL PROGRESS BAR
