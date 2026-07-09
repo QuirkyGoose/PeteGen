@@ -679,6 +679,24 @@
   }
   window.dismissMerchBanner = dismissMerchBanner;
 
+  // Toggle mute on the shop page merch drop video
+  // (browsers block autoplay with sound, so we start muted and let
+  // the user click to unmute)
+  function toggleShopVideoMute() {
+    var video = document.getElementById('shopDropVideo');
+    var btn = document.getElementById('videoMuteToggle');
+    var iconMuted = btn ? btn.querySelector('.icon-muted') : null;
+    var iconUnmuted = btn ? btn.querySelector('.icon-unmuted') : null;
+    if (!video) return;
+    video.muted = !video.muted;
+    if (btn) {
+      btn.title = video.muted ? 'Click to unmute' : 'Click to mute';
+      if (iconMuted) iconMuted.style.display = video.muted ? '' : 'none';
+      if (iconUnmuted) iconUnmuted.style.display = video.muted ? 'none' : '';
+    }
+  }
+  window.toggleShopVideoMute = toggleShopVideoMute;
+
   // ====================================================================
   // LANDING RENDER
   // ====================================================================
@@ -759,13 +777,8 @@
         if (dismissed) return '';
         return '<div class="merch-banner" id="merchBanner">' +
           '<div class="merch-banner-inner">' +
-            '<div class="merch-banner-video">' +
-              '<video autoplay muted loop playsinline preload="metadata" ' +
-                'src="https://cdn.fourthwall.com/sr-creators/resources/c265b651-ab7f-4fde-a4fe-4c44ba9d656c/339b4b9057230f213028b8a82a5c6f2e_78b027ff63ef.mp4">' +
-              '</video>' +
-            '</div>' +
-            '<div class="merch-banner-content">' +
-              '<div class="merch-banner-badge">MERCH DROP</div>' +
+            '<div class="merch-banner-badge">MERCH DROP</div>' +
+            '<div class="merch-banner-body">' +
               '<div class="merch-banner-title">Mean Gene\'s Burger Revival</div>' +
               '<div class="merch-banner-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</div>' +
               '<a class="merch-banner-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
@@ -1378,10 +1391,14 @@
 
       // Featured merch drop
       '<div class="shop-drop">' +
-        '<div class="shop-drop-video">' +
-          '<video autoplay muted loop playsinline preload="metadata" ' +
+        '<div class="shop-drop-video" id="shopDropVideoWrap">' +
+          '<video id="shopDropVideo" autoplay muted loop playsinline preload="metadata" ' +
             'src="https://cdn.fourthwall.com/sr-creators/resources/c265b651-ab7f-4fde-a4fe-4c44ba9d656c/339b4b9057230f213028b8a82a5c6f2e_78b027ff63ef.mp4">' +
           '</video>' +
+          '<button class="video-mute-toggle" id="videoMuteToggle" title="Click to unmute" onclick="toggleShopVideoMute();return false;">' +
+            '<svg class="icon-muted" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>' +
+            '<svg class="icon-unmuted" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>' +
+          '</button>' +
         '</div>' +
         '<div class="shop-drop-content">' +
           '<div class="shop-drop-badge">NEW DROP</div>' +

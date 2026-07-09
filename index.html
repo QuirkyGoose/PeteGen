@@ -688,33 +688,11 @@
     max-width: var(--maxw-wide, 1400px);
     margin: 0 auto;
     display: flex;
-    align-items: stretch;
-    gap: 20px;
-  }
-  .merch-banner-video {
-    flex-shrink: 0;
-    width: 200px;
-    height: 200px;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #08080a;
-    border: 1px solid rgba(212, 168, 83, 0.15);
-  }
-  .merch-banner-video video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  .merch-banner-content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    align-items: flex-start;
+    gap: 16px;
   }
   .merch-banner-badge {
-    align-self: flex-start;
+    flex-shrink: 0;
     font-family: var(--mono, 'Geist Mono', monospace);
     font-size: 10px;
     font-weight: 600;
@@ -725,7 +703,11 @@
     border: 1px solid rgba(212, 168, 83, 0.3);
     padding: 5px 10px;
     border-radius: 3px;
-    margin-bottom: 10px;
+    margin-top: 2px;
+  }
+  .merch-banner-body {
+    flex: 1;
+    min-width: 0;
   }
   .merch-banner-title {
     font-family: var(--display, 'Instrument Serif', Georgia, serif);
@@ -787,8 +769,7 @@
     .merch-banner { padding: 14px 20px; }
     .merch-banner-title { font-size: 18px; }
     .merch-banner-copy { font-size: 12px; }
-    .merch-banner-inner { flex-direction: column; gap: 14px; }
-    .merch-banner-video { width: 100%; height: 180px; }
+    .merch-banner-inner { flex-wrap: wrap; }
   }
   .hero-content {
     flex: 1;
@@ -1912,6 +1893,30 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+  .video-mute-toggle {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(8, 8, 10, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--t1, rgba(255,255,255,0.92));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    z-index: 2;
+  }
+  .video-mute-toggle:hover {
+    background: rgba(8, 8, 10, 0.95);
+    border-color: rgba(212, 168, 83, 0.5);
+    color: var(--amber, #d4a853);
   }
   .shop-drop-content {
     flex: 1;
