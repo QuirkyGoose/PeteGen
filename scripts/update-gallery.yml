@@ -1,0 +1,56 @@
+name: Update Gallery
+
+on:
+  # Run twice a week — Thursday and Saturday at 4am UTC
+  # (catches new pics from Wednesday and Friday Peet Pics streams)
+  schedule:
+    - cron: '0 4 * * 4,6'
+  # Allow manual trigger from the GitHub Actions tab
+  workflow_dispatch: {}
+
+# Cancel any in-progress run when a new one starts
+# (prevents stacked runs if the schedule fires while a manual run is going)
+concurrency:
+  group: update-gallery
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Fail fast if GitHub can't allocate a runner — don't hang for 6 hours
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history needed for git pull --rebase to work cleanly
+          fetch-depth: 0
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Scrape postimg albums and update gallery-data.js
+        run: node scripts/update-gallery.js
+      
+      - name: Commit and push if changes
+        run: |
+          git config user.name "Gallery Bot"
+          git config user.email "actions@github.com"
+          git add gallery-data.js
+          if git diff --cached --quiet; then
+            echo "No changes — gallery is up to date"
+          else
+            git commit -m "Auto-update: new Pete Pics found on postimg"
+            # Pull and rebase before pushing — handles the case where
+            # manual pushes (merch drops, config changes, etc.) have
+            # moved the remote branch forward since the bot checked out.
+            # --rebase puts the bot's commit on top of the remote commits.
+            # --autostash is a safety net (no uncommitted changes expected,
+            # but won't hurt).
+            git pull --rebase --autostash origin main
+            git push
+            echo "Changes pushed — Cloudflare will auto-deploy"
+          fi
