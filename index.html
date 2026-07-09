@@ -691,6 +691,27 @@
     align-items: flex-start;
     gap: 16px;
   }
+  .merch-banner-carousel {
+    flex-shrink: 0;
+    width: 200px;
+    height: 200px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #08080a;
+    border: 1px solid rgba(212, 168, 83, 0.15);
+    position: relative;
+  }
+  .merch-carousel-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+    will-change: opacity;
+  }
+  .merch-carousel-img.active { opacity: 1; }
   .merch-banner-badge {
     flex-shrink: 0;
     font-family: var(--mono, 'Geist Mono', monospace);
@@ -769,7 +790,8 @@
     .merch-banner { padding: 14px 20px; }
     .merch-banner-title { font-size: 18px; }
     .merch-banner-copy { font-size: 12px; }
-    .merch-banner-inner { flex-wrap: wrap; }
+    .merch-banner-inner { flex-direction: column; gap: 14px; }
+    .merch-banner-carousel { width: 100%; height: 200px; }
   }
   .hero-content {
     flex: 1;

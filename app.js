@@ -148,6 +148,7 @@
       lastSearchQuery = '';
       if (searchInput) searchInput.value = '';
       renderLanding();
+      startMerchCarousel();
     } else if (route.name === 'gallery') {
       footerEl.style.display = 'none';
       // Clear search when navigating to a gallery (but not when coming from search)
@@ -697,6 +698,22 @@
   }
   window.toggleShopVideoMute = toggleShopVideoMute;
 
+  // Merch banner image carousel — cycles through product images every 3s
+  var merchCarouselTimer = null;
+  function startMerchCarousel() {
+    var carousel = document.getElementById('merchCarousel');
+    if (!carousel) return;
+    var imgs = carousel.querySelectorAll('.merch-carousel-img');
+    if (imgs.length < 2) return;
+    var idx = 0;
+    if (merchCarouselTimer) clearInterval(merchCarouselTimer);
+    merchCarouselTimer = setInterval(function() {
+      imgs[idx].classList.remove('active');
+      idx = (idx + 1) % imgs.length;
+      imgs[idx].classList.add('active');
+    }, 3000);
+  }
+
   // ====================================================================
   // LANDING RENDER
   // ====================================================================
@@ -777,6 +794,15 @@
         if (dismissed) return '';
         return '<div class="merch-banner" id="merchBanner">' +
           '<div class="merch-banner-inner">' +
+            '<div class="merch-banner-carousel" id="merchCarousel">' +
+              '<img class="merch-carousel-img active" src="https://imgproxy.fourthwall.dev/Zret4ee8Hfm1TNx9Puy2aLavHahAEdmVIudQ3xeMvDc/w:720/sm:1/enc/4hv55ZYBz-XLTsST/BJHvtP9Z-Bq6v2u7/1oqTgXPn1K-ph1tW/pnjSuXyRs9c4_qUz/rkznrPXByCQLTQOf/tLExhEJxjKOKkKaP/JQ51DYP4X713H8NN/kkkpfUwzPbyAVC3_/hizMYC3dMTt1A2yK/9KDzoztDsswh8pyj/CepTYpTQHFIVPA9X/jkbNLENbxH4k8hDK/InyL9mK7YNx-6Vf5/cTjWP5fDYO2Usj3X/v0K_ZkBZm4I.jpg" alt="Mean Gene\'s Burger Revival — product 1" loading="eager" />' +
+              '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/e7HXLfkGN79mM40YNEs1nubgul4GnorOIuSQB7Y9FlQ/w:1920/sm:1/enc/Prl8-2yoqioNCHqa/3Nonh-HOJz9JJNoe/aukNSA4bP5EYPV0l/AlDLUlu_wlWDbMEF/trmnssC6E90q307e/n8MxKKA9CjGLGCbg/8YOeoMFCh-8pbckc/-e88XLOPSoxfndTi/6V2fYZWSFhdE9MzQ/81-50b7o1qc8VRr4/dU3WCZI-VZReq55w/OEEY_1kqXv_RCE6e/PGKmS6nqlHA-Teo8/T5r_yR6hOplKZwnw/Imn2J67GU8A.jpg" alt="Mean Gene\'s Burger Revival — product 2" loading="lazy" />' +
+              '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/1tftAXUwM9fBp0p-6p9m6XtQyFo52TTaUW_px_qTgLo/w:720/sm:1/enc/2SzkJoVLbgOQCa-C/6Idz-yYcuPbj4RQw/XagWQ-_kRYzcPIZa/JhLFzlYZgqIervgZ/5DnktycqteepmvHD/ADFP10a14eISyP94/M1q94AdHck3apvQn/vR2M-Pa4F14l2W-3/kMygo4d3Jiv5azvS/WAhAEEpShumgqiSr/Cerk9MrufT5W6ee0/6UvchuOwRIhDyIcL/4KGmwUqvvrmEKdgl/Po9z4SdW3-GMbI5c/MqbWGCx5y9w.webp" alt="Mean Gene\'s Burger Revival — product 3" loading="lazy" />' +
+              '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/eGBbtYwnoQkKbvCIDjXvL7h9Ewmw24_t8Er9c6teutc/w:1920/sm:1/enc/3TuvBqDU8TszqpNI/ZgJ83FbKMdk5aGUS/BRhbA8OuIBzGHyaf/kOFBx4w3ZqR3jGP0/-cfwJlqsyZn13gmV/MbdoW6pnngkqBru_/6Esd2h4YzxDxy8kA/l1fg5hrc_5yzQmgS/-1ssNnszLwEun4dY/xdKiEBVs2aFZpAlv/HMa26tD1ZZG1pJgc/6kCFqvRNheVIvCY0/DpQctU18QDKLrfuM/KXlUiljQ-mi2AxsU/LfvSNcWdB_Y.jpg" alt="Mean Gene\'s Burger Revival — product 4" loading="lazy" />' +
+              '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/7xS9gFl8afUIn25_0jolshAqmSSG06rvoRdc18YG-oA/w:1920/sm:1/enc/IktB9XPhgvXMDj1v/Jx93Zxj2SNybnlab/COdGZEN_Tbor_mJq/ekEyOsccqPH-OjBf/xW6IFFsS8fhj7Mk_/z0RhUzyE7M1IkExT/Iu2EZbykMTQqrpGg/rjapg4TgjYB6Pw7Z/JU3NP5TqkN-8REpL/asbBVbNcEkq4HO37/-GtkR0M5zkM5Q-Pk/u2jkJZxQA2D7ALsw/AEd3gVw6kJ1IvAIy/PchlyNUggxoI-wHT/J02VhWNYOAQ.jpg" alt="Mean Gene\'s Burger Revival — product 5" loading="lazy" />' +
+              '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/52D__Km22WjLzet9hz2D6yvxOSOC2ssmR2lSIfl6Iao/w:1920/sm:1/enc/D7w1jo8Ekh_18MLY/P8VZnL35qbSSEnqL/0221Z36sfprH-9sG/ZKEm49_JMKEMFKpZ/8AygSF8KULHV_tzF/SbBlP0zXM_3Karkf/AUmtMbeKNMx3GsEF/cjnzDMf1w4KPyp7a/OmUD-_FCdT8PpOHc/aTXETGcble25Ru0F/4ss4nR2mLzmQwKoP/kQrfZ2ub7z08SxPA/Y4irZkABIONMERFQ/fdUJfmldXIZHMGcr/-8O1xgw6TQ8.jpg" alt="Mean Gene\'s Burger Revival — product 6" loading="lazy" />' +
+              '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/yWx9hXR1uRo0jxjB33GRptFsCjpQvCCpa57nA2T1FnI/w:1920/sm:1/enc/HoGA__vrCn_dh99G/tWiIENzm8t8IUiEr/dmze2nfzWkyTsaU7/x4Xv_FqGgd3nofqA/-TSU0Tf2IVrjfS4v/Znf8Tf2zdxlLI2Jg/4hE80YTKd_nr2nzn/menDN12I9iZsBmC7/oLTOy53Fsic-exew/fopwkZLiLMMqkP6E/-E9pdR55AMIRp-j5/vgzx0o4FVW6qYHln/5sBVnJGYFl6xkbqn/IlAFVx6s7sWVHymr/ARLezZ8KOZs.jpg" alt="Mean Gene\'s Burger Revival — product 7" loading="lazy" />' +
+            '</div>' +
             '<div class="merch-banner-badge">MERCH DROP</div>' +
             '<div class="merch-banner-body">' +
               '<div class="merch-banner-title">Mean Gene\'s Burger Revival</div>' +
