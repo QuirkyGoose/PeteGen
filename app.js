@@ -653,11 +653,31 @@
   function revealNsfw(id) {
     if (!id) return;
     NSFW_REVEALED.add(id);
+    // If the lightbox is open and showing this image, update it in place
+    // (calling render() would re-render the page behind the lightbox but
+    // wouldn't update the lightbox content itself)
+    if (lightbox && lightbox.classList.contains('open') && currentLightboxId === id) {
+      updateLightbox();
+      return;
+    }
     // Re-render the current route so the image appears unblurred
     render();
   }
   // Make revealNsfw globally callable (it's used in inline onclick)
   window.revealNsfw = revealNsfw;
+
+  // Dismiss the merch drop banner (per-browser, persisted)
+  function dismissMerchBanner() {
+    var banner = document.getElementById('merchBanner');
+    if (banner) {
+      banner.style.opacity = '0';
+      banner.style.transform = 'translateY(-12px)';
+      banner.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      setTimeout(function() { if (banner && banner.parentNode) banner.remove(); }, 300);
+    }
+    try { localStorage.setItem('petegen-merch-burger-dismissed', 'true'); } catch(e) {}
+  }
+  window.dismissMerchBanner = dismissMerchBanner;
 
   // ====================================================================
   // LANDING RENDER
@@ -732,6 +752,29 @@
 
     var html = '' +
     '<section id="landing" class="screen">' +
+      // Merch drop announcement banner (dismissible via localStorage)
+      (function() {
+        var dismissed = false;
+        try { dismissed = localStorage.getItem('petegen-merch-burger-dismissed') === 'true'; } catch(e) {}
+        if (dismissed) return '';
+        return '<div class="merch-banner" id="merchBanner">' +
+          '<div class="merch-banner-inner">' +
+            '<div class="merch-banner-badge">MERCH DROP</div>' +
+            '<div class="merch-banner-body">' +
+              '<div class="merch-banner-title">Mean Gene\'s Burger Revival</div>' +
+              '<div class="merch-banner-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</div>' +
+              '<a class="merch-banner-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' +
+                ' Shop the Collection' +
+                '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M7 17 17 7M7 7h10v10"/></svg>' +
+              '</a>' +
+            '</div>' +
+            '<button class="merch-banner-close" id="merchBannerClose" title="Dismiss" onclick="dismissMerchBanner();return false;">' +
+              '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+      })()) +
       '<div class="hero-overlay">' +
         '<div class="hero-content">' +
           '<div class="eyebrow anim">EST. 2024 · PeteGen · ' + ROOMS.length + ' collections · ' + totalWorks.toLocaleString() + ' works</div>' +
@@ -1327,6 +1370,19 @@
         '<h1 class="shop-title">The <span class="thin">Vault Shop</span></h1>' +
         '<p class="shop-subtitle">Wear the Peet Pics. Drink from the Peet Pics. Stick the Peet Pics on your laptop. Official Peet Pics merch now available on Fourthwall.</p>' +
       '</div>' +
+
+      // Featured merch drop
+      '<div class="shop-drop">' +
+        '<div class="shop-drop-badge">NEW DROP</div>' +
+        '<h2 class="shop-drop-title">Mean Gene\'s Burger Revival</h2>' +
+        '<p class="shop-drop-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</p>' +
+        '<a class="shop-drop-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' +
+          ' Shop Mean Gene\'s Collection' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;"><path d="M7 17 17 7M7 7h10v10"/></svg>' +
+        '</a>' +
+      '</div>' +
+
       '<div class="shop-cta">' +
         '<div class="shop-cta-text">Visit the official store</div>' +
         '<div class="shop-cta-sub">T-shirts, hoodies, mugs, stickers, prints and more — all featuring Pete Pic designs.</div>' +
