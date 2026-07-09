@@ -759,8 +759,13 @@
         if (dismissed) return '';
         return '<div class="merch-banner" id="merchBanner">' +
           '<div class="merch-banner-inner">' +
-            '<div class="merch-banner-badge">MERCH DROP</div>' +
-            '<div class="merch-banner-body">' +
+            '<div class="merch-banner-video">' +
+              '<video autoplay muted loop playsinline preload="metadata" ' +
+                'src="https://cdn.fourthwall.com/sr-creators/resources/c265b651-ab7f-4fde-a4fe-4c44ba9d656c/339b4b9057230f213028b8a82a5c6f2e_78b027ff63ef.mp4">' +
+              '</video>' +
+            '</div>' +
+            '<div class="merch-banner-content">' +
+              '<div class="merch-banner-badge">MERCH DROP</div>' +
               '<div class="merch-banner-title">Mean Gene\'s Burger Revival</div>' +
               '<div class="merch-banner-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</div>' +
               '<a class="merch-banner-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
@@ -1373,14 +1378,21 @@
 
       // Featured merch drop
       '<div class="shop-drop">' +
-        '<div class="shop-drop-badge">NEW DROP</div>' +
-        '<h2 class="shop-drop-title">Mean Gene\'s Burger Revival</h2>' +
-        '<p class="shop-drop-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</p>' +
-        '<a class="shop-drop-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
-          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' +
-          ' Shop Mean Gene\'s Collection' +
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;"><path d="M7 17 17 7M7 7h10v10"/></svg>' +
-        '</a>' +
+        '<div class="shop-drop-video">' +
+          '<video autoplay muted loop playsinline preload="metadata" ' +
+            'src="https://cdn.fourthwall.com/sr-creators/resources/c265b651-ab7f-4fde-a4fe-4c44ba9d656c/339b4b9057230f213028b8a82a5c6f2e_78b027ff63ef.mp4">' +
+          '</video>' +
+        '</div>' +
+        '<div class="shop-drop-content">' +
+          '<div class="shop-drop-badge">NEW DROP</div>' +
+          '<h2 class="shop-drop-title">Mean Gene\'s Burger Revival</h2>' +
+          '<p class="shop-drop-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</p>' +
+          '<a class="shop-drop-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' +
+            ' Shop Mean Gene\'s Collection' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;"><path d="M7 17 17 7M7 7h10v10"/></svg>' +
+          '</a>' +
+        '</div>' +
       '</div>' +
 
       '<div class="shop-cta">' +
