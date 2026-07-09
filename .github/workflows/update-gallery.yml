@@ -8,18 +8,26 @@ on:
   # Allow manual trigger from the GitHub Actions tab
   workflow_dispatch: {}
 
+# Cancel any in-progress run when a new one starts
+concurrency:
+  group: update-gallery
+  cancel-in-progress: true
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       
       - name: Scrape postimg albums and update gallery-data.js
         run: node scripts/update-gallery.js
@@ -33,6 +41,24 @@ jobs:
             echo "No changes — gallery is up to date"
           else
             git commit -m "Auto-update: new Pete Pics found on postimg"
+            # Fetch remote changes and rebase the bot's commit on top.
+            # This handles the case where manual pushes (merch drops,
+            # config changes, etc.) have moved main forward since checkout.
+            git fetch origin main
+            # If there are remote changes, rebase. If the rebase fails
+            # due to conflicts on gallery-data.js (unlikely — the bot
+            # only touches gallery-data.js and manual pushes rarely do),
+            # fall back to a merge.
+            if git rev-list HEAD..origin/main --count | grep -q '^0$'; then
+              echo "No remote changes — pushing directly"
+            else
+              echo "Remote has new commits — rebasing"
+              if ! git pull --rebase --autostash origin main; then
+                echo "Rebase failed — aborting and retrying with merge"
+                git rebase --abort
+                git pull --no-rebase --autostash origin main
+              fi
+            fi
             git push
             echo "Changes pushed — Cloudflare will auto-deploy"
           fi
