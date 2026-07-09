@@ -774,7 +774,7 @@
             '</button>' +
           '</div>' +
         '</div>';
-      })()) +
+      })() +
       '<div class="hero-overlay">' +
         '<div class="hero-content">' +
           '<div class="eyebrow anim">EST. 2024 · PeteGen · ' + ROOMS.length + ' collections · ' + totalWorks.toLocaleString() + ' works</div>' +
