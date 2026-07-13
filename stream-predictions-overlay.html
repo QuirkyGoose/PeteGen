@@ -438,6 +438,87 @@
     to   { opacity: 0; transform: translateX(-50%) translateY(20px); }
   }
 
+  /* ── Compact toggle button (in header) ── */
+  .compact-toggle-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--t3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+    padding: 0;
+  }
+  .compact-toggle-btn:hover {
+    color: var(--amber);
+    border-color: var(--amber-soft);
+  }
+  .prediction-overlay.compact .compact-toggle-btn {
+    color: var(--amber);
+    border-color: var(--amber-soft);
+  }
+
+  /* ═══ COMPACT MODE ═══ */
+  .prediction-overlay.compact {
+    width: 360px;
+    bottom: 20px;
+  }
+  .prediction-overlay.compact .pred-header {
+    padding: 6px 12px;
+  }
+  .prediction-overlay.compact .pred-label {
+    font-size: 8px;
+    gap: 6px;
+  }
+  .prediction-overlay.compact .pred-timer {
+    font-size: 11px;
+  }
+  .prediction-overlay.compact .pred-question {
+    display: none;
+  }
+  .prediction-overlay.compact .pred-options {
+    padding: 0 12px 10px;
+    gap: 4px;
+  }
+  .prediction-overlay.compact .pred-option-content {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .prediction-overlay.compact .pred-option-text {
+    font-size: 11px;
+  }
+  .prediction-overlay.compact .pred-option-pct {
+    font-size: 11px;
+  }
+  .prediction-overlay.compact .pred-option-color {
+    width: 8px;
+    height: 8px;
+  }
+  .prediction-overlay.compact .pred-option-letter {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+  .prediction-overlay.compact .pred-top-contributor {
+    display: none !important;
+  }
+  .prediction-overlay.compact .pred-results {
+    display: none !important;
+  }
+  .prediction-overlay.compact .pred-footer {
+    padding: 4px 12px;
+  }
+  .prediction-overlay.compact .pred-footer-meta {
+    font-size: 7px;
+  }
+  .prediction-overlay.compact .pred-footer-status {
+    font-size: 7px;
+  }
+
   /* ── Footer ── */
   .pred-footer {
     display: flex;
@@ -539,7 +620,12 @@
       <span class="pred-dot" id="predDot"></span>
       <span>Prediction</span>
     </div>
-    <div class="pred-timer" id="predTimer">—</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="compact-toggle-btn" id="compactToggleBtn" title="Toggle compact mode (K)" onclick="applyCompactMode(!compactMode);return false;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </button>
+      <div class="pred-timer" id="predTimer">—</div>
+    </div>
   </div>
   <div class="pred-question" id="predQuestion">—</div>
   <div class="pred-options" id="predOptions"></div>
@@ -572,10 +658,28 @@
 // 3. Copy the Client ID and paste it below
 // 4. Set REDIRECT_URI to match the redirect URL you registered
 // ═══════════════════════════════════════════════════════════════
-var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5'; // ← PUT YOUR TWITCH CLIENT ID HERE
+var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5';
 var REDIRECT_URI = window.location.origin + window.location.pathname;
 var SCOPES = 'channel:read:predictions channel:manage:predictions';
 var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
+var COMPACT_KEY = 'stream-predictions-compact';
+
+// Compact mode — check URL param first, then localStorage
+var compactMode = false;
+if (P.get('compact') === 'true') {
+  compactMode = true;
+} else {
+  try { compactMode = localStorage.getItem(COMPACT_KEY) === 'true'; } catch(e) {}
+}
+
+function applyCompactMode(on) {
+  compactMode = on;
+  predictionOverlay.classList.toggle('compact', on);
+  try { localStorage.setItem(COMPACT_KEY, String(on)); } catch(e) {}
+}
+
+// Apply on load
+applyCompactMode(compactMode);
 
 // ═══════════════════════════════════════════════════════════════
 // DOM REFS
@@ -1049,8 +1153,32 @@ function renderPrediction() {
     totalPoints += pts;
   }
 
-  // Render options
-  var html = '';
+  // Render options — update in place if elements exist, otherwise build from scratch
+  var existingOptions = predOptions.querySelectorAll('.pred-option');
+  var needsRebuild = existingOptions.length !== currentPrediction.outcomes.length;
+
+  if (needsRebuild) {
+    // Full rebuild (first render or outcome count changed)
+    var html = '';
+    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+      var outcome = currentPrediction.outcomes[i];
+      var color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+      html += '<div class="pred-option" data-idx="' + i + '" style="animation-delay:' + (i * 0.08) + 's;">' +
+        '<div class="pred-option-bar" style="background: ' + color + '; opacity: 0.12; transform: scaleX(0);"></div>' +
+        '<div class="pred-option-content">' +
+          '<div class="pred-option-color" style="background: ' + color + ';"></div>' +
+          '<div class="pred-option-text"></div>' +
+          '<span class="pred-winner-badge">Winner</span>' +
+          '<div class="pred-option-pct">0%</div>' +
+        '</div>' +
+        '<div class="pred-top-contributor"></div>' +
+      '</div>';
+    }
+    predOptions.innerHTML = html;
+    existingOptions = predOptions.querySelectorAll('.pred-option');
+  }
+
+  // Update each option in place (no DOM destruction = smooth transitions)
   for (var i = 0; i < currentPrediction.outcomes.length; i++) {
     var outcome = currentPrediction.outcomes[i];
     var pts = parseInt(outcome.channel_points) || 0;
@@ -1061,7 +1189,6 @@ function renderPrediction() {
     // Check for top contributor (during active prediction)
     var topContributor = null;
     if (!isEnded && outcome.top_predictors && outcome.top_predictors.length > 0) {
-      // Find the one with the most points used
       var top = outcome.top_predictors[0];
       for (var j = 0; j < outcome.top_predictors.length; j++) {
         if ((outcome.top_predictors[j].channel_points_used || 0) > (top.channel_points_used || 0)) {
@@ -1071,33 +1198,42 @@ function renderPrediction() {
       topContributor = top;
     }
 
-    // Use top contributor's color if available (Twitch chat color)
+    // Use top contributor's color if available
     var barColor = color;
     if (topContributor && topContributor.color && topContributor.color !== '') {
       barColor = topContributor.color;
     }
 
-    html += '<div class="pred-option' + (isWinner ? ' winner' : '') + '" style="animation-delay:' + (i * 0.08) + 's;">' +
-      '<div class="pred-option-bar" style="background: ' + barColor + '; opacity: 0.12; transform: scaleX(' + (pct / 100) + ');"></div>' +
-      '<div class="pred-option-content">' +
-        '<div class="pred-option-color" style="background: ' + barColor + ';"></div>' +
-        '<div class="pred-option-text">' + escapeHtml(outcome.title) + '</div>' +
-        '<span class="pred-winner-badge">Winner</span>' +
-        '<div class="pred-option-pct">' + pct + '%</div>' +
-      '</div>';
+    var optionEl = existingOptions[i];
+    if (!optionEl) continue;
 
-    // Show top contributor during active prediction
-    if (topContributor && topContributor.user_name) {
+    // Update bar (smooth CSS transition handles the animation)
+    var barEl = optionEl.querySelector('.pred-option-bar');
+    barEl.style.background = barColor;
+    barEl.style.transform = 'scaleX(' + (pct / 100) + ')';
+
+    // Update color dot
+    optionEl.querySelector('.pred-option-color').style.background = barColor;
+
+    // Update text
+    optionEl.querySelector('.pred-option-text').textContent = outcome.title;
+
+    // Update percentage
+    optionEl.querySelector('.pred-option-pct').textContent = pct + '%';
+
+    // Update winner state
+    optionEl.classList.toggle('winner', isWinner);
+
+    // Update top contributor
+    var tcEl = optionEl.querySelector('.pred-top-contributor');
+    if (topContributor && topContributor.user_name && !isEnded) {
       var contribPoints = parseInt(topContributor.channel_points_used) || 0;
-      html += '<div class="pred-top-contributor visible">' +
-        '<span class="tc-name">' + escapeHtml(topContributor.user_name) + '</span>' +
-        ' bet ' + contribPoints.toLocaleString() + ' pts' +
-      '</div>';
+      tcEl.innerHTML = '<span class="tc-name">' + escapeHtml(topContributor.user_name) + '</span> bet ' + contribPoints.toLocaleString() + ' pts';
+      tcEl.classList.add('visible');
+    } else {
+      tcEl.classList.remove('visible');
     }
-
-    html += '</div>';
   }
-  predOptions.innerHTML = html;
 
   // Render results (points won/lost) after resolution
   if (isEnded && currentPrediction.status === 'RESOLVED') {
@@ -1128,14 +1264,13 @@ function renderPrediction() {
 
     for (var i = 0; i < showCount; i++) {
       var p = allPredictors[i];
-      var netPoints = p.won - p.used;
       var amountText, amountClass;
 
       if (p.isWinner) {
         amountText = '+' + p.won.toLocaleString() + ' pts';
         amountClass = 'won';
       } else {
-        amountText = '−' + p.used.toLocaleString() + ' pts';
+        amountText = '\u2212' + p.used.toLocaleString() + ' pts';
         amountClass = 'lost';
       }
 
@@ -1367,6 +1502,11 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 't' || e.key === 'T') {
     e.preventDefault();
     runTestPrediction();
+  }
+  if (e.key === 'k' || e.key === 'K') {
+    e.preventDefault();
+    applyCompactMode(!compactMode);
+    showToast(compactMode ? 'Compact mode' : 'Full mode');
   }
 });
 
