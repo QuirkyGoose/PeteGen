@@ -694,6 +694,9 @@ var SCOPES = 'channel:read:predictions channel:manage:predictions';
 var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
 var COMPACT_KEY = 'stream-predictions-compact';
 
+// URL params
+var P = new URLSearchParams(window.location.search);
+
 // Compact mode — check URL param first, then localStorage
 var compactMode = false;
 if (P.get('compact') === 'true') {
