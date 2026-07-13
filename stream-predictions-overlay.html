@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, height=1080, initial-scale=1">
+<meta name="color-scheme" content="dark" />
+<title>Stream Predictions</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>P</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STREAM PREDICTIONS OVERLAY — LIVE TWITCH INTEGRATION
+     Automatically receives prediction events from Twitch via
+     EventSub WebSocket. No backend needed.
+
+     HOW TO USE:
+     1. Add as a Browser Source in OBS (URL or local file)
+     2. Click "Connect Twitch" — authorizes with Twitch
+     3. Page goes blank after connecting (success!)
+     4. Start a prediction on your Twitch channel
+     5. The overlay appears automatically with live vote data
+
+     KEYBOARD SHORTCUTS:
+       H     Hide/Show overlay
+       C     Clear current prediction display
+       D     Disconnect (re-show connect button)
+     ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+  :root {
+    --bg: #020203;
+    --panel: #08080a;
+    --panel-hover: rgba(255, 255, 255, 0.04);
+    --t1: rgba(255, 255, 255, 0.92);
+    --t2: rgba(255, 255, 255, 0.55);
+    --t3: rgba(255, 255, 255, 0.32);
+    --t4: rgba(255, 255, 255, 0.18);
+    --line: rgba(255, 255, 255, 0.08);
+    --line-soft: rgba(255, 255, 255, 0.05);
+    --amber: #d4a853;
+    --amber-soft: rgba(212, 168, 83, 0.5);
+    --red: #c4473a;
+    --ok: #88b576;
+    --body: 'Geist', system-ui, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, monospace;
+    --serif: 'Instrument Serif', Georgia, serif;
+    /* Outcome colors — cycled through for multi-option predictions */
+    --c0: #5b8def;
+    --c1: #e85b9b;
+    --c2: #88b576;
+    --c3: #d4a853;
+    --c4: #b894d9;
+    --c5: #d49274;
+    --c6: #5bcdef;
+    --c7: #ef8b5b;
+    --c8: #9b5bef;
+    --c9: #5befb8;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+  }
+
+  body {
+    background: transparent;
+    color: var(--t1);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+
+  /* ═══ CONNECT SCREEN ═══ */
+  .connect-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: var(--bg);
+  }
+  .connect-screen.hidden { display: none; }
+
+  .connect-title {
+    font-family: var(--serif);
+    font-size: 48px;
+    font-weight: 400;
+    color: var(--t1);
+    letter-spacing: -0.02em;
+  }
+  .connect-title em {
+    font-style: italic;
+    color: var(--amber);
+  }
+
+  .connect-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--t3);
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .connect-btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--t1);
+    background: rgba(91, 71, 128, 0.15);
+    border: 1px solid rgba(91, 71, 128, 0.4);
+    border-radius: 100px;
+    padding: 14px 32px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .connect-btn:hover {
+    background: rgba(91, 71, 128, 0.25);
+    border-color: rgba(91, 71, 128, 0.6);
+  }
+  .connect-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+
+  .connect-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--t3);
+    margin-top: 8px;
+  }
+  .connect-status.error { color: var(--red); }
+  .connect-status.success { color: var(--ok); }
+
+  /* ═══ PREDICTION OVERLAY ═══ */
+  .prediction-overlay {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 560px;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    animation: overlayIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .prediction-overlay.visible { display: flex; }
+  .prediction-overlay.hidden { display: none; }
+
+  @keyframes overlayIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* ── Header ── */
+  .pred-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .pred-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pred-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 8px var(--amber);
+    animation: dotPulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .pred-dot.locked {
+    background: var(--red);
+    box-shadow: 0 0 8px var(--red);
+    animation: none;
+  }
+  .pred-dot.ended {
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: none;
+  }
+  @keyframes dotPulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.3); }
+  }
+
+  .pred-timer {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+  }
+  .pred-timer.urgent {
+    color: var(--red);
+    animation: urgentBlink 1s ease-in-out infinite;
+  }
+  .pred-timer.ended { color: var(--t3); }
+  @keyframes urgentBlink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+  }
+
+  /* ── Question ── */
+  .pred-question {
+    padding: 12px 16px 10px;
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.25;
+    color: var(--t1);
+    letter-spacing: -0.005em;
+  }
+
+  /* ── Options ── */
+  .pred-options {
+    padding: 0 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pred-option {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    animation: optionIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes optionIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .pred-option.winner {
+    border-color: rgba(212, 168, 83, 0.5);
+    box-shadow: 0 0 20px rgba(212, 168, 83, 0.15);
+  }
+
+  .pred-option-bar {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    transform-origin: left center;
+    transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .pred-option-content {
+    position: relative;
+    z-index: 1;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pred-option-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .pred-option-text {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--t1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pred-option-pct {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--t2);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    transition: color 0.3s ease;
+  }
+
+  .pred-option.winner .pred-option-pct {
+    color: var(--amber);
+  }
+
+  .pred-winner-badge {
+    display: none;
+    font-family: var(--mono);
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: rgba(212, 168, 83, 0.1);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .pred-option.winner .pred-winner-badge { display: inline-block; }
+
+  /* ── Top contributor (shown during active prediction) ── */
+  .pred-top-contributor {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--t3);
+    padding-left: 24px;
+    margin-top: -2px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: none;
+  }
+  .pred-top-contributor.visible { display: block; }
+  .pred-top-contributor .tc-name { color: var(--t2); }
+
+  /* ── Post-resolution results (points won/lost) ── */
+  .pred-results {
+    padding: 0 16px 14px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pred-results.visible { display: flex; }
+
+  .pred-result-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--line-soft);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    animation: resultIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes resultIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .pred-result-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--t2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pred-result-amount {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+  .pred-result-amount.won {
+    color: var(--ok);
+  }
+  .pred-result-amount.lost {
+    color: var(--red);
+  }
+  .pred-result-color {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Winner celebration particles ── */
+  .celebration-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 50;
+    will-change: transform, opacity;
+  }
+
+  /* ── Slide-out animation on dismiss ── */
+  .prediction-overlay.slide-out {
+    animation: overlayOut 0.5s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+  @keyframes overlayOut {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  }
+
+  /* ── Footer ── */
+  .pred-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 16px;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .pred-footer-meta {
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--t3);
+  }
+
+  .pred-footer-status {
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--t2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pred-status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--t3);
+  }
+  .pred-status-dot.active {
+    background: var(--ok);
+    box-shadow: 0 0 6px var(--ok);
+  }
+  .pred-status-dot.locked {
+    background: var(--red);
+  }
+  .pred-status-dot.ended {
+    background: var(--amber);
+  }
+
+  /* ═══ TOAST ═══ */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--panel);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    border-radius: 100px;
+    padding: 8px 16px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    z-index: 300;
+  }
+  .toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Connect screen -->
+<div class="connect-screen" id="connectScreen">
+  <div class="connect-title">Stream <em>Predictions</em></div>
+  <div class="connect-sub">Connect your Twitch account to receive live prediction events automatically. The overlay will appear whenever a prediction starts on your channel.</div>
+  <a class="connect-btn" id="connectBtn" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+    <span>Connect Twitch</span>
+  </a>
+  <div class="connect-status" id="connectStatus"></div>
+</div>
+
+<!-- Prediction overlay -->
+<div class="prediction-overlay" id="predictionOverlay">
+  <div class="pred-header">
+    <div class="pred-label">
+      <span class="pred-dot" id="predDot"></span>
+      <span>Prediction</span>
+    </div>
+    <div class="pred-timer" id="predTimer">—</div>
+  </div>
+  <div class="pred-question" id="predQuestion">—</div>
+  <div class="pred-options" id="predOptions"></div>
+  <div class="pred-results" id="predResults"></div>
+  <div class="pred-footer">
+    <div class="pred-footer-meta" id="predMeta">Prediction Active</div>
+    <div class="pred-footer-status">
+      <span class="pred-status-dot active" id="predStatusDot"></span>
+      <span id="predStatusText">Active</span>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG — You need to register a Twitch app and put your
+// client_id here. See instructions below.
+//
+// TO SET UP:
+// 1. Go to https://dev.twitch.tv/console/apps
+// 2. Register a new application
+//    - Name: Stream Predictions
+//    - OAuth Redirect URLs: add the URL where this file is hosted
+//      (e.g. https://your-domain.com/stream-predictions-overlay.html)
+//      OR http://localhost if testing locally
+//    - Category: Application Integration
+// 3. Copy the Client ID and paste it below
+// 4. Set REDIRECT_URI to match the redirect URL you registered
+// ═══════════════════════════════════════════════════════════════
+var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5'; // ← PUT YOUR TWITCH CLIENT ID HERE
+var REDIRECT_URI = window.location.origin + window.location.pathname;
+var SCOPES = 'channel:read:predictions channel:manage:predictions';
+var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
+
+// ═══════════════════════════════════════════════════════════════
+// DOM REFS
+// ═══════════════════════════════════════════════════════════════
+var connectScreen = document.getElementById('connectScreen');
+var connectBtn = document.getElementById('connectBtn');
+var connectStatus = document.getElementById('connectStatus');
+var predictionOverlay = document.getElementById('predictionOverlay');
+var predQuestion = document.getElementById('predQuestion');
+var predOptions = document.getElementById('predOptions');
+var predResults = document.getElementById('predResults');
+var predTimer = document.getElementById('predTimer');
+var predDot = document.getElementById('predDot');
+var predMeta = document.getElementById('predMeta');
+var predStatusDot = document.getElementById('predStatusDot');
+var predStatusText = document.getElementById('predStatusText');
+var toastEl = document.getElementById('toast');
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+var accessToken = null;
+var broadcasterId = null;
+var eventSubSocket = null;
+var currentPrediction = null;
+var timerInterval = null;
+
+var OUTCOME_COLORS = [
+  'var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)',
+  'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)', 'var(--c9)'
+];
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function showToast(text) {
+  toastEl.textContent = text;
+  toastEl.classList.add('visible');
+  setTimeout(function() { toastEl.classList.remove('visible'); }, 2500);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+function initAuth() {
+  if (!CLIENT_ID) {
+    connectStatus.textContent = 'No Client ID configured — see instructions in the file';
+    connectStatus.classList.add('error');
+    return;
+  }
+
+  // Build OAuth URL
+  var authUrl = 'https://id.twitch.tv/oauth2/authorize?client_id=' + CLIENT_ID +
+    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
+    '&response_type=token&scope=' + encodeURIComponent(SCOPES);
+  connectBtn.setAttribute('href', authUrl);
+
+  // Check for token in URL hash (redirect back from Twitch)
+  var hash = window.location.hash.substring(1);
+  var params = new URLSearchParams(hash);
+  if (params.get('access_token')) {
+    accessToken = params.get('access_token');
+    try { localStorage.setItem(TOKEN_STORAGE_KEY, accessToken); } catch(e) {}
+    // Clean the URL (remove the token from the address bar)
+    window.history.replaceState(null, '', window.location.pathname);
+    connectStatus.textContent = 'Connected! Loading…';
+    connectStatus.classList.add('success');
+    processToken(accessToken);
+    return;
+  }
+
+  // Check for stored token
+  try {
+    var stored = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (stored) {
+      accessToken = stored;
+      connectStatus.textContent = 'Restoring connection…';
+      processToken(accessToken);
+      return;
+    }
+  } catch(e) {}
+
+  // No token — show connect button
+  connectStatus.textContent = 'Click to connect your Twitch account';
+}
+
+async function processToken(token) {
+  accessToken = token;
+
+  // Get broadcaster ID
+  try {
+    var resp = await fetch('https://api.twitch.tv/helix/users', {
+      headers: {
+        'Client-ID': CLIENT_ID,
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    if (data.data && data.data.length > 0) {
+      broadcasterId = data.data[0].id;
+      connectScreen.classList.add('hidden');
+      showToast('Connected to Twitch');
+      // Subscribe to prediction events
+      subscribeToPredictions();
+      // Also check for any active prediction right now
+      fetchActivePrediction();
+    } else {
+      throw new Error('No user data');
+    }
+  } catch(e) {
+    connectStatus.textContent = 'Connection failed: ' + e.message;
+    connectStatus.classList.add('error');
+    connectStatus.classList.remove('success');
+    // Clear bad token
+    try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(err) {}
+    accessToken = null;
+  }
+}
+
+function disconnect() {
+  if (eventSubSocket) {
+    eventSubSocket.close();
+    eventSubSocket = null;
+  }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(e) {}
+  accessToken = null;
+  broadcasterId = null;
+  currentPrediction = null;
+  predictionOverlay.classList.remove('visible');
+  connectScreen.classList.remove('hidden');
+  connectStatus.textContent = 'Disconnected';
+  connectStatus.classList.remove('success', 'error');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENTSUB WEBSOCKET SUBSCRIPTION
+// ═══════════════════════════════════════════════════════════════
+async function subscribeToPredictions() {
+  try {
+    // Step 1: Create EventSub subscription with WebSocket transport
+    // First, we need to get a WebSocket session ID
+    var wsUrl = 'wss://eventsub.wss.twitch.tv/ws';
+
+    eventSubSocket = new WebSocket(wsUrl);
+
+    eventSubSocket.onopen = function() {
+      console.log('EventSub WebSocket connected');
+    };
+
+    eventSubSocket.onmessage = function(event) {
+      var msg = JSON.parse(event.data);
+
+      // Welcome message — contains session_id we need for subscriptions
+      if (msg.metadata && msg.metadata.message_type === 'session_welcome') {
+        var sessionId = msg.payload.session.id;
+        console.log('EventSub session:', sessionId);
+        // Now create subscriptions using this session ID
+        createSubscriptions(sessionId);
+      }
+
+      // Keepalive — just acknowledge, no action needed
+      if (msg.metadata && msg.metadata.message_type === 'session_keepalive') {
+        return;
+      }
+
+      // Prediction events
+      if (msg.metadata && msg.metadata.message_type === 'notification') {
+        var subType = msg.metadata.subscription_type;
+        var payload = msg.payload.event;
+
+        if (subType === 'channel.prediction.begin') {
+          onPredictionBegin(payload);
+        } else if (subType === 'channel.prediction.progress') {
+          onPredictionProgress(payload);
+        } else if (subType === 'channel.prediction.lock') {
+          onPredictionLock(payload);
+        } else if (subType === 'channel.prediction.end') {
+          onPredictionEnd(payload);
+        }
+      }
+
+      // Reconnect — Twitch wants us to reconnect to a new URL
+      if (msg.metadata && msg.metadata.message_type === 'session_reconnect') {
+        var newUrl = msg.payload.session.reconnect_url;
+        console.log('EventSub reconnecting to:', newUrl);
+        eventSubSocket.close();
+        eventSubSocket = new WebSocket(newUrl);
+        // Re-attach handlers
+        eventSubSocket.onmessage = this.onmessage;
+        eventSubSocket.onerror = this.onerror;
+        eventSubSocket.onclose = this.onclose;
+      }
+    };
+
+    eventSubSocket.onerror = function(e) {
+      console.error('EventSub WebSocket error:', e);
+    };
+
+    eventSubSocket.onclose = function() {
+      console.log('EventSub WebSocket closed, reconnecting in 5s…');
+      setTimeout(function() {
+        if (accessToken && broadcasterId) {
+          subscribeToPredictions();
+        }
+      }, 5000);
+    };
+
+  } catch(e) {
+    console.error('EventSub subscription failed:', e);
+  }
+}
+
+async function createSubscriptions(sessionId) {
+  var subscriptionTypes = [
+    {
+      type: 'channel.prediction.begin',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId }
+    },
+    {
+      type: 'channel.prediction.progress',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId }
+    },
+    {
+      type: 'channel.prediction.lock',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId }
+    },
+    {
+      type: 'channel.prediction.end',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId }
+    }
+  ];
+
+  for (var i = 0; i < subscriptionTypes.length; i++) {
+    var sub = subscriptionTypes[i];
+    try {
+      var resp = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Client-ID': CLIENT_ID,
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: sub.type,
+          version: sub.version,
+          condition: sub.condition,
+          transport: {
+            method: 'websocket',
+            session_id: sessionId
+          }
+        })
+      });
+
+      if (resp.ok) {
+        console.log('Subscribed to ' + sub.type);
+      } else {
+        var err = await resp.json();
+        console.warn('Subscription to ' + sub.type + ' failed:', err.message || resp.status);
+      }
+    } catch(e) {
+      console.warn('Subscription to ' + sub.type + ' error:', e.message);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FETCH ACTIVE PREDICTION (on load — in case one is already running)
+// ═══════════════════════════════════════════════════════════════
+async function fetchActivePrediction() {
+  try {
+    var resp = await fetch('https://api.twitch.tv/helix/predictions?broadcaster_id=' + broadcasterId, {
+      headers: {
+        'Client-ID': CLIENT_ID,
+        'Authorization': 'Bearer ' + accessToken
+      }
+    });
+    if (!resp.ok) return;
+    var data = await resp.json();
+    if (data.data && data.data.length > 0) {
+      // Find any active or locked prediction
+      for (var i = 0; i < data.data.length; i++) {
+        var pred = data.data[i];
+        if (pred.status === 'ACTIVE' || pred.status === 'LOCKED') {
+          onPredictionBegin(pred);
+          if (pred.status === 'LOCKED') onPredictionLock(pred);
+          break;
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('Could not fetch active prediction:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PREDICTION EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════════
+function onPredictionBegin(payload) {
+  currentPrediction = {
+    id: payload.id,
+    title: payload.title,
+    outcomes: payload.outcomes || [],
+    status: 'ACTIVE',
+    lockedAt: null,
+    endsAt: payload.ends_at
+  };
+  renderPrediction();
+  startTimer();
+}
+
+function onPredictionProgress(payload) {
+  if (!currentPrediction || currentPrediction.id !== payload.id) {
+    // New prediction we didn't catch the begin for
+    onPredictionBegin(payload);
+    return;
+  }
+  // Update outcomes with latest vote counts
+  currentPrediction.outcomes = payload.outcomes || currentPrediction.outcomes;
+  renderPrediction();
+}
+
+function onPredictionLock(payload) {
+  if (!currentPrediction || currentPrediction.id !== payload.id) return;
+  currentPrediction.status = 'LOCKED';
+  currentPrediction.lockedAt = payload.locked_at;
+  renderPrediction();
+}
+
+function onPredictionEnd(payload) {
+  if (!currentPrediction || currentPrediction.id !== payload.id) return;
+  currentPrediction.status = payload.status; // RESOLVED, CANCELED, etc.
+  currentPrediction.winningOutcomeId = payload.winning_outcome_id;
+
+  // Update outcomes with final data (includes top_predictors with won/lost amounts)
+  if (payload.outcomes) {
+    currentPrediction.outcomes = payload.outcomes;
+  }
+
+  // Mark winner if resolved
+  if (payload.status === 'RESOLVED' && payload.winning_outcome_id) {
+    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+      currentPrediction.outcomes[i].isWinner = (currentPrediction.outcomes[i].id === payload.winning_outcome_id);
+    }
+  }
+
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  renderPrediction();
+
+  // Winner celebration particles
+  if (payload.status === 'RESOLVED') {
+    spawnCelebration();
+  }
+
+  // Slide-out after 15 seconds
+  setTimeout(function() {
+    if (currentPrediction && currentPrediction.id === payload.id) {
+      predictionOverlay.classList.add('slide-out');
+      setTimeout(function() {
+        predictionOverlay.classList.remove('visible', 'slide-out');
+        currentPrediction = null;
+      }, 500);
+    }
+  }, 15000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CELEBRATION PARTICLES
+// ═══════════════════════════════════════════════════════════════
+function spawnCelebration() {
+  var winnerEl = predictionOverlay.querySelector('.pred-option.winner');
+  if (!winnerEl) return;
+
+  var rect = winnerEl.getBoundingClientRect();
+  var centerX = rect.left + rect.width / 2;
+  var centerY = rect.top + rect.height / 2;
+
+  var colors = ['#d4a853', '#e8c87a', '#88b576', '#5b8def', '#e85b9b'];
+  var particleCount = 30;
+
+  for (var i = 0; i < particleCount; i++) {
+    var p = document.createElement('div');
+    p.className = 'celebration-particle';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.left = centerX + 'px';
+    p.style.top = centerY + 'px';
+    p.style.boxShadow = '0 0 6px ' + p.style.background;
+    document.body.appendChild(p);
+
+    var angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
+    var velocity = 80 + Math.random() * 120;
+    var vx = Math.cos(angle) * velocity;
+    var vy = Math.sin(angle) * velocity - 40; // slight upward bias
+    var rotation = Math.random() * 720;
+    var duration = 800 + Math.random() * 600;
+
+    var startTime = Date.now();
+    (function(particle, vx, vy, rotation, duration, startTime) {
+      function animate() {
+        var elapsed = Date.now() - startTime;
+        var progress = elapsed / duration;
+        if (progress >= 1) {
+          particle.remove();
+          return;
+        }
+        var x = vx * progress;
+        var y = vy * progress + 0.5 * 200 * progress * progress; // gravity
+        var r = rotation * progress;
+        var opacity = 1 - progress;
+        particle.style.transform = 'translate(' + x + 'px, ' + y + 'px) rotate(' + r + 'deg)';
+        particle.style.opacity = opacity;
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })(p, vx, vy, rotation, duration, startTime);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderPrediction() {
+  if (!currentPrediction) {
+    predictionOverlay.classList.remove('visible');
+    return;
+  }
+
+  predictionOverlay.classList.add('visible');
+  predQuestion.textContent = currentPrediction.title || '—';
+
+  // Status
+  var isLocked = currentPrediction.status === 'LOCKED';
+  var isEnded = currentPrediction.status === 'RESOLVED' || currentPrediction.status === 'CANCELED';
+
+  predDot.className = 'pred-dot';
+  predStatusDot.className = 'pred-status-dot';
+  if (isEnded) {
+    predDot.classList.add('ended');
+    predStatusDot.classList.add('ended');
+    predStatusText.textContent = 'Ended';
+    predMeta.textContent = currentPrediction.status === 'RESOLVED' ? 'Prediction Resolved' : 'Prediction Canceled';
+    predTimer.classList.add('ended');
+  } else if (isLocked) {
+    predDot.classList.add('locked');
+    predStatusDot.classList.add('locked');
+    predStatusText.textContent = 'Locked';
+    predMeta.textContent = 'Prediction Locked';
+    predTimer.classList.remove('ended');
+  } else {
+    predStatusDot.classList.add('active');
+    predStatusText.textContent = 'Active';
+    predMeta.textContent = 'Prediction Active';
+    predTimer.classList.remove('ended');
+  }
+
+  // Calculate total points
+  var totalPoints = 0;
+  for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+    var pts = parseInt(currentPrediction.outcomes[i].channel_points) || 0;
+    totalPoints += pts;
+  }
+
+  // Render options
+  var html = '';
+  for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+    var outcome = currentPrediction.outcomes[i];
+    var pts = parseInt(outcome.channel_points) || 0;
+    var pct = totalPoints > 0 ? Math.round(pts / totalPoints * 100) : 0;
+    var color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+    var isWinner = outcome.isWinner === true;
+
+    // Check for top contributor (during active prediction)
+    var topContributor = null;
+    if (!isEnded && outcome.top_predictors && outcome.top_predictors.length > 0) {
+      // Find the one with the most points used
+      var top = outcome.top_predictors[0];
+      for (var j = 0; j < outcome.top_predictors.length; j++) {
+        if ((outcome.top_predictors[j].channel_points_used || 0) > (top.channel_points_used || 0)) {
+          top = outcome.top_predictors[j];
+        }
+      }
+      topContributor = top;
+    }
+
+    // Use top contributor's color if available (Twitch chat color)
+    var barColor = color;
+    if (topContributor && topContributor.color && topContributor.color !== '') {
+      barColor = topContributor.color;
+    }
+
+    html += '<div class="pred-option' + (isWinner ? ' winner' : '') + '" style="animation-delay:' + (i * 0.08) + 's;">' +
+      '<div class="pred-option-bar" style="background: ' + barColor + '; opacity: 0.12; transform: scaleX(' + (pct / 100) + ');"></div>' +
+      '<div class="pred-option-content">' +
+        '<div class="pred-option-color" style="background: ' + barColor + ';"></div>' +
+        '<div class="pred-option-text">' + escapeHtml(outcome.title) + '</div>' +
+        '<span class="pred-winner-badge">Winner</span>' +
+        '<div class="pred-option-pct">' + pct + '%</div>' +
+      '</div>';
+
+    // Show top contributor during active prediction
+    if (topContributor && topContributor.user_name) {
+      var contribPoints = parseInt(topContributor.channel_points_used) || 0;
+      html += '<div class="pred-top-contributor visible">' +
+        '<span class="tc-name">' + escapeHtml(topContributor.user_name) + '</span>' +
+        ' bet ' + contribPoints.toLocaleString() + ' pts' +
+      '</div>';
+    }
+
+    html += '</div>';
+  }
+  predOptions.innerHTML = html;
+
+  // Render results (points won/lost) after resolution
+  if (isEnded && currentPrediction.status === 'RESOLVED') {
+    var resultsHtml = '';
+    var allPredictors = [];
+
+    // Collect all top_predictors from all outcomes
+    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+      var outcome = currentPrediction.outcomes[i];
+      var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+      if (outcome.top_predictors) {
+        for (var j = 0; j < outcome.top_predictors.length; j++) {
+          var pred = outcome.top_predictors[j];
+          allPredictors.push({
+            name: pred.user_name || 'Unknown',
+            won: parseInt(pred.channel_points_won) || 0,
+            used: parseInt(pred.channel_points_used) || 0,
+            color: (pred.color && pred.color !== '') ? pred.color : outcomeColor,
+            isWinner: outcome.isWinner === true
+          });
+        }
+      }
+    }
+
+    // Sort by points won (descending), show top 8
+    allPredictors.sort(function(a, b) { return b.won - a.won; });
+    var showCount = Math.min(8, allPredictors.length);
+
+    for (var i = 0; i < showCount; i++) {
+      var p = allPredictors[i];
+      var netPoints = p.won - p.used;
+      var amountText, amountClass;
+
+      if (p.isWinner) {
+        amountText = '+' + p.won.toLocaleString() + ' pts';
+        amountClass = 'won';
+      } else {
+        amountText = '−' + p.used.toLocaleString() + ' pts';
+        amountClass = 'lost';
+      }
+
+      resultsHtml += '<div class="pred-result-row" style="animation-delay:' + (i * 0.06) + 's;">' +
+        '<div class="pred-result-color" style="background: ' + p.color + ';"></div>' +
+        '<div class="pred-result-name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="pred-result-amount ' + amountClass + '">' + amountText + '</div>' +
+      '</div>';
+    }
+
+    if (resultsHtml) {
+      predResults.innerHTML = resultsHtml;
+      predResults.classList.add('visible');
+    } else {
+      predResults.classList.remove('visible');
+    }
+  } else {
+    predResults.classList.remove('visible');
+    predResults.innerHTML = '';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════════════
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  updateTimerDisplay();
+  timerInterval = setInterval(updateTimerDisplay, 1000);
+}
+
+function updateTimerDisplay() {
+  if (!currentPrediction || !currentPrediction.endsAt) {
+    predTimer.textContent = '—';
+    return;
+  }
+
+  var isLocked = currentPrediction.status === 'LOCKED';
+  var isEnded = currentPrediction.status === 'RESOLVED' || currentPrediction.status === 'CANCELED';
+
+  if (isLocked || isEnded) {
+    predTimer.textContent = isEnded ? 'Done' : 'Locked';
+    predTimer.classList.remove('urgent');
+    return;
+  }
+
+  var now = new Date().getTime();
+  var ends = new Date(currentPrediction.endsAt).getTime();
+  var remaining = Math.max(0, Math.floor((ends - now) / 1000));
+
+  var min = Math.floor(remaining / 60);
+  var sec = remaining % 60;
+  predTimer.textContent = (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+
+  // Urgent in last 30s
+  predTimer.classList.toggle('urgent', remaining <= 30 && remaining > 0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'h' || e.key === 'H') {
+    predictionOverlay.classList.toggle('hidden');
+  }
+  if (e.key === 'c' || e.key === 'C') {
+    predictionOverlay.classList.remove('visible');
+    currentPrediction = null;
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    showToast('Cleared');
+  }
+  if (e.key === 'd' || e.key === 'D') {
+    disconnect();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+initAuth();
+</script>
+</body>
+</html>
