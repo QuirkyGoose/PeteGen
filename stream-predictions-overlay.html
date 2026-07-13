@@ -794,7 +794,9 @@ async function processToken(token) {
       throw new Error('No user data');
     }
   } catch(e) {
-    connectStatus.textContent = 'Connection failed: ' + e.message;
+    // Re-show the connect screen so the user can see the error + retry
+    connectScreen.classList.remove('hidden');
+    connectStatus.textContent = 'Connection failed: ' + e.message + ' — click Connect Twitch to retry';
     connectStatus.classList.add('error');
     connectStatus.classList.remove('success');
     // Clear bad token
