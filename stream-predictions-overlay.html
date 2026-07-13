@@ -526,6 +526,9 @@
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
     <span>Connect Twitch</span>
   </a>
+  <button class="connect-btn" id="testBtn" style="background: rgba(212, 168, 83, 0.08); border-color: rgba(212, 168, 83, 0.3); color: var(--amber);">
+    <span>Run Test Prediction</span>
+  </button>
   <div class="connect-status" id="connectStatus"></div>
 </div>
 
@@ -569,7 +572,7 @@
 // 3. Copy the Client ID and paste it below
 // 4. Set REDIRECT_URI to match the redirect URL you registered
 // ═══════════════════════════════════════════════════════════════
-var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5'; // ← PUT YOUR TWITCH CLIENT ID HERE
+var CLIENT_ID = ''; // ← PUT YOUR TWITCH CLIENT ID HERE
 var REDIRECT_URI = window.location.origin + window.location.pathname;
 var SCOPES = 'channel:read:predictions channel:manage:predictions';
 var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
@@ -1192,6 +1195,158 @@ function updateTimerDisplay() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// TEST PREDICTION — simulates a full prediction lifecycle
+// ═══════════════════════════════════════════════════════════════
+var testTimers = [];
+var testActive = false;
+
+function clearTestTimers() {
+  for (var i = 0; i < testTimers.length; i++) clearTimeout(testTimers[i]);
+  testTimers = [];
+}
+
+function runTestPrediction() {
+  if (testActive) return;
+  testActive = true;
+  clearTestTimers();
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+  // Hide connect screen if visible
+  connectScreen.classList.add('hidden');
+
+  // Fake prediction with 4 outcomes
+  var outcomes = [
+    { id: 'test-a', title: 'Pobot', channel_points: 0, top_predictors: [], color: '#5b8def' },
+    { id: 'test-b', title: 'Prestler', channel_points: 0, top_predictors: [], color: '#e85b9b' },
+    { id: 'test-c', title: 'Cultural Pic', channel_points: 0, top_predictors: [], color: '#88b576' },
+    { id: 'test-d', title: 'Pisc', channel_points: 0, top_predictors: [], color: '#d4a853' }
+  ];
+
+  var fakeNames = ['FizzyCait', 'BreadSanta', 'HarryHardy', 'grgrsmth', 'Albrot', 'JosieRustle', 'AngelInterceptor', 'AliDooLalli'];
+  var fakeColors = ['#5b8def', '#e85b9b', '#88b576', '#d4a853', '#b894d9', '#d49274', '#5bcdef', '#ef8b5b'];
+
+  // Assign random top predictors to each outcome
+  for (var i = 0; i < outcomes.length; i++) {
+    var numPredictors = 2 + Math.floor(Math.random() * 3);
+    for (var j = 0; j < numPredictors; j++) {
+      var pts = 500 + Math.floor(Math.random() * 5000);
+      outcomes[i].top_predictors.push({
+        user_id: 'test-' + i + '-' + j,
+        user_name: fakeNames[Math.floor(Math.random() * fakeNames.length)],
+        channel_points_used: pts,
+        channel_points_won: 0,
+        color: fakeColors[Math.floor(Math.random() * fakeColors.length)]
+      });
+    }
+  }
+
+  // 1. BEGIN — prediction starts
+  var beginPayload = {
+    id: 'test-prediction-001',
+    title: 'What will Pete draw first tonight?',
+    outcomes: outcomes,
+    status: 'ACTIVE',
+    ends_at: new Date(Date.now() + 30000).toISOString() // 30s timer
+  };
+  onPredictionBegin(beginPayload);
+  showToast('Test prediction started');
+
+  // 2. PROGRESS — votes trickle in over 15 seconds
+  var progressSteps = 8;
+  for (var step = 1; step <= progressSteps; step++) {
+    (function(stepNum) {
+      testTimers.push(setTimeout(function() {
+        // Add random points to each outcome
+        for (var i = 0; i < outcomes.length; i++) {
+          var addPts = 200 + Math.floor(Math.random() * 3000);
+          outcomes[i].channel_points += addPts;
+          // Update top predictor points
+          if (outcomes[i].top_predictors.length > 0) {
+            outcomes[i].top_predictors[0].channel_points_used += Math.floor(addPts * 0.4);
+          }
+        }
+        var progressPayload = {
+          id: 'test-prediction-001',
+          title: beginPayload.title,
+          outcomes: outcomes,
+          status: 'ACTIVE',
+          ends_at: beginPayload.ends_at
+        };
+        onPredictionProgress(progressPayload);
+      }, stepNum * 1800));
+    })(step);
+  }
+
+  // 3. LOCK — at 16 seconds
+  testTimers.push(setTimeout(function() {
+    var lockPayload = {
+      id: 'test-prediction-001',
+      title: beginPayload.title,
+      outcomes: outcomes,
+      status: 'LOCKED',
+      locked_at: new Date().toISOString(),
+      ends_at: beginPayload.ends_at
+    };
+    onPredictionLock(lockPayload);
+    showToast('Prediction locked');
+  }, 16000));
+
+  // 4. END — resolve at 20 seconds
+  testTimers.push(setTimeout(function() {
+    // Pick a winner (weighted toward the one with most points)
+    var winnerIdx = 0;
+    var maxPts = -1;
+    for (var i = 0; i < outcomes.length; i++) {
+      if (outcomes[i].channel_points > maxPts) {
+        maxPts = outcomes[i].channel_points;
+        winnerIdx = i;
+      }
+    }
+
+    // Calculate won amounts for winners
+    var totalLosingPoints = 0;
+    for (var i = 0; i < outcomes.length; i++) {
+      if (i !== winnerIdx) totalLosingPoints += outcomes[i].channel_points;
+    }
+
+    for (var i = 0; i < outcomes.length; i++) {
+      outcomes[i].isWinner = (i === winnerIdx);
+      if (i === winnerIdx) {
+        // Winners get their bet back + share of losing pool
+        for (var j = 0; j < outcomes[i].top_predictors.length; j++) {
+          var used = outcomes[i].top_predictors[j].channel_points_used;
+          var share = totalLosingPoints > 0 ? Math.round(used / outcomes[i].channel_points * totalLosingPoints) : 0;
+          outcomes[i].top_predictors[j].channel_points_won = used + share;
+        }
+      } else {
+        // Losers get 0
+        for (var j = 0; j < outcomes[i].top_predictors.length; j++) {
+          outcomes[i].top_predictors[j].channel_points_won = 0;
+        }
+      }
+    }
+
+    var endPayload = {
+      id: 'test-prediction-001',
+      title: beginPayload.title,
+      outcomes: outcomes,
+      status: 'RESOLVED',
+      winning_outcome_id: outcomes[winnerIdx].id,
+      ended_at: new Date().toISOString()
+    };
+    onPredictionEnd(endPayload);
+    showToast('Prediction resolved: ' + outcomes[winnerIdx].title);
+    testActive = false;
+  }, 20000));
+}
+
+// Wire up test button
+document.getElementById('testBtn').addEventListener('click', function(e) {
+  e.preventDefault();
+  runTestPrediction();
+});
+
+// ═══════════════════════════════════════════════════════════════
 // KEYBOARD
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('keydown', function(e) {
@@ -1202,10 +1357,16 @@ document.addEventListener('keydown', function(e) {
     predictionOverlay.classList.remove('visible');
     currentPrediction = null;
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    clearTestTimers();
+    testActive = false;
     showToast('Cleared');
   }
   if (e.key === 'd' || e.key === 'D') {
     disconnect();
+  }
+  if (e.key === 't' || e.key === 'T') {
+    e.preventDefault();
+    runTestPrediction();
   }
 });
 
