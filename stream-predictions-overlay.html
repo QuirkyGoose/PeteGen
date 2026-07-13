@@ -75,6 +75,31 @@
     position: relative;
   }
 
+  /* ═══ FLOATING TEST BUTTON ═══ */
+  .float-test-btn {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    color: var(--amber);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    z-index: 400;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  .float-test-btn.visible { display: flex; }
+  .float-test-btn:hover {
+    background: rgba(212, 168, 83, 0.1);
+    border-color: var(--amber);
+  }
+
   /* ═══ CONNECT SCREEN ═══ */
   .connect-screen {
     position: fixed;
@@ -613,6 +638,11 @@
   <div class="connect-status" id="connectStatus"></div>
 </div>
 
+<!-- Floating test button (visible when connected, hidden when on connect screen) -->
+<button class="float-test-btn" id="floatTestBtn" title="Run test prediction (T)" onclick="runTestPrediction();return false;">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+</button>
+
 <!-- Prediction overlay -->
 <div class="prediction-overlay" id="predictionOverlay">
   <div class="pred-header">
@@ -785,6 +815,8 @@ async function processToken(token) {
     if (data.data && data.data.length > 0) {
       broadcasterId = data.data[0].id;
       connectScreen.classList.add('hidden');
+      // Show the floating test button when connected
+      document.getElementById('floatTestBtn').classList.add('visible');
       showToast('Connected to Twitch');
       // Subscribe to prediction events
       subscribeToPredictions();
@@ -796,6 +828,7 @@ async function processToken(token) {
   } catch(e) {
     // Re-show the connect screen so the user can see the error + retry
     connectScreen.classList.remove('hidden');
+    document.getElementById('floatTestBtn').classList.remove('visible');
     connectStatus.textContent = 'Connection failed: ' + e.message + ' — click Connect Twitch to retry';
     connectStatus.classList.add('error');
     connectStatus.classList.remove('success');
@@ -817,6 +850,7 @@ function disconnect() {
   currentPrediction = null;
   predictionOverlay.classList.remove('visible');
   connectScreen.classList.remove('hidden');
+  document.getElementById('floatTestBtn').classList.remove('visible');
   connectStatus.textContent = 'Disconnected';
   connectStatus.classList.remove('success', 'error');
 }
