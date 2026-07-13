@@ -674,12 +674,9 @@ if (P.get('compact') === 'true') {
 
 function applyCompactMode(on) {
   compactMode = on;
-  predictionOverlay.classList.toggle('compact', on);
+  if (predictionOverlay) predictionOverlay.classList.toggle('compact', on);
   try { localStorage.setItem(COMPACT_KEY, String(on)); } catch(e) {}
 }
-
-// Apply on load
-applyCompactMode(compactMode);
 
 // ═══════════════════════════════════════════════════════════════
 // DOM REFS
@@ -1513,6 +1510,7 @@ document.addEventListener('keydown', function(e) {
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
+applyCompactMode(compactMode);
 initAuth();
 </script>
 </body>
