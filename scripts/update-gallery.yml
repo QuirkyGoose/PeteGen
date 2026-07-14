@@ -35,6 +35,34 @@ jobs:
       - name: Scrape postimg albums and update gallery-data.js
         run: node scripts/update-gallery.js
       
+      - name: Fix thumbUrl (postimg has no separate thumbs)
+        # Permanent fix for the 1541 broken thumbs bug:
+        # Old generator built thumbUrl as https://i.postimg.cc/<id>/file.png which 404s.
+        # postimg.cc has no thumb endpoint, so thumb must equal image.
+        # This keeps your hosting exactly as requested, just corrects the URL.
+        # Inline so it works even if scripts/fix-gallery-thumbs.js isn't committed yet.
+        run: |
+          node -e "
+          const fs=require('fs');
+          const p='gallery-data.js';
+          let raw=fs.readFileSync(p,'utf8');
+          const start=raw.indexOf('{');
+          if(start===-1){console.error('No JSON found');process.exit(1);}
+          let data=JSON.parse(raw.slice(start).replace(/;\s*$/, ''));
+          let fixed=0;
+          for(const gallery of Object.values(data.galleries||{})){
+            for(const work of gallery.works||[]){
+              if(work.thumbUrl!==work.imageUrl) fixed++;
+              work.thumbUrl=work.imageUrl;
+            }
+          }
+          // Preserve header comment if present
+          const headerMatch = raw.match(/^\/\*[\s\S]*?\*\//);
+          const header = headerMatch ? headerMatch[0]+'\n' : '/* Auto-generated from postimg.cc albums */\n';
+          fs.writeFileSync(p, header+'window.GALLERY_DATA='+JSON.stringify(data)+';');
+          console.log('Fixed '+fixed+' thumbUrls -> imageUrl');
+          "
+      
       - name: Commit and push if changes
         run: |
           git config user.name "Gallery Bot"
@@ -43,7 +71,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes — gallery is up to date"
           else
-            git commit -m "Auto-update: new Pete Pics found on postimg"
+            git commit -m "Auto-update: new Pete Pics found on postimg (thumbUrl fixed)"
             # Pull and rebase before pushing — handles the case where
             # manual pushes (merch drops, config changes, etc.) have
             # moved the remote branch forward since the bot checked out.
