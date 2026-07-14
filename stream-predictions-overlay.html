@@ -75,28 +75,14 @@
     position: relative;
   }
 
-  /* ═══ FLOATING TEST BUTTON — FIXED: was display:none !important so .visible never worked */
-  .float-test-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 400;
-    display: none;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--amber);
-    background: var(--panel);
-    border: 1px solid rgba(212,168,83,0.3);
-    border-radius: 100px;
-    padding: 10px 16px;
-    cursor: pointer;
+  /* ═══ FLOATING TEST BUTTON — HIDDEN FOR PRODUCTION */
+  /* This was the wrench/cog in the bottom-right. Hidden so it doesn't show on stream.
+     Re-enable for local testing by changing to display:flex or adding ?debug=true */
+  .float-test-btn,
+  .float-test-btn.visible {
+    display: none !important;
+    pointer-events: none !important;
   }
-  .float-test-btn.visible { display: flex !important; }
 
   /* ═══ CONNECT SCREEN ═══ */
   .connect-screen {
