@@ -6,10 +6,22 @@
 <meta name="color-scheme" content="dark" />
 <title>Peet Pics — The Vault</title>
 <meta name="description" content="A permanent archive dedicated to the finest Peet-adjacent artwork, Pobots, Prestlers, and Cultural Artefacts of Our Time." />
+
+<meta property="og:title" content="Peet Pics — The Vault" />
+<meta property="og:description" content="A permanent archive dedicated to the finest Peet-adjacent artwork, Pobots, Prestlers, and Cultural Artefacts of Our Time." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://petepicsgallery.pages.dev/" />
+<meta property="og:image" content="https://petepicsgallery.pages.dev/og-image.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Peet Pics — The Vault" />
+<meta name="twitter:description" content="A permanent archive dedicated to the finest Peet-adjacent artwork, Pobots, Prestlers, and Cultural Artefacts of Our Time." />
+<link rel="canonical" href="https://petepicsgallery.pages.dev/" />
+<meta name="theme-color" content="#020203" />
+
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>P</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   /* ======================================================================
      Peet Pics — The Vault · Full site
@@ -193,7 +205,7 @@
       0 4px 14px rgba(0, 0, 0, 0.45);
   }
   .brand-name {
-    font-family: "Newsreader", Georgia, serif;
+    font-family: var(--display);
     font-size: 21.6px;
     font-weight: 400;
     letter-spacing: 0.03em;
@@ -2714,7 +2726,162 @@
     55% { top: 100%; }
     100% { top: 100%; }
   }
-</style>
+
+  /* ======================================================================
+     COMMAND PALETTE (Cmd+K)
+     ====================================================================== */
+  .command-palette {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+  }
+  .command-palette.open { display: block; }
+  .command-palette-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2,2,3,0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .command-palette-modal {
+    position: relative;
+    width: min(640px, calc(100vw - 32px));
+    max-height: min(68vh, 560px);
+    margin: 18vh auto 0;
+    background: #0a0a0c;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .command-palette-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .command-palette-input-wrap svg { width: 18px; height: 18px; color: var(--t3); flex-shrink: 0; }
+  .command-palette-input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--t1);
+  }
+  .command-palette-input::placeholder { color: var(--t3); }
+  .command-palette-kbd {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--t3);
+    border: 1px solid var(--line);
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: var(--panel);
+  }
+  .command-palette-list {
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .command-palette-list::-webkit-scrollbar { width: 6px; }
+  .command-palette-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+  .cmd-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .cmd-item:hover, .cmd-item.is-selected {
+    background: rgba(255,255,255,0.06);
+  }
+  .cmd-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    color: var(--t2);
+  }
+  .cmd-icon.live { background: rgba(100,255,160,0.12); border-color: rgba(100,255,160,0.2); color: var(--ok); }
+  .cmd-text { flex: 1; min-width: 0; }
+  .cmd-label { font-size: 13.5px; font-weight: 500; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmd-sub { font-size: 11.5px; color: var(--t3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmd-shortcut { font-family: var(--mono); font-size: 10px; color: var(--t4); }
+  .cmd-empty { padding: 24px 16px; text-align: center; color: var(--t3); font-size: 13px; }
+
+  /* Friends live dot in nav */
+  .nav-live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--t4);
+    display: inline-block;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.06);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .nav-live-dot.is-live {
+    background: var(--ok);
+    box-shadow: 0 0 0 2px rgba(100,255,160,0.18), 0 0 10px rgba(100,255,160,0.45);
+    animation: livePulse 2s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.92; }
+  }
+  .nav-dropdown-item.is-live .nav-item-name { color: var(--t1); }
+  .nav-item-live-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ok);
+    background: rgba(100,255,160,0.12);
+    border: 1px solid rgba(100,255,160,0.18);
+    padding: 2px 6px;
+    border-radius: 100px;
+    margin-left: auto;
+  }
+  .nav-dropdown-section .live-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ok);
+    background: rgba(100,255,160,0.1);
+    border: 1px solid rgba(100,255,160,0.15);
+    padding: 1px 6px;
+    border-radius: 100px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  </style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Peet Pics — The Vault",
+  "description": "A permanent archive dedicated to the finest Peet-adjacent artwork",
+  "url": "https://petepicsgallery.pages.dev/",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "Peet Pics",
+    "url": "https://petepicsgallery.pages.dev/"
+  }
+}
+</script>
+
 </head>
 <body>
 
@@ -2825,7 +2992,7 @@
     <div class="footer-mark">
       <a href="https://twitch.tv/AGoodPete" target="_blank" rel="noopener">AGoodPete on Twitch</a>
       <span class="sep">·</span>
-      <a href="https://github.com/QuirkyGoose/Petepics" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/QuirkyGoose/PeteGen" target="_blank" rel="noopener">GitHub</a>
     </div>
   </footer>
 </div>
@@ -2873,6 +3040,20 @@
     <div class="slideshow-caption-meta" id="slideshowCaptionMeta">—</div>
   </div>
   <div class="slideshow-progress"><div class="slideshow-progress-fill" id="slideshowProgressFill"></div></div>
+</div>
+
+
+<!-- Command Palette (Cmd+K) -->
+<div class="command-palette" id="commandPalette" aria-hidden="true">
+  <div class="command-palette-backdrop" id="commandPaletteBackdrop"></div>
+  <div class="command-palette-modal" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="command-palette-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input class="command-palette-input" id="commandPaletteInput" type="text" placeholder="Search collections, artworks, friends..." autocomplete="off" spellcheck="false" />
+      <span class="command-palette-kbd">ESC</span>
+    </div>
+    <div class="command-palette-list" id="commandPaletteList"></div>
+  </div>
 </div>
 
 <script src="./gallery-data.js"></script>
