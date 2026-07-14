@@ -302,31 +302,150 @@
     if (!navMenu) return;
     var counts = {};
     ROOMS.forEach(function (r) {
-      counts[r.id] = (r.id==='nacky'?48:(WORKS_BY_ROOM[r.id]||[]).length);
+      if (r.id === 'nacky') {
+        counts[r.id] = 48; // curated selection
+      } else {
+        counts[r.id] = (WORKS_BY_ROOM[r.id] || []).length;
+      }
     });
-    counts.all = ARTWORKS.length; counts.favourites = 0;
+    counts.all = ARTWORKS.length;
+    counts.favourites = 0; // no favourites store in this build
+
+    // Section: Collections (the 5 real rooms)
     var collectionsHtml = ROOMS.map(function (r) {
       var isActive = currentRoomId() === r.id;
-      return '<button class="nav-dropdown-item' + (isActive ? ' is-active' : '') + '" style="--dot-color: ' + r.hex + ';" data-room="' + escapeHtml(r.id) + '" role="option" aria-selected="' + (isActive ? 'true' : 'false') + '"><span class="nav-dot"></span><span class="nav-item-name">' + escapeHtml(r.name) + '</span><span class="nav-item-tag">' + escapeHtml(r.tagline) + '</span><span class="nav-item-count">' + counts[r.id] + '</span>' + SVG_ICONS.check + '</button>';
+      return '<button class="nav-dropdown-item' + (isActive ? ' is-active' : '') + '" ' +
+        'style="--dot-color: ' + r.hex + ';" ' +
+        'data-room="' + escapeHtml(r.id) + '" role="option" ' +
+        'aria-selected="' + (isActive ? 'true' : 'false') + '">' +
+        '<span class="nav-dot"></span>' +
+        '<span class="nav-item-name">' + escapeHtml(r.name) + '</span>' +
+        '<span class="nav-item-tag">' + escapeHtml(r.tagline) + '</span>' +
+        '<span class="nav-item-count">' + counts[r.id] + '</span>' +
+        SVG_ICONS.check +
+      '</button>';
     }).join('');
+
+    // Section: Virtual (All Works + Favourites)
     var virtualHtml = NAV_VIRTUAL.map(function (r) {
       var isActive = currentRoomId() === r.id;
       var icon = SVG_ICONS[r.icon] || '';
-      return '<button class="nav-dropdown-item' + (isActive ? ' is-active' : '') + '" style="--dot-color: ' + r.hex + ';" data-room="' + escapeHtml(r.id) + '" role="option" aria-selected="' + (isActive ? 'true' : 'false') + '">' + icon + '<span class="nav-item-name">' + escapeHtml(r.name) + '</span><span class="nav-item-tag">' + escapeHtml(r.tagline) + '</span><span class="nav-item-count">' + counts[r.id] + '</span>' + SVG_ICONS.check + '</button>';
+      return '<button class="nav-dropdown-item' + (isActive ? ' is-active' : '') + '" ' +
+        'style="--dot-color: ' + r.hex + ';" ' +
+        'data-room="' + escapeHtml(r.id) + '" role="option" ' +
+        'aria-selected="' + (isActive ? 'true' : 'false') + '">' +
+        icon +
+        '<span class="nav-item-name">' + escapeHtml(r.name) + '</span>' +
+        '<span class="nav-item-tag">' + escapeHtml(r.tagline) + '</span>' +
+        '<span class="nav-item-count">' + counts[r.id] + '</span>' +
+        SVG_ICONS.check +
+      '</button>';
     }).join('');
+
+    // Section: Landing
     var landingActive = currentRouteName() === 'landing';
-    var landingHtml = '<button class="nav-dropdown-item' + (landingActive ? ' is-active' : '') + '" style="--dot-color: #ffffff;" data-room="__landing" role="option" aria-selected="' + (landingActive ? 'true' : 'false') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span class="nav-item-name">The Vault</span><span class="nav-item-tag">Landing &amp; overview</span><span class="nav-item-count">' + ARTWORKS.length + '</span>' + SVG_ICONS.check + '</button>';
+    var landingHtml = '<button class="nav-dropdown-item' + (landingActive ? ' is-active' : '') + '" ' +
+      'style="--dot-color: #ffffff;" ' +
+      'data-room="__landing" role="option" ' +
+      'aria-selected="' + (landingActive ? 'true' : 'false') + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>' +
+      '<span class="nav-item-name">The Vault</span>' +
+      '<span class="nav-item-tag">Landing &amp; overview</span>' +
+      '<span class="nav-item-count">' + ARTWORKS.length + '</span>' +
+      SVG_ICONS.check +
+    '</button>';
+
+    // Section: Schedule + Friends (site pages)
     var scheduleActive = currentRouteName() === 'schedule';
     var friendsActive = currentRouteName() === 'friends';
     var shopActive = currentRouteName() === 'shop';
-    var pagesHtml = '<button class="nav-dropdown-item' + (scheduleActive ? ' is-active' : '') + '" style="--dot-color: var(--amber);" data-room="__schedule" role="option" aria-selected="' + (scheduleActive ? 'true' : 'false') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span class="nav-item-name">Schedule</span><span class="nav-item-tag">Weekly stream times</span><span class="nav-item-count">7</span>' + SVG_ICONS.check + '</button>' +
-      '<button class="nav-dropdown-item' + (friendsActive ? ' is-active' : '') + '" style="--dot-color: var(--rose);" data-room="__friends" role="option" aria-selected="' + (friendsActive ? 'true' : 'false') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span class="nav-item-name">Friends</span><span class="nav-item-tag">Pete\'s collaborators</span><span class="nav-item-count">' + (typeof FRIENDS !== "undefined" && FRIENDS ? FRIENDS.length : 0) + '</span>' + SVG_ICONS.check + '</button>' +
-      '<button class="nav-dropdown-item' + (shopActive ? ' is-active' : '') + '" style="--dot-color: var(--sage);" data-room="__shop" role="option" aria-selected="' + (shopActive ? 'true' : 'false') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg><span class="nav-item-name">Shop</span><span class="nav-item-tag">Official merch on Fourthwall</span>' + SVG_ICONS.check + '</button>' +
-      '<button class="nav-dropdown-item" style="--dot-color: var(--t3);" data-room="__admin" role="option" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span class="nav-item-name">Admin</span><span class="nav-item-tag">Password-protected editor</span>' + SVG_ICONS.check + '</button>';
-    var rvList = loadRecentlyViewed(); var rvHtml=''; if(rvList.length>0){var rvItems=rvList.map(function(w){return '<a class="nav-dropdown-rv-item" href="#/artwork/'+encodeURIComponent(w.id)+'" title="'+escapeHtml(w.title)+'"><img src="'+escapeHtml(w.thumbUrl)+'" alt="'+escapeHtml(w.title)+'" loading="lazy" referrerpolicy="no-referrer" /><div class="rv-tooltip">'+escapeHtml(w.title)+'</div></a>';}).join(''); rvHtml='<div class="nav-dropdown-section" style="margin-top: 6px;">Recently Viewed</div><div class="nav-dropdown-rv-section"><div class="nav-dropdown-rv-grid">'+rvItems+'</div></div>';}
-    var friendsLiveHtml=''; if(typeof FRIENDS!=='undefined'&&FRIENDS&&FRIENDS.length){var liveCount=0; for(var fi=0;fi<FRIENDS.length;fi++){var fh=(FRIENDS[fi].handle||'').toLowerCase(); if(typeof FRIENDS_LIVE!=='undefined'&&FRIENDS_LIVE[fh]==='live') liveCount++;} var friendsItems=FRIENDS.map(function(f){var handle=(f.handle||'').toLowerCase(); var state=(typeof FRIENDS_LIVE!=='undefined'&&FRIENDS_LIVE[handle])?FRIENDS_LIVE[handle]:'unknown'; var isLive=state==='live'; return '<button class="nav-dropdown-item'+(isLive?' is-live':'')+'" data-friend="'+escapeHtml(handle)+'" style="--dot-color:'+(isLive?'var(--ok)':'var(--t3)')+';" role="option"><span class="nav-live-dot'+(isLive?' is-live':'')+'"></span><span class="nav-item-name">'+escapeHtml(f.name)+'</span><span class="nav-item-tag">'+escapeHtml(isLive?'Live now on Twitch':(f.desc||'twitch.tv/'+handle))+'</span>'+(isLive?'<span class="nav-item-live-badge">Live</span>':'<span class="nav-item-count">\u2197</span>')+'</button>';}).join(''); friendsLiveHtml='<div class="nav-dropdown-section" style="margin-top: 6px;">Friends'+(liveCount?'<span class="live-count">'+liveCount+' live</span>':'')+'</div>'+friendsItems;}
-    navMenu.innerHTML='<div class="nav-dropdown-section">Collections</div>'+collectionsHtml+'<div class="nav-dropdown-section" style="margin-top: 6px;">Browse</div>'+virtualHtml+'<div class="nav-dropdown-section" style="margin-top: 6px;">Site</div>'+pagesHtml+friendsLiveHtml+rvHtml+'<div class="nav-dropdown-section" style="margin-top: 6px;">Home</div>'+landingHtml;
-    navMenu.querySelectorAll('.nav-dropdown-item').forEach(function (btn) { btn.addEventListener('click', function () { var room = btn.getAttribute('data-room'); var friend = btn.getAttribute('data-friend'); if (friend) { closeNavDropdown(); window.open('https://twitch.tv/' + friend, '_blank', 'noopener'); return; } closeNavDropdown(); if (room === '__landing') { navigate(''); } else if (room === '__schedule') { navigate('#/schedule'); } else if (room === '__friends') { navigate('#/friends'); } else if (room === '__shop') { navigate('#/shop'); } else if (room === '__admin') { window.location.href = './admin.html'; } else { navigate('#/gallery/' + room); } }); }); syncNavTriggerLabel();
+    var pagesHtml =
+      '<button class="nav-dropdown-item' + (scheduleActive ? ' is-active' : '') + '" ' +
+        'style="--dot-color: var(--amber);" ' +
+        'data-room="__schedule" role="option" ' +
+        'aria-selected="' + (scheduleActive ? 'true' : 'false') + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>' +
+        '<span class="nav-item-name">Schedule</span>' +
+        '<span class="nav-item-tag">Weekly stream times</span>' +
+        '<span class="nav-item-count">7</span>' +
+        SVG_ICONS.check +
+      '</button>' +
+      '<button class="nav-dropdown-item' + (friendsActive ? ' is-active' : '') + '" ' +
+        'style="--dot-color: var(--rose);" ' +
+        'data-room="__friends" role="option" ' +
+        'aria-selected="' + (friendsActive ? 'true' : 'false') + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>' +
+        '<span class="nav-item-name">Friends</span>' +
+        '<span class="nav-item-tag">Pete\'s collaborators</span>' +
+        '<span class="nav-item-count">' + (FRIENDS || []).length + '</span>' +
+        SVG_ICONS.check +
+      '</button>' +
+      '<button class="nav-dropdown-item' + (shopActive ? ' is-active' : '') + '" ' +
+        'style="--dot-color: var(--sage);" ' +
+        'data-room="__shop" role="option" ' +
+        'aria-selected="' + (shopActive ? 'true' : 'false') + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>' +
+        '<span class="nav-item-name">Shop</span>' +
+        '<span class="nav-item-tag">Official merch on Fourthwall</span>' +
+        SVG_ICONS.check +
+      '</button>' +
+      '<button class="nav-dropdown-item" ' +
+        'style="--dot-color: var(--t3);" ' +
+        'data-room="__admin" role="option" ' +
+        'aria-selected="false">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' +
+        '<span class="nav-item-name">Admin</span>' +
+        '<span class="nav-item-tag">Password-protected editor</span>' +
+        SVG_ICONS.check +
+      '</button>';
+
+    // Build recently viewed section (only if there are items)
+    var rvList = loadRecentlyViewed();
+    var rvHtml = '';
+    if (rvList.length > 0) {
+      var rvItems = rvList.map(function (w) {
+        return '<a class="nav-dropdown-rv-item" href="#/artwork/' + encodeURIComponent(w.id) + '" title="' + escapeHtml(w.title) + '">' +
+          '<img src="' + escapeHtml(w.thumbUrl) + '" alt="' + escapeHtml(w.title) + '" loading="lazy" referrerpolicy="no-referrer" />' +
+          '<div class="rv-tooltip">' + escapeHtml(w.title) + '</div>' +
+        '</a>';
+      }).join('');
+      rvHtml = '<div class="nav-dropdown-section" style="margin-top: 6px;">Recently Viewed</div>' +
+        '<div class="nav-dropdown-rv-section"><div class="nav-dropdown-rv-grid">' + rvItems + '</div></div>';
+    }
+
+    navMenu.innerHTML =
+      '<div class="nav-dropdown-section">Collections</div>' +
+      collectionsHtml +
+      '<div class="nav-dropdown-section" style="margin-top: 6px;">Browse</div>' +
+      virtualHtml +
+      '<div class="nav-dropdown-section" style="margin-top: 6px;">Site</div>' +
+      pagesHtml +
+      rvHtml +
+      '<div class="nav-dropdown-section" style="margin-top: 6px;">Home</div>' +
+      landingHtml;
+
+    // Wire up item clicks
+    navMenu.querySelectorAll('.nav-dropdown-item').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var room = btn.getAttribute('data-room');
+        closeNavDropdown();
+        if (room === '__landing') {
+          navigate('');
+        } else if (room === '__schedule') {
+          navigate('#/schedule');
+        } else if (room === '__friends') {
+          navigate('#/friends');
+        } else if (room === '__shop') {
+          navigate('#/shop');
+        } else if (room === '__admin') {
+          window.location.href = './admin.html';
+        } else {
+          navigate('#/gallery/' + room);
+        }
+      });
+    });
+
+    syncNavTriggerLabel();
   }
 
   function currentRouteName() {
