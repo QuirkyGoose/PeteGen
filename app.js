@@ -122,7 +122,6 @@
     if (parts[0] === 'friends') return { name: 'friends' };
     if (parts[0] === 'shop') return { name: 'shop' };
     if (parts[0] === 'search') return { name: 'search', query: decodeURIComponent(parts[1] || '') };
-    if (parts[0] === 'admin') return { name: 'admin' };
     return { name: 'landing' };
   }
 
@@ -172,11 +171,6 @@
     } else if (route.name === 'search') {
       footerEl.style.display = 'none';
       renderSearch(route.query);
-    } else if (route.name === 'admin') {
-      window.location.href = 'admin.html';
-      return;
-    }
-
     // Show/hide the back button based on route
     updateBackButton(route);
 
@@ -437,8 +431,6 @@
           navigate('#/friends');
         } else if (room === '__shop') {
           navigate('#/shop');
-        } else if (room === '__admin') {
-          window.location.href = './admin.html';
         } else {
           navigate('#/gallery/' + room);
         }
@@ -2303,52 +2295,6 @@
     setTimeout(resize, 500);
     setTimeout(resize, 1500);
   });
-
-
-  // ====================================================================
-  // FRIENDS LIVE DOTS
-  // ====================================================================
-  var FRIENDS_LIVE = {};
-  var FRIENDS_LIVE_CHECK_INTERVAL = 5 * 60 * 1000;
-  function fetchTwitchState(handle) {
-    var url = 'https://decapi.me/twitch/uptime/' + encodeURIComponent(handle.toLowerCase());
-    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timeoutId = null;
-    if (controller) timeoutId = setTimeout(function(){ try{ controller.abort(); }catch(e){} }, 5000);
-    var opts = controller ? { signal: controller.signal, cache: 'no-store' } : { cache: 'no-store' };
-    return fetch(url, opts).then(function(r){ if(timeoutId) clearTimeout(timeoutId); if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }).then(function(t){ t=(t||'').toLowerCase(); return t.indexOf('offline')!==-1?'offline':'live'; }).catch(function(){ if(timeoutId) clearTimeout(timeoutId); return 'offline'; });
-  }
-  function checkAllFriendsLive() {
-    if (typeof FRIENDS === 'undefined' || !FRIENDS || !FRIENDS.length) return;
-    var queue = FRIENDS.slice(); var i=0;
-    function nextBatch(){ var batch=queue.slice(i,i+3); if(!batch.length){ try{ buildNavDropdown(); }catch(e){} var r=parseRoute(); if(r.name==='friends'){ try{ renderFriends(); }catch(e){} } return; } Promise.all(batch.map(function(f){ var h=(f.handle||'').toLowerCase(); if(!h) return Promise.resolve(); return fetchTwitchState(h).then(function(s){ FRIENDS_LIVE[h]=s; }); })).then(function(){ i+=3; setTimeout(nextBatch,800); }); }
-    nextBatch();
-  }
-  var _origLoadConfigData = loadConfigData;
-  loadConfigData = function(){ return _origLoadConfigData.apply(this, arguments).then(function(res){ if(FRIENDS&&FRIENDS.length&&Object.keys(FRIENDS_LIVE).length===0){ setTimeout(checkAllFriendsLive,1200); } return res; }); };
-  setInterval(checkAllFriendsLive, FRIENDS_LIVE_CHECK_INTERVAL);
-  if (navTrigger) { navTrigger.addEventListener('click', function(){ setTimeout(function(){ if(navDropdown&&navDropdown.classList.contains('open')){ checkAllFriendsLive(); } },50); }); }
-
-  // ====================================================================
-  // COMMAND PALETTE (Cmd+K / Ctrl+K)
-  // ====================================================================
-  var commandPalette = document.getElementById('commandPalette');
-  var commandPaletteInput = document.getElementById('commandPaletteInput');
-  var commandPaletteList = document.getElementById('commandPaletteList');
-  var commandPaletteBackdrop = document.getElementById('commandPaletteBackdrop');
-  var paletteOpen = false; var paletteSelected = 0; var paletteResults = [];
-  function openCommandPalette(){ if(!commandPalette) return; commandPalette.classList.add('open'); commandPalette.setAttribute('aria-hidden','false'); paletteOpen=true; paletteSelected=0; if(commandPaletteInput){ commandPaletteInput.value=''; setTimeout(function(){ commandPaletteInput.focus(); },30); } buildAndRenderPalette(''); document.body.style.overflow='hidden'; }
-  function closeCommandPalette(){ if(!commandPalette) return; commandPalette.classList.remove('open'); commandPalette.setAttribute('aria-hidden','true'); paletteOpen=false; document.body.style.overflow=''; if(commandPaletteInput) commandPaletteInput.blur(); }
-  function buildBaseCommands(){ var cmds=[]; cmds.push({id:'home',label:'The Vault',sub:'Landing & overview',icon:'home',action:function(){navigate('');}}); cmds.push({id:'all',label:'All Works',sub:ARTWORKS.length+' works',icon:'grid',action:function(){navigate('#/gallery/all');}}); ROOMS.forEach(function(r){ cmds.push({id:'room-'+r.id,label:r.name,sub:r.tagline,icon:'dot',color:r.hex,action:(function(rid){return function(){navigate('#/gallery/'+rid);};})(r.id)}); }); cmds.push({id:'schedule',label:'Schedule',sub:'Weekly stream times',icon:'cal',action:function(){navigate('#/schedule');}}); cmds.push({id:'friends',label:'Friends',sub:(FRIENDS?FRIENDS.length:0)+' collaborators',icon:'users',action:function(){navigate('#/friends');}}); cmds.push({id:'shop',label:'Shop',sub:'Official merch',icon:'shop',action:function(){navigate('#/shop');}}); cmds.push({id:'random',label:'Surprise me',sub:'Random Pete Pic (R)',icon:'shuffle',action:function(){navigateToRandom();}}); cmds.push({id:'slideshow',label:'Start slideshow',sub:'Press S',icon:'play',action:function(){if(typeof startSlideshowFromCurrentGallery==='function') startSlideshowFromCurrentGallery();}}); if(typeof FRIENDS!=='undefined'&&FRIENDS){ FRIENDS.forEach(function(f){ var h=(f.handle||'').toLowerCase(); var live=FRIENDS_LIVE[h]==='live'; cmds.push({id:'friend-'+h,label:f.name,sub:(live?'Live now \u00b7 ':'')+(f.desc||'twitch.tv/'+h),icon:live?'live':'user',action:(function(handle){return function(){ window.open('https://twitch.tv/'+handle,'_blank','noopener'); };})(h)}); }); } if(typeof SCHEDULE!=='undefined'&&SCHEDULE){ SCHEDULE.forEach(function(day){ (day.shows||[]).forEach(function(show){ cmds.push({id:'show-'+day.day+'-'+show.title,label:show.title,sub:day.day+' \u00b7 '+show.time,icon:'cal',action:function(){navigate('#/schedule');}}); }); }); } return cmds; }
-  function buildAndRenderPalette(q){ q=(q||'').trim().toLowerCase(); var base=buildBaseCommands(); var res=[]; if(!q){ res=base.slice(0,14); var recent=loadRecentlyViewed().slice(0,4).map(function(w){ return {id:'recent-'+w.id,label:w.title,sub:'Recently viewed \u00b7 '+(w.galleryName||''),icon:'image',action:(function(id){return function(){navigate('#/artwork/'+encodeURIComponent(id));};})(w.id)}; }); res=res.concat(recent); } else { res=base.filter(function(c){ return c.label.toLowerCase().indexOf(q)!==-1 || (c.sub&&c.sub.toLowerCase().indexOf(q)!==-1); }).slice(0,8); var arts=ARTWORKS.filter(function(w){ var t=(w.title||'').toLowerCase(); var g=(w.galleryName||'').toLowerCase(); return t.indexOf(q)!==-1||g.indexOf(q)!==-1; }).slice(0,10).map(function(w){ return {id:'art-'+w.id,label:w.title||'Untitled',sub:(w.galleryName||'')+' \u00b7 '+w.id,icon:'image',thumb:w.thumbUrl||w.imageUrl,action:(function(id){return function(){navigate('#/artwork/'+encodeURIComponent(id));};})(w.id)}; }); res=res.concat(arts); } paletteResults=res; paletteSelected=0; renderPaletteList(); }
-  function renderPaletteList(){ if(!commandPaletteList) return; if(!paletteResults.length){ commandPaletteList.innerHTML='<div class="cmd-empty">No results for &ldquo;'+escapeHtml(commandPaletteInput?commandPaletteInput.value:'')+'&rdquo;</div>'; return; } var html=paletteResults.map(function(item,idx){ var isSel=idx===paletteSelected; var iconHtml=''; if(item.thumb){ iconHtml='<div class="cmd-icon" style="padding:0;overflow:hidden;"><img src="'+escapeHtml(item.thumb)+'" alt="" style="width:100%;height:100%;object-fit:cover;" loading="lazy" referrerpolicy="no-referrer"></div>'; } else if(item.icon==='live'){ iconHtml='<div class="cmd-icon live"><span class="nav-live-dot is-live"></span></div>'; } else { var svg='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'; iconHtml='<div class="cmd-icon">'+svg+'</div>'; } return '<div class="cmd-item'+(isSel?' is-selected':'')+'" data-idx="'+idx+'">'+iconHtml+'<div class="cmd-text"><div class="cmd-label">'+escapeHtml(item.label)+'</div><div class="cmd-sub">'+escapeHtml(item.sub||'')+'</div></div><div class="cmd-shortcut">\u21a9</div></div>'; }).join(''); commandPaletteList.innerHTML=html; var sel=commandPaletteList.querySelector('.cmd-item.is-selected'); if(sel) sel.scrollIntoView({block:'nearest'}); }
-  function executePaletteSelection(){ var it=paletteResults[paletteSelected]; if(!it) return; closeCommandPalette(); setTimeout(function(){ try{ it.action(); }catch(e){ console.error(e);} },60); }
-  if(commandPaletteBackdrop){ commandPaletteBackdrop.addEventListener('click', closeCommandPalette); }
-  if(commandPaletteInput){ commandPaletteInput.addEventListener('input', function(){ buildAndRenderPalette(this.value); }); commandPaletteInput.addEventListener('keydown', function(e){ if(e.key==='ArrowDown'){ e.preventDefault(); paletteSelected=Math.min(paletteSelected+1,paletteResults.length-1); renderPaletteList(); } else if(e.key==='ArrowUp'){ e.preventDefault(); paletteSelected=Math.max(paletteSelected-1,0); renderPaletteList(); } else if(e.key==='Enter'){ e.preventDefault(); executePaletteSelection(); } else if(e.key==='Escape'){ e.preventDefault(); closeCommandPalette(); } }); }
-  if(commandPaletteList){ commandPaletteList.addEventListener('click', function(e){ var it=e.target.closest('.cmd-item'); if(!it) return; var idx=parseInt(it.getAttribute('data-idx'),10); if(!isNaN(idx)){ paletteSelected=idx; executePaletteSelection(); } }); }
-  document.addEventListener('keydown', function(e){ var isK=(e.key==='k'||e.key==='K'); var mod=e.metaKey||e.ctrlKey; if(mod&&isK){ var tag=(e.target.tagName||'').toLowerCase(); if((tag==='input'||tag==='textarea'||tag==='select')&&e.target!==commandPaletteInput) return; e.preventDefault(); if(paletteOpen) closeCommandPalette(); else openCommandPalette(); return; } if(e.key==='Escape'&&paletteOpen){ e.preventDefault(); closeCommandPalette(); } });
-  window.openCommandPalette=openCommandPalette;
-
 
   // ====================================================================
   // SECRET THEME — KILL WHA MODE
