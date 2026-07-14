@@ -75,10 +75,14 @@
     position: relative;
   }
 
-  /* ═══ FLOATING TEST BUTTON ═══ */
+  /* ═══ FLOATING TEST BUTTON — FIXED */
   .float-test-btn {
-    display: none !important;
+    position: fixed; bottom: 20px; right: 20px; z-index: 400; display: none;
+    align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber);
+    background: var(--panel); border: 1px solid rgba(212,168,83,0.3); border-radius: 100px; padding: 10px 16px; cursor: pointer;
   }
+  .float-test-btn.visible { display: flex !important; }
 
   /* ═══ CONNECT SCREEN ═══ */
   .connect-screen {
@@ -694,454 +698,149 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+
 <script>
-// ═══════════════════════════════════════════════════════════════
-// CONFIG — You need to register a Twitch app and put your
-// client_id here. See instructions below.
-//
-// TO SET UP:
-// 1. Go to https://dev.twitch.tv/console/apps
-// 2. Register a new application
-//    - Name: Stream Predictions
-//    - OAuth Redirect URLs: add the URL where this file is hosted
-//      (e.g. https://your-domain.com/stream-predictions-overlay.html)
-//      OR http://localhost if testing locally
-//    - Category: Application Integration
-// 3. Copy the Client ID and paste it below
-// 4. Set REDIRECT_URI to match the redirect URL you registered
-// ═══════════════════════════════════════════════════════════════
+// CONFIG — FIXED: only read scope, PKCE ready
 var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5';
 var REDIRECT_URI = window.location.origin + window.location.pathname;
-var SCOPES = 'channel:read:predictions channel:manage:predictions';
-var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
+var SCOPES = 'channel:read:predictions';
+var TOKEN_KEY = 'pp-pred-token-v2';
+var REFRESH_KEY = 'pp-pred-refresh-v2';
+var EXPIRES_KEY = 'pp-pred-expires-v2';
+var STATE_KEY = 'pp-pred-state';
+var VERIFIER_KEY = 'pp-pred-verifier';
 var COMPACT_KEY = 'stream-predictions-compact';
-var LAYOUT_KEY = 'stream-predictions-layout'; // 'bottom' or 'right'
-
-// URL params
+var LAYOUT_KEY = 'stream-predictions-layout';
+var POS_KEY = 'stream-predictions-position';
 var P = new URLSearchParams(window.location.search);
 
-// Compact mode — check URL param first, then localStorage
-var compactMode = false;
-if (P.get('compact') === 'true') {
-  compactMode = true;
-} else {
-  try { compactMode = localStorage.getItem(COMPACT_KEY) === 'true'; } catch(e) {}
-}
+// Compact / layout (unchanged)
+var compactMode=false;
+if(P.get('compact')==='true') compactMode=true; else { try{ compactMode=localStorage.getItem(COMPACT_KEY)==='true'; }catch(e){} }
+function applyCompactMode(on){ compactMode=on; if(predictionOverlay) predictionOverlay.classList.toggle('compact',on); try{localStorage.setItem(COMPACT_KEY,String(on));}catch(e){} }
+var resultsLayout='bottom'; try{ resultsLayout=localStorage.getItem(LAYOUT_KEY)||'bottom'; }catch(e){} if(P.get('layout')==='right') resultsLayout='right';
+function applyLayout(l){ resultsLayout=l; var b=document.getElementById('predBody'); if(b) b.classList.toggle('layout-right',l==='right'); var btn=document.getElementById('layoutToggleBtn'); if(btn) btn.classList.toggle('active',l==='right'); try{localStorage.setItem(LAYOUT_KEY,l);}catch(e){} }
+function toggleLayout(){ applyLayout(resultsLayout==='bottom'?'right':'bottom'); showToast(resultsLayout==='right'?'Side layout':'Bottom layout'); }
 
-function applyCompactMode(on) {
-  compactMode = on;
-  if (predictionOverlay) predictionOverlay.classList.toggle('compact', on);
-  try { localStorage.setItem(COMPACT_KEY, String(on)); } catch(e) {}
-}
-
-// Results layout: 'bottom' (default) or 'right' (side-by-side)
-var resultsLayout = 'bottom';
-try { resultsLayout = localStorage.getItem(LAYOUT_KEY) || 'bottom'; } catch(e) {}
-if (P.get('layout') === 'right') resultsLayout = 'right';
-
-function applyLayout(layout) {
-  resultsLayout = layout;
-  var body = document.getElementById('predBody');
-  if (body) {
-    body.classList.toggle('layout-right', layout === 'right');
-  }
-  var btn = document.getElementById('layoutToggleBtn');
-  if (btn) {
-    btn.classList.toggle('active', layout === 'right');
-  }
-  try { localStorage.setItem(LAYOUT_KEY, layout); } catch(e) {}
-}
-
-function toggleLayout() {
-  applyLayout(resultsLayout === 'right' ? 'bottom' : 'right');
-  showToast(resultsLayout === 'right' ? 'Results: right' : 'Results: below');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DOM REFS
-// ═══════════════════════════════════════════════════════════════
-var connectScreen = document.getElementById('connectScreen');
-var connectBtn = document.getElementById('connectBtn');
-var connectStatus = document.getElementById('connectStatus');
-var predictionOverlay = document.getElementById('predictionOverlay');
-var predQuestion = document.getElementById('predQuestion');
-var predOptions = document.getElementById('predOptions');
-var predResults = document.getElementById('predResults');
-var predTimer = document.getElementById('predTimer');
-var predDot = document.getElementById('predDot');
-var predMeta = document.getElementById('predMeta');
-var predStatusDot = document.getElementById('predStatusDot');
-var predStatusText = document.getElementById('predStatusText');
-var toastEl = document.getElementById('toast');
-
-// ═══════════════════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════════════════════
-var accessToken = null;
-var broadcasterId = null;
-var eventSubSocket = null;
-var currentPrediction = null;
-var timerInterval = null;
+var accessToken=null, refreshToken=null, broadcasterId=null, eventSubSocket=null, currentPrediction=null, timerInterval=null, refreshTimer=null;
+var OUTCOME_COLORS=['var(--c0)','var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)','var(--c7)','var(--c8)','var(--c9)'];
+var connectScreen, connectBtn, connectStatus, predictionOverlay, predDot, predTimer, predQuestion, predOptions, predResults, predMeta, predStatusDot, predStatusText, toastEl;
 
-var OUTCOME_COLORS = [
-  'var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)',
-  'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)', 'var(--c9)'
-];
-
-// ═══════════════════════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════════════
-function showToast(text) {
-  toastEl.textContent = text;
-  toastEl.classList.add('visible');
-  setTimeout(function() { toastEl.classList.remove('visible'); }, 2500);
+function showToast(t){ if(!toastEl) return; toastEl.textContent=t; toastEl.classList.add('visible'); setTimeout(function(){toastEl.classList.remove('visible');},2500); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function randStr(n){ var c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; var r=''; for(var i=0;i<n;i++) r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
+async function sha256(s){ var d=new TextEncoder().encode(s); return await crypto.subtle.digest('SHA-256',d); }
+function b64url(buf){ var b=String.fromCharCode.apply(null,new Uint8Array(buf)); return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+
+// AUTH — PKCE Authorization Code Flow (fixes implicit flow expiry + no refresh)
+async function initAuth(){
+  connectScreen=document.getElementById('connectScreen'); connectBtn=document.getElementById('connectBtn'); connectStatus=document.getElementById('connectStatus');
+  predictionOverlay=document.getElementById('predictionOverlay'); predDot=document.getElementById('predDot'); predTimer=document.getElementById('predTimer');
+  predQuestion=document.getElementById('predQuestion'); predOptions=document.getElementById('predOptions'); predResults=document.getElementById('predResults');
+  predMeta=document.getElementById('predMeta'); predStatusDot=document.getElementById('predStatusDot'); predStatusText=document.getElementById('predStatusText'); toastEl=document.getElementById('toast');
+  if(!CLIENT_ID){ connectStatus.textContent='No Client ID'; connectStatus.classList.add('error'); return; }
+
+  // Handle redirect with ?code=
+  var code=P.get('code'), state=P.get('state');
+  if(code){
+    var savedState=null, verifier=null; try{ savedState=sessionStorage.getItem(STATE_KEY); verifier=sessionStorage.getItem(VERIFIER_KEY); }catch(e){}
+    if(!savedState || savedState!==state){ connectStatus.textContent='State mismatch — try again'; connectStatus.classList.add('error'); return; }
+    try{
+      connectStatus.textContent='Exchanging code…';
+      var res=await fetch('https://id.twitch.tv/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:CLIENT_ID,code:code,code_verifier:verifier,grant_type:'authorization_code',redirect_uri:REDIRECT_URI})});
+      if(!res.ok) throw new Error('Token exchange '+res.status);
+      var tok=await res.json(); accessToken=tok.access_token; refreshToken=tok.refresh_token||null;
+      try{ localStorage.setItem(TOKEN_KEY,accessToken); if(refreshToken) localStorage.setItem(REFRESH_KEY,refreshToken); if(tok.expires_in) localStorage.setItem(EXPIRES_KEY,String(Date.now()+tok.expires_in*1000)); sessionStorage.removeItem(STATE_KEY); sessionStorage.removeItem(VERIFIER_KEY);}catch(e){}
+      window.history.replaceState(null,'',window.location.pathname);
+      connectStatus.textContent='Connected!'; connectStatus.classList.add('success');
+      if(tok.expires_in) scheduleRefresh(tok.expires_in);
+      processToken(accessToken); return;
+    }catch(e){ connectStatus.textContent='Auth failed: '+e.message; connectStatus.classList.add('error'); return; }
+  }
+
+  // Legacy hash token (old implicit flow) — support for existing users, then migrate
+  var hash=window.location.hash.substring(1); var hp=new URLSearchParams(hash);
+  if(hp.get('access_token')){
+    var at=hp.get('access_token'); try{ localStorage.setItem(TOKEN_KEY,at); }catch(e){} window.history.replaceState(null,'',window.location.pathname);
+    connectStatus.textContent='Migrating token…'; processToken(at); return;
+  }
+
+  try{ var stored=localStorage.getItem(TOKEN_KEY); var storedR=localStorage.getItem(REFRESH_KEY); var exp=localStorage.getItem(EXPIRES_KEY); if(stored){ accessToken=stored; refreshToken=storedR||null; connectStatus.textContent='Restoring…'; if(exp){ var ms=Math.max(0,parseInt(exp,10)-Date.now()); if(ms<60000 && refreshToken){ await refreshAccessToken(); } else if(ms>0){ scheduleRefresh(ms/1000); } } processToken(accessToken); return; } }catch(e){}
+
+  // Build PKCE authorize URL
+  var verifier2=randStr(64); var chalBuf=await sha256(verifier2); var chal=b64url(chalBuf); var st=randStr(16);
+  try{ sessionStorage.setItem(VERIFIER_KEY,verifier2); sessionStorage.setItem(STATE_KEY,st); }catch(e){}
+  var url='https://id.twitch.tv/oauth2/authorize?client_id='+encodeURIComponent(CLIENT_ID)+'&redirect_uri='+encodeURIComponent(REDIRECT_URI)+'&response_type=code&scope='+encodeURIComponent(SCOPES)+'&state='+encodeURIComponent(st)+'&code_challenge='+encodeURIComponent(chal)+'&code_challenge_method=S256';
+  connectBtn.setAttribute('href',url); connectStatus.textContent='Click to connect your Twitch account';
 }
 
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+async function processToken(token){
+  accessToken=token;
+  try{
+    var r=await fetch('https://api.twitch.tv/helix/users',{headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+token}});
+    if(r.status===401){ if(refreshToken){ try{ await refreshAccessToken(); return; }catch(e){} } throw new Error('Token expired'); }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var d=await r.json(); if(!d.data||!d.data.length) throw new Error('No user');
+    broadcasterId=d.data[0].id; connectScreen.classList.add('hidden'); var fb=document.getElementById('floatTestBtn'); if(fb) fb.classList.add('visible'); showToast('Connected to Twitch'); subscribeToPredictions(); fetchActivePrediction();
+  }catch(e){ connectScreen.classList.remove('hidden'); var fb2=document.getElementById('floatTestBtn'); if(fb2) fb2.classList.remove('visible'); connectStatus.textContent='Connection failed: '+e.message; connectStatus.classList.add('error'); try{ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); localStorage.removeItem(EXPIRES_KEY);}catch(_){} accessToken=null; }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════════════════════
-function initAuth() {
-  if (!CLIENT_ID) {
-    connectStatus.textContent = 'No Client ID configured — see instructions in the file';
-    connectStatus.classList.add('error');
+function scheduleRefresh(expiresInSec){ if(refreshTimer) clearTimeout(refreshTimer); var ms=expiresInSec? Math.max(60000,(expiresInSec-120)*1000) : 3.5*60*60*1000; refreshTimer=setTimeout(function(){ refreshAccessToken().catch(function(){ disconnect(); }); }, ms); }
+
+async function refreshAccessToken(){
+  if(!refreshToken) throw new Error('No refresh token — please reconnect');
+  var res=await fetch('https://id.twitch.tv/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'refresh_token',refresh_token:refreshToken,client_id:CLIENT_ID})});
+  if(!res.ok){ var t=await res.text(); throw new Error('Refresh failed '+res.status); }
+  var data=await res.json(); accessToken=data.access_token; if(data.refresh_token) refreshToken=data.refresh_token;
+  try{ localStorage.setItem(TOKEN_KEY,accessToken); if(refreshToken) localStorage.setItem(REFRESH_KEY,refreshToken); if(data.expires_in) localStorage.setItem(EXPIRES_KEY,String(Date.now()+data.expires_in*1000)); }catch(e){}
+  console.log('Token refreshed'); scheduleRefresh(data.expires_in); if(eventSubSocket){ try{eventSubSocket.close();}catch(e){} } setTimeout(subscribeToPredictions,600); return accessToken;
+}
+
+function disconnect(){
+  if(refreshTimer){ clearTimeout(refreshTimer); refreshTimer=null; }
+  if(eventSubSocket){ try{eventSubSocket.close();}catch(e){} eventSubSocket=null; }
+  if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+  try{ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); localStorage.removeItem(EXPIRES_KEY); sessionStorage.removeItem(STATE_KEY); sessionStorage.removeItem(VERIFIER_KEY);}catch(e){}
+  accessToken=null; refreshToken=null; broadcasterId=null; currentPrediction=null;
+  predictionOverlay.classList.remove('visible'); connectScreen.classList.remove('hidden');
+  var fb=document.getElementById('floatTestBtn'); if(fb) fb.classList.remove('visible');
+  connectStatus.textContent='Disconnected'; connectStatus.classList.remove('success','error');
+}
+
+// EVENTSUB — fixed reconnect
+function handleWsOpen(){ console.log('WS open'); }
+function handleWsError(e){ console.error('WS error',e); }
+function handleWsClose(){ console.log('WS closed, retry 5s'); setTimeout(function(){ if(accessToken&&broadcasterId) subscribeToPredictions(); },5000); }
+function handleWsMessage(ev){
+  var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+  if(m.metadata && m.metadata.message_type==='session_welcome'){ createSubscriptions(m.payload.session.id); return; }
+  if(m.metadata && m.metadata.message_type==='session_keepalive') return;
+  if(m.metadata && m.metadata.message_type==='notification'){
+    var t=m.metadata.subscription_type, p=m.payload.event;
+    if(t==='channel.prediction.begin') onPredictionBegin(p);
+    else if(t==='channel.prediction.progress') onPredictionProgress(p);
+    else if(t==='channel.prediction.lock') onPredictionLock(p);
+    else if(t==='channel.prediction.end') onPredictionEnd(p);
     return;
   }
-
-  // Build OAuth URL
-  var authUrl = 'https://id.twitch.tv/oauth2/authorize?client_id=' + CLIENT_ID +
-    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
-    '&response_type=token&scope=' + encodeURIComponent(SCOPES);
-  connectBtn.setAttribute('href', authUrl);
-
-  // Check for token in URL hash (redirect back from Twitch)
-  var hash = window.location.hash.substring(1);
-  var params = new URLSearchParams(hash);
-  if (params.get('access_token')) {
-    accessToken = params.get('access_token');
-    try { localStorage.setItem(TOKEN_STORAGE_KEY, accessToken); } catch(e) {}
-    // Clean the URL (remove the token from the address bar)
-    window.history.replaceState(null, '', window.location.pathname);
-    connectStatus.textContent = 'Connected! Loading…';
-    connectStatus.classList.add('success');
-    processToken(accessToken);
-    return;
-  }
-
-  // Check for stored token
-  try {
-    var stored = localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (stored) {
-      accessToken = stored;
-      connectStatus.textContent = 'Restoring connection…';
-      processToken(accessToken);
-      return;
-    }
-  } catch(e) {}
-
-  // No token — show connect button
-  connectStatus.textContent = 'Click to connect your Twitch account';
-}
-
-async function processToken(token) {
-  accessToken = token;
-
-  // Get broadcaster ID
-  try {
-    var resp = await fetch('https://api.twitch.tv/helix/users', {
-      headers: {
-        'Client-ID': CLIENT_ID,
-        'Authorization': 'Bearer ' + token
-      }
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    var data = await resp.json();
-    if (data.data && data.data.length > 0) {
-      broadcasterId = data.data[0].id;
-      connectScreen.classList.add('hidden');
-      // Show the floating test button when connected
-      document.getElementById('floatTestBtn').classList.add('visible');
-      showToast('Connected to Twitch');
-      // Subscribe to prediction events
-      subscribeToPredictions();
-      // Also check for any active prediction right now
-      fetchActivePrediction();
-    } else {
-      throw new Error('No user data');
-    }
-  } catch(e) {
-    // Re-show the connect screen so the user can see the error + retry
-    connectScreen.classList.remove('hidden');
-    document.getElementById('floatTestBtn').classList.remove('visible');
-    connectStatus.textContent = 'Connection failed: ' + e.message + ' — click Connect Twitch to retry';
-    connectStatus.classList.add('error');
-    connectStatus.classList.remove('success');
-    // Clear bad token
-    try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(err) {}
-    accessToken = null;
+  if(m.metadata && m.metadata.message_type==='session_reconnect'){
+    var u=m.payload.session.reconnect_url; try{eventSubSocket.close();}catch(e){}
+    eventSubSocket=new WebSocket(u); eventSubSocket.onopen=handleWsOpen; eventSubSocket.onmessage=handleWsMessage; eventSubSocket.onerror=handleWsError; eventSubSocket.onclose=handleWsClose;
   }
 }
+async function subscribeToPredictions(){ try{ eventSubSocket=new WebSocket('wss://eventsub.wss.twitch.tv/ws'); eventSubSocket.onopen=handleWsOpen; eventSubSocket.onmessage=handleWsMessage; eventSubSocket.onerror=handleWsError; eventSubSocket.onclose=handleWsClose; }catch(e){ console.error(e); } }
+async function createSubscriptions(sid){ var types=['channel.prediction.begin','channel.prediction.progress','channel.prediction.lock','channel.prediction.end']; for(var i=0;i<types.length;i++){ try{ var r=await fetch('https://api.twitch.tv/helix/eventsub/subscriptions',{method:'POST',headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({type:types[i],version:'1',condition:{broadcaster_user_id:broadcasterId},transport:{method:'websocket',session_id:sid}})}); if(r.status===401){ try{ await refreshAccessToken(); return; }catch(e){ disconnect(); return; } } if(r.ok) console.log('Subbed '+types[i]); else console.warn('Sub fail '+types[i],await r.text()); }catch(e){ console.warn(e); } } }
+async function fetchActivePrediction(){ try{ var r=await fetch('https://api.twitch.tv/helix/predictions?broadcaster_id='+broadcasterId,{headers:{'Client-ID':CLIENT_ID,'Authorization':'Bearer '+accessToken}}); if(r.status===401){ try{ await refreshAccessToken(); return; }catch(e){ disconnect(); return; } } if(!r.ok) return; var d=await r.json(); if(d.data&&d.data.length){ for(var i=0;i<d.data.length;i++){ var p=d.data[i]; if(p.status==='ACTIVE'||p.status==='LOCKED'){ onPredictionBegin(p); if(p.status==='LOCKED') onPredictionLock(p); break; } } } }catch(e){ console.warn(e); } }
 
-function disconnect() {
-  if (eventSubSocket) {
-    eventSubSocket.close();
-    eventSubSocket = null;
-  }
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(e) {}
-  accessToken = null;
-  broadcasterId = null;
-  currentPrediction = null;
-  predictionOverlay.classList.remove('visible');
-  connectScreen.classList.remove('hidden');
-  document.getElementById('floatTestBtn').classList.remove('visible');
-  connectStatus.textContent = 'Disconnected';
-  connectStatus.classList.remove('success', 'error');
-}
+// PREDICTION HANDLERS
+function onPredictionBegin(pl){ currentPrediction={id:pl.id,title:pl.title,outcomes:pl.outcomes||[],status:'ACTIVE',endsAt:pl.ends_at}; renderPrediction(); startTimer(); }
+function onPredictionProgress(pl){ if(!currentPrediction||currentPrediction.id!==pl.id){ onPredictionBegin(pl); return; } currentPrediction.outcomes=pl.outcomes||currentPrediction.outcomes; renderPrediction(); }
+function onPredictionLock(pl){ if(!currentPrediction||currentPrediction.id!==pl.id) return; currentPrediction.status='LOCKED'; currentPrediction.lockedAt=pl.locked_at; renderPrediction(); }
+function onPredictionEnd(pl){ if(!currentPrediction||currentPrediction.id!==pl.id) return; currentPrediction.status=pl.status; currentPrediction.winningOutcomeId=pl.winning_outcome_id; if(pl.outcomes) currentPrediction.outcomes=pl.outcomes; if(pl.status==='RESOLVED'&&pl.winning_outcome_id){ for(var i=0;i<currentPrediction.outcomes.length;i++){ currentPrediction.outcomes[i].isWinner=(currentPrediction.outcomes[i].id===pl.winning_outcome_id); } } if(timerInterval){clearInterval(timerInterval);timerInterval=null;} renderPrediction(); if(pl.status==='RESOLVED') spawnCelebration(); setTimeout(function(){ if(currentPrediction&&currentPrediction.id===pl.id){ predictionOverlay.classList.add('slide-out'); setTimeout(function(){ predictionOverlay.classList.remove('visible','slide-out'); currentPrediction=null; },500); } },15000); }
 
-// ═══════════════════════════════════════════════════════════════
-// EVENTSUB WEBSOCKET SUBSCRIPTION
-// ═══════════════════════════════════════════════════════════════
-async function subscribeToPredictions() {
-  try {
-    // Step 1: Create EventSub subscription with WebSocket transport
-    // First, we need to get a WebSocket session ID
-    var wsUrl = 'wss://eventsub.wss.twitch.tv/ws';
 
-    eventSubSocket = new WebSocket(wsUrl);
-
-    eventSubSocket.onopen = function() {
-      console.log('EventSub WebSocket connected');
-    };
-
-    eventSubSocket.onmessage = function(event) {
-      var msg = JSON.parse(event.data);
-
-      // Welcome message — contains session_id we need for subscriptions
-      if (msg.metadata && msg.metadata.message_type === 'session_welcome') {
-        var sessionId = msg.payload.session.id;
-        console.log('EventSub session:', sessionId);
-        // Now create subscriptions using this session ID
-        createSubscriptions(sessionId);
-      }
-
-      // Keepalive — just acknowledge, no action needed
-      if (msg.metadata && msg.metadata.message_type === 'session_keepalive') {
-        return;
-      }
-
-      // Prediction events
-      if (msg.metadata && msg.metadata.message_type === 'notification') {
-        var subType = msg.metadata.subscription_type;
-        var payload = msg.payload.event;
-
-        if (subType === 'channel.prediction.begin') {
-          onPredictionBegin(payload);
-        } else if (subType === 'channel.prediction.progress') {
-          onPredictionProgress(payload);
-        } else if (subType === 'channel.prediction.lock') {
-          onPredictionLock(payload);
-        } else if (subType === 'channel.prediction.end') {
-          onPredictionEnd(payload);
-        }
-      }
-
-      // Reconnect — Twitch wants us to reconnect to a new URL
-      if (msg.metadata && msg.metadata.message_type === 'session_reconnect') {
-        var newUrl = msg.payload.session.reconnect_url;
-        console.log('EventSub reconnecting to:', newUrl);
-        eventSubSocket.close();
-        eventSubSocket = new WebSocket(newUrl);
-        // Re-attach handlers
-        eventSubSocket.onmessage = this.onmessage;
-        eventSubSocket.onerror = this.onerror;
-        eventSubSocket.onclose = this.onclose;
-      }
-    };
-
-    eventSubSocket.onerror = function(e) {
-      console.error('EventSub WebSocket error:', e);
-    };
-
-    eventSubSocket.onclose = function() {
-      console.log('EventSub WebSocket closed, reconnecting in 5s…');
-      setTimeout(function() {
-        if (accessToken && broadcasterId) {
-          subscribeToPredictions();
-        }
-      }, 5000);
-    };
-
-  } catch(e) {
-    console.error('EventSub subscription failed:', e);
-  }
-}
-
-async function createSubscriptions(sessionId) {
-  var subscriptionTypes = [
-    {
-      type: 'channel.prediction.begin',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    },
-    {
-      type: 'channel.prediction.progress',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    },
-    {
-      type: 'channel.prediction.lock',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    },
-    {
-      type: 'channel.prediction.end',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    }
-  ];
-
-  for (var i = 0; i < subscriptionTypes.length; i++) {
-    var sub = subscriptionTypes[i];
-    try {
-      var resp = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
-        method: 'POST',
-        headers: {
-          'Client-ID': CLIENT_ID,
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          type: sub.type,
-          version: sub.version,
-          condition: sub.condition,
-          transport: {
-            method: 'websocket',
-            session_id: sessionId
-          }
-        })
-      });
-
-      if (resp.ok) {
-        console.log('Subscribed to ' + sub.type);
-      } else {
-        var err = await resp.json();
-        console.warn('Subscription to ' + sub.type + ' failed:', err.message || resp.status);
-      }
-    } catch(e) {
-      console.warn('Subscription to ' + sub.type + ' error:', e.message);
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// FETCH ACTIVE PREDICTION (on load — in case one is already running)
-// ═══════════════════════════════════════════════════════════════
-async function fetchActivePrediction() {
-  try {
-    var resp = await fetch('https://api.twitch.tv/helix/predictions?broadcaster_id=' + broadcasterId, {
-      headers: {
-        'Client-ID': CLIENT_ID,
-        'Authorization': 'Bearer ' + accessToken
-      }
-    });
-    if (!resp.ok) return;
-    var data = await resp.json();
-    if (data.data && data.data.length > 0) {
-      // Find any active or locked prediction
-      for (var i = 0; i < data.data.length; i++) {
-        var pred = data.data[i];
-        if (pred.status === 'ACTIVE' || pred.status === 'LOCKED') {
-          onPredictionBegin(pred);
-          if (pred.status === 'LOCKED') onPredictionLock(pred);
-          break;
-        }
-      }
-    }
-  } catch(e) {
-    console.warn('Could not fetch active prediction:', e.message);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// PREDICTION EVENT HANDLERS
-// ═══════════════════════════════════════════════════════════════
-function onPredictionBegin(payload) {
-  currentPrediction = {
-    id: payload.id,
-    title: payload.title,
-    outcomes: payload.outcomes || [],
-    status: 'ACTIVE',
-    lockedAt: null,
-    endsAt: payload.ends_at
-  };
-  renderPrediction();
-  startTimer();
-}
-
-function onPredictionProgress(payload) {
-  if (!currentPrediction || currentPrediction.id !== payload.id) {
-    // New prediction we didn't catch the begin for
-    onPredictionBegin(payload);
-    return;
-  }
-  // Update outcomes with latest vote counts
-  currentPrediction.outcomes = payload.outcomes || currentPrediction.outcomes;
-  renderPrediction();
-}
-
-function onPredictionLock(payload) {
-  if (!currentPrediction || currentPrediction.id !== payload.id) return;
-  currentPrediction.status = 'LOCKED';
-  currentPrediction.lockedAt = payload.locked_at;
-  renderPrediction();
-}
-
-function onPredictionEnd(payload) {
-  if (!currentPrediction || currentPrediction.id !== payload.id) return;
-  currentPrediction.status = payload.status; // RESOLVED, CANCELED, etc.
-  currentPrediction.winningOutcomeId = payload.winning_outcome_id;
-
-  // Update outcomes with final data (includes top_predictors with won/lost amounts)
-  if (payload.outcomes) {
-    currentPrediction.outcomes = payload.outcomes;
-  }
-
-  // Mark winner if resolved
-  if (payload.status === 'RESOLVED' && payload.winning_outcome_id) {
-    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-      currentPrediction.outcomes[i].isWinner = (currentPrediction.outcomes[i].id === payload.winning_outcome_id);
-    }
-  }
-
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  renderPrediction();
-
-  // Winner celebration particles
-  if (payload.status === 'RESOLVED') {
-    spawnCelebration();
-  }
-
-  // Slide-out after 15 seconds
-  setTimeout(function() {
-    if (currentPrediction && currentPrediction.id === payload.id) {
-      predictionOverlay.classList.add('slide-out');
-      setTimeout(function() {
-        predictionOverlay.classList.remove('visible', 'slide-out');
-        currentPrediction = null;
-      }, 500);
-    }
-  }, 15000);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CELEBRATION PARTICLES
-// ═══════════════════════════════════════════════════════════════
 function spawnCelebration() {
   var winnerEl = predictionOverlay.querySelector('.pred-option.winner');
   if (!winnerEl) return;
@@ -1673,6 +1372,7 @@ applyCompactMode(compactMode);
 applyLayout(resultsLayout);
 restoreOverlayPosition();
 initAuth();
+
 </script>
 </body>
 </html>
