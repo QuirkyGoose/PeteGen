@@ -75,13 +75,9 @@
     position: relative;
   }
 
-  /* ═══ FLOATING TEST BUTTON — HIDDEN FOR PRODUCTION */
-  /* This was the wrench/cog in the bottom-right. Hidden so it doesn't show on stream.
-     Re-enable for local testing by changing to display:flex or adding ?debug=true */
-  .float-test-btn,
-  .float-test-btn.visible {
+  /* ═══ FLOATING TEST BUTTON ═══ */
+  .float-test-btn {
     display: none !important;
-    pointer-events: none !important;
   }
 
   /* ═══ CONNECT SCREEN ═══ */
@@ -167,6 +163,7 @@
     top: 0;
     left: 0;
     width: 560px;
+    max-height: 90vh;
     z-index: 100;
     display: none;
     flex-direction: column;
@@ -180,6 +177,7 @@
   }
   .prediction-overlay.visible { display: flex; }
   .prediction-overlay.hidden { display: none; }
+  .prediction-overlay.vertical.visible { display: flex; }
 
   @keyframes overlayIn {
     from { opacity: 0; margin-top: 20px; }
@@ -508,61 +506,221 @@
     border-color: var(--amber-soft);
   }
 
-  /* ═══ COMPACT MODE ═══ */
+  /* ═══ VERTICAL MODE — compact bar anchored to top-left, sized to content ═══ */
+  .prediction-overlay.vertical {
+    width: 220px;
+    top: 0;
+    left: 0;
+    bottom: auto;
+    max-height: 100vh;
+    border-radius: 0;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .prediction-overlay.vertical.visible {
+    display: flex;
+  }
+  .prediction-overlay.vertical .pred-header {
+    padding: 10px 14px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .prediction-overlay.vertical .pred-label {
+    font-size: 9px;
+    gap: 6px;
+    flex: 1;
+  }
+  .prediction-overlay.vertical .pred-timer {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .prediction-overlay.vertical .pred-question {
+    padding: 6px 14px 8px;
+    font-size: 14px;
+    line-height: 1.3;
+    flex-shrink: 0;
+  }
+  .prediction-overlay.vertical .pred-body {
+    flex: 0 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .prediction-overlay.vertical .pred-options {
+    flex: 0 1 auto;
+    padding: 4px 10px;
+    gap: 4px;
+    overflow-y: auto;
+    max-height: 50vh;
+  }
+  .prediction-overlay.vertical .pred-options::-webkit-scrollbar { width: 3px; }
+  .prediction-overlay.vertical .pred-options::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+  .prediction-overlay.vertical .pred-option {
+    height: 36px;
+    border-radius: 6px;
+  }
+  .prediction-overlay.vertical .pred-option-content {
+    padding: 0 10px;
+    height: 100%;
+  }
+  .prediction-overlay.vertical .pred-option-color {
+    display: none;
+  }
+  .prediction-overlay.vertical .pred-option-bar {
+    opacity: 0.2;
+    border-radius: 6px;
+  }
+  .prediction-overlay.vertical .pred-option-text {
+    font-size: 11px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .prediction-overlay.vertical .pred-option-pct {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .prediction-overlay.vertical .pred-winner-badge {
+    display: none !important;
+  }
+  .prediction-overlay.vertical .pred-top-contributor {
+    display: none !important;
+  }
+  .prediction-overlay.vertical .pred-results {
+    display: none !important;
+  }
+  .prediction-overlay.vertical .pred-footer {
+    padding: 8px 14px;
+    flex-shrink: 0;
+  }
+  .prediction-overlay.vertical .pred-footer-meta {
+    font-size: 8px;
+  }
+  .prediction-overlay.vertical .pred-footer-status {
+    font-size: 8px;
+  }
+  .prediction-overlay.vertical .pred-status-dot {
+    width: 4px;
+    height: 4px;
+  }
+  .prediction-overlay.vertical .compact-toggle-btn {
+    width: 22px;
+    height: 22px;
+  }
+  .prediction-overlay.vertical .compact-toggle-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* ═══ COMPACT MODE — horizontal single-row per option ═══ */
   .prediction-overlay.compact {
-    width: 360px;
+    width: 320px;
     bottom: 20px;
+    max-height: 80vh;
   }
   .prediction-overlay.compact .pred-header {
-    padding: 6px 12px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-shrink: 0;
   }
   .prediction-overlay.compact .pred-label {
     font-size: 8px;
-    gap: 6px;
+    gap: 5px;
+  }
+  .prediction-overlay.compact .pred-label span:last-child {
+    display: none;
   }
   .prediction-overlay.compact .pred-timer {
     font-size: 11px;
+    font-weight: 600;
   }
   .prediction-overlay.compact .pred-question {
-    display: none;
+    display: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  .prediction-overlay.compact .pred-body {
+    display: block;
+    overflow: hidden;
+    flex: 0 1 auto !important;
+    max-height: none;
+  }
+  .prediction-overlay.compact .pred-results {
+    display: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    flex: 0 0 0 !important;
+  }
+  .prediction-overlay.compact .pred-question {
+    display: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    flex: 0 0 0 !important;
   }
   .prediction-overlay.compact .pred-options {
-    padding: 0 12px 10px;
+    padding: 6px 10px;
     gap: 4px;
   }
+  .prediction-overlay.compact .pred-option {
+    border-radius: 6px;
+    height: 28px;
+  }
   .prediction-overlay.compact .pred-option-content {
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 0 10px;
+    height: 100%;
+  }
+  .prediction-overlay.compact .pred-option-color {
+    display: none;
+  }
+  .prediction-overlay.compact .pred-option-bar {
+    opacity: 0.18;
+    border-radius: 6px;
   }
   .prediction-overlay.compact .pred-option-text {
     font-size: 11px;
+    font-weight: 500;
   }
   .prediction-overlay.compact .pred-option-pct {
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 700;
   }
-  .prediction-overlay.compact .pred-option-color {
-    width: 8px;
-    height: 8px;
-  }
-  .prediction-overlay.compact .pred-option-letter {
-    width: 22px;
-    height: 22px;
-    font-size: 9px;
+  .prediction-overlay.compact .pred-winner-badge {
+    display: none !important;
   }
   .prediction-overlay.compact .pred-top-contributor {
     display: none !important;
   }
-  .prediction-overlay.compact .pred-results {
-    display: none !important;
-  }
   .prediction-overlay.compact .pred-footer {
-    padding: 4px 12px;
+    padding: 4px 10px;
+    flex-shrink: 0;
   }
   .prediction-overlay.compact .pred-footer-meta {
     font-size: 7px;
   }
   .prediction-overlay.compact .pred-footer-status {
     font-size: 7px;
+  }
+  .prediction-overlay.compact .pred-status-dot {
+    width: 4px;
+    height: 4px;
+  }
+  .prediction-overlay.compact .compact-toggle-btn {
+    width: 20px;
+    height: 20px;
+  }
+  .prediction-overlay.compact .compact-toggle-btn svg {
+    width: 11px;
+    height: 11px;
   }
 
   /* ── Footer ── */
@@ -641,6 +799,64 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
+
+  /* ═══ FLOATING WINNER/LOSER NOTIFICATIONS (compact/vertical mode) ═══ */
+  .compact-results {
+    position: fixed;
+    pointer-events: none;
+    z-index: 200;
+    display: none;
+    padding-bottom: 6px;
+    width: 320px;
+  }
+  .compact-results.visible { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+
+  .compact-result-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(8, 8, 10, 0.92);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: floatResultIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  .compact-result-item.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @keyframes floatResultIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .compact-result-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .compact-result-name {
+    color: var(--t1);
+  }
+  .compact-result-amount {
+    font-variant-numeric: tabular-nums;
+  }
+  .compact-result-amount.won {
+    color: var(--ok);
+  }
+  .compact-result-amount.lost {
+    color: var(--red);
+  }
 </style>
 </head>
 <body>
@@ -664,6 +880,9 @@
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
 </button>
 
+<!-- Floating results for compact/vertical mode (outside overlay so it's not clipped) -->
+<div class="compact-results" id="compactResults"></div>
+
 <!-- Prediction overlay -->
 <div class="prediction-overlay" id="predictionOverlay">
   <div class="pred-header">
@@ -675,7 +894,7 @@
       <button class="compact-toggle-btn" id="layoutToggleBtn" title="Toggle results layout (L)" onclick="toggleLayout();return false;">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
       </button>
-      <button class="compact-toggle-btn" id="compactToggleBtn" title="Toggle compact mode (K)" onclick="applyCompactMode(!compactMode);return false;">
+      <button class="compact-toggle-btn" id="compactToggleBtn" title="Cycle display mode (K)" onclick="cycleDisplayMode();return false;">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
       </button>
       <div class="pred-timer" id="predTimer">—</div>
@@ -716,7 +935,7 @@
 // ═══════════════════════════════════════════════════════════════
 var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5';
 var REDIRECT_URI = window.location.origin + window.location.pathname;
-var SCOPES = 'channel:read:predictions'; // FIXED: removed manage — overlay only reads, doesn't create predictions
+var SCOPES = 'channel:read:predictions channel:manage:predictions';
 var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
 var COMPACT_KEY = 'stream-predictions-compact';
 var LAYOUT_KEY = 'stream-predictions-layout'; // 'bottom' or 'right'
@@ -724,18 +943,47 @@ var LAYOUT_KEY = 'stream-predictions-layout'; // 'bottom' or 'right'
 // URL params
 var P = new URLSearchParams(window.location.search);
 
-// Compact mode — check URL param first, then localStorage
-var compactMode = false;
-if (P.get('compact') === 'true') {
-  compactMode = true;
+// Display mode: 'full' or 'vertical' (compact mode removed)
+// Default is 'vertical' — user can toggle to 'full' via the button (preference persists)
+var displayMode = 'vertical';
+if (P.get('vertical') === 'true' || P.get('compact') === 'true') {
+  displayMode = 'vertical';
+} else if (P.get('vertical') === 'false' || P.get('full') === 'true') {
+  displayMode = 'full';
 } else {
-  try { compactMode = localStorage.getItem(COMPACT_KEY) === 'true'; } catch(e) {}
+  try { displayMode = localStorage.getItem(COMPACT_KEY) || 'vertical'; } catch(e) {}
+}
+// Migrate old values
+if (displayMode === 'true' || displayMode === 'compact') displayMode = 'vertical';
+if (displayMode === 'false') displayMode = 'full';
+
+var compactMode = (displayMode !== 'full');
+
+function applyDisplayMode(mode) {
+  displayMode = mode;
+  compactMode = (mode !== 'full');
+  if (predictionOverlay) {
+    predictionOverlay.classList.toggle('compact', mode === 'compact');
+    predictionOverlay.classList.toggle('vertical', mode === 'vertical');
+    // In vertical mode, override any saved drag position to fill the bar
+    if (mode === 'vertical') {
+      predictionOverlay.style.left = '0px';
+      predictionOverlay.style.top = '0px';
+    }
+  }
+  try { localStorage.setItem(COMPACT_KEY, mode); } catch(e) {}
 }
 
+// Legacy function — still used by the header button onclick
 function applyCompactMode(on) {
-  compactMode = on;
-  if (predictionOverlay) predictionOverlay.classList.toggle('compact', on);
-  try { localStorage.setItem(COMPACT_KEY, String(on)); } catch(e) {}
+  if (on) applyDisplayMode('vertical');
+  else applyDisplayMode('full');
+}
+
+function cycleDisplayMode() {
+  if (displayMode === 'full') applyDisplayMode('vertical');
+  else applyDisplayMode('full');
+  showToast(displayMode === 'full' ? 'Full mode' : 'Vertical mode');
 }
 
 // Results layout: 'bottom' (default) or 'right' (side-by-side)
@@ -817,33 +1065,19 @@ function initAuth() {
     return;
   }
 
-  // FIXED: Add state param for CSRF protection + PKCE-ready comment
-  var stateVal = Math.random().toString(36).substring(2,15) + Math.random().toString(36).substring(2,15);
-  try { sessionStorage.setItem('stream-predictions-state', stateVal); } catch(e) {}
+  // Build OAuth URL
   var authUrl = 'https://id.twitch.tv/oauth2/authorize?client_id=' + CLIENT_ID +
     '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
-    '&response_type=token&scope=' + encodeURIComponent(SCOPES) +
-    '&state=' + encodeURIComponent(stateVal);
-  // TODO: Migrate to Authorization Code + PKCE (response_type=code) — implicit flow is deprecated by Twitch
+    '&response_type=token&scope=' + encodeURIComponent(SCOPES);
   connectBtn.setAttribute('href', authUrl);
 
   // Check for token in URL hash (redirect back from Twitch)
   var hash = window.location.hash.substring(1);
   var params = new URLSearchParams(hash);
   if (params.get('access_token')) {
-    // FIXED: Validate state
-    var returnedState = params.get('state');
-    var savedState = null;
-    try { savedState = sessionStorage.getItem('stream-predictions-state'); } catch(e) {}
-    if (savedState && returnedState && savedState !== returnedState) {
-      connectStatus.textContent = 'State mismatch — possible CSRF, please try again';
-      connectStatus.classList.add('error');
-      return;
-    }
-    try { sessionStorage.removeItem('stream-predictions-state'); } catch(e) {}
     accessToken = params.get('access_token');
     try { localStorage.setItem(TOKEN_STORAGE_KEY, accessToken); } catch(e) {}
-    // Clean the URL immediately to avoid token leaking via referrer/history
+    // Clean the URL (remove the token from the address bar)
     window.history.replaceState(null, '', window.location.pathname);
     connectStatus.textContent = 'Connected! Loading…';
     connectStatus.classList.add('success');
@@ -922,33 +1156,8 @@ function disconnect() {
   connectStatus.classList.remove('success', 'error');
 }
 
-// FIXED: Named WS handlers so reconnect can reuse them
-function handleWsOpen(){ console.log('EventSub WebSocket connected'); }
-function handleWsError(e){ console.error('EventSub WebSocket error:', e); }
-function handleWsClose(){ console.log('EventSub WebSocket closed, reconnecting in 5s…'); setTimeout(function(){ if(accessToken && broadcasterId){ subscribeToPredictions(); } },5000); }
-function handleWsMessage(event){
-  var msg; try{ msg=JSON.parse(event.data); }catch(e){ return; }
-  if(msg.metadata && msg.metadata.message_type==='session_welcome'){ var sessionId=msg.payload.session.id; console.log('EventSub session:',sessionId); createSubscriptions(sessionId); return; }
-  if(msg.metadata && msg.metadata.message_type==='session_keepalive'){ return; }
-  if(msg.metadata && msg.metadata.message_type==='notification'){
-    var subType=msg.metadata.subscription_type; var payload=msg.payload.event;
-    if(subType==='channel.prediction.begin') onPredictionBegin(payload);
-    else if(subType==='channel.prediction.progress') onPredictionProgress(payload);
-    else if(subType==='channel.prediction.lock') onPredictionLock(payload);
-    else if(subType==='channel.prediction.end') onPredictionEnd(payload);
-    return;
-  }
-  if(msg.metadata && msg.metadata.message_type==='session_reconnect'){
-    var newUrl=msg.payload.session.reconnect_url; console.log('EventSub reconnecting to:',newUrl);
-    try{ eventSubSocket.close(); }catch(e){}
-    eventSubSocket=new WebSocket(newUrl);
-    eventSubSocket.onopen=handleWsOpen; eventSubSocket.onmessage=handleWsMessage; eventSubSocket.onerror=handleWsError; eventSubSocket.onclose=handleWsClose;
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════
 // EVENTSUB WEBSOCKET SUBSCRIPTION
-
 // ═══════════════════════════════════════════════════════════════
 async function subscribeToPredictions() {
   try {
@@ -994,17 +1203,16 @@ async function subscribeToPredictions() {
         }
       }
 
-      // FIXED: Reconnect — properly re-attach named handlers (this.onmessage was undefined)
+      // Reconnect — Twitch wants us to reconnect to a new URL
       if (msg.metadata && msg.metadata.message_type === 'session_reconnect') {
         var newUrl = msg.payload.session.reconnect_url;
         console.log('EventSub reconnecting to:', newUrl);
-        try { eventSubSocket.close(); } catch(e) {}
+        eventSubSocket.close();
         eventSubSocket = new WebSocket(newUrl);
-        eventSubSocket.onopen = function(){ console.log('EventSub WS re-connected'); };
-        eventSubSocket.onmessage = handleWsMessage;
-        eventSubSocket.onerror = handleWsError;
-        eventSubSocket.onclose = handleWsClose;
-        return;
+        // Re-attach handlers
+        eventSubSocket.onmessage = this.onmessage;
+        eventSubSocket.onerror = this.onerror;
+        eventSubSocket.onclose = this.onclose;
       }
     };
 
@@ -1074,9 +1282,8 @@ async function createSubscriptions(sessionId) {
       if (resp.ok) {
         console.log('Subscribed to ' + sub.type);
       } else {
-        var err = await resp.json().catch(function(){return {};});
+        var err = await resp.json();
         console.warn('Subscription to ' + sub.type + ' failed:', err.message || resp.status);
-        if (resp.status === 401) { disconnect(); return; }
       }
     } catch(e) {
       console.warn('Subscription to ' + sub.type + ' error:', e.message);
@@ -1170,11 +1377,19 @@ function onPredictionEnd(payload) {
   // Winner celebration particles
   if (payload.status === 'RESOLVED') {
     spawnCelebration();
+    // Show floating results in compact or vertical mode
+    // Small delay to ensure DOM is ready after renderPrediction
+    if (displayMode !== 'full') {
+      setTimeout(showCompactResults, 100);
+    }
   }
 
   // Slide-out after 15 seconds
   setTimeout(function() {
     if (currentPrediction && currentPrediction.id === payload.id) {
+      // Clear compact results
+      var cr = document.getElementById('compactResults');
+      if (cr) { cr.classList.remove('visible'); cr.innerHTML = ''; }
       predictionOverlay.classList.add('slide-out');
       setTimeout(function() {
         predictionOverlay.classList.remove('visible', 'slide-out');
@@ -1182,6 +1397,102 @@ function onPredictionEnd(payload) {
       }, 500);
     }
   }, 15000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPACT FLOATING RESULTS — shows winner/loser names above the overlay
+// ═══════════════════════════════════════════════════════════════
+function showCompactResults() {
+  if (!currentPrediction) return;
+  var container = document.getElementById('compactResults');
+  if (!container) return;
+
+  // Position the results relative to the overlay
+  var overlayRect = predictionOverlay.getBoundingClientRect();
+  if (displayMode === 'vertical') {
+    // Vertical bar fills the full height on the left — float results to its right
+    // (anchored to the top of the viewport, just below where the overlay starts)
+    container.style.left = (overlayRect.right + 8) + 'px';
+    container.style.width = '260px';
+    container.style.bottom = '';
+    container.style.top = '20px';
+  } else {
+    // Compact mode — float results above the overlay
+    container.style.left = overlayRect.left + 'px';
+    container.style.width = overlayRect.width + 'px';
+    container.style.bottom = (window.innerHeight - overlayRect.top + 6) + 'px';
+    container.style.top = '';
+  }
+
+  var allPredictors = [];
+  for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+    var outcome = currentPrediction.outcomes[i];
+    var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+    if (outcome.top_predictors && outcome.top_predictors.length > 0) {
+      for (var j = 0; j < outcome.top_predictors.length; j++) {
+        var pred = outcome.top_predictors[j];
+        allPredictors.push({
+          name: pred.user_name || 'Unknown',
+          won: parseInt(pred.channel_points_won) || 0,
+          used: parseInt(pred.channel_points_used) || 0,
+          color: (pred.color && pred.color !== '') ? pred.color : outcomeColor,
+          isWinner: outcome.isWinner === true
+        });
+      }
+    }
+  }
+
+  // Fallback: if no top_predictors data, show outcome titles instead
+  if (allPredictors.length === 0) {
+    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+      var outcome = currentPrediction.outcomes[i];
+      var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+      allPredictors.push({
+        name: outcome.title || 'Unknown',
+        won: parseInt(outcome.channel_points) || 0,
+        used: parseInt(outcome.channel_points) || 0,
+        color: outcomeColor,
+        isWinner: outcome.isWinner === true
+      });
+    }
+  }
+
+  // Sort: winners first (by amount won), then losers (by amount lost)
+  allPredictors.sort(function(a, b) {
+    if (a.isWinner && !b.isWinner) return -1;
+    if (!a.isWinner && b.isWinner) return 1;
+    return b.won - a.won;
+  });
+
+  var showCount = Math.min(6, allPredictors.length);
+  var html = '';
+  for (var i = 0; i < showCount; i++) {
+    var p = allPredictors[i];
+    var amountText, amountClass;
+    if (p.isWinner) {
+      amountText = '+' + p.won.toLocaleString();
+      amountClass = 'won';
+    } else {
+      amountText = '\u2212' + p.used.toLocaleString();
+      amountClass = 'lost';
+    }
+    html += '<div class="compact-result-item" style="animation-delay:' + (i * 0.1) + 's;">' +
+      '<div class="compact-result-dot" style="background:' + p.color + ';"></div>' +
+      '<span class="compact-result-name">' + escapeHtml(p.name) + '</span>' +
+      '<span class="compact-result-amount ' + amountClass + '">' + amountText + '</span>' +
+    '</div>';
+  }
+
+  container.innerHTML = html;
+  container.classList.add('visible');
+
+  // Trigger the show animation on each item
+  var items = container.querySelectorAll('.compact-result-item');
+  for (var i = 0; i < items.length; i++) {
+    (function(item, delay) {
+      setTimeout(function() { item.classList.add('show'); }, delay * 100 + 50);
+    })(items[i], i);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1408,7 +1719,7 @@ function renderPrediction() {
       '</div>';
     }
 
-    if (resultsHtml) {
+    if (resultsHtml && displayMode === 'full') {
       predResults.innerHTML = resultsHtml;
       predResults.classList.add('visible');
     } else {
@@ -1612,7 +1923,6 @@ document.getElementById('testBtn').addEventListener('click', function(e) {
 // KEYBOARD
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('keydown', function(e) {
-  var tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea'||tag==='select') return;
   if (e.key === 'h' || e.key === 'H') {
     predictionOverlay.classList.toggle('hidden');
   }
@@ -1633,8 +1943,7 @@ document.addEventListener('keydown', function(e) {
   }
   if (e.key === 'k' || e.key === 'K') {
     e.preventDefault();
-    applyCompactMode(!compactMode);
-    showToast(compactMode ? 'Compact mode' : 'Full mode');
+    cycleDisplayMode();
   }
   if (e.key === 'l' || e.key === 'L') {
     e.preventDefault();
@@ -1660,6 +1969,12 @@ function setOverlayPosition(x, y) {
 }
 
 function restoreOverlayPosition() {
+  // In vertical mode, always anchor to top-left (compact bar)
+  if (displayMode === 'vertical') {
+    predictionOverlay.style.left = '0px';
+    predictionOverlay.style.top = '0px';
+    return;
+  }
   try {
     var saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
     if (saved) {
@@ -1679,6 +1994,8 @@ if (predHeader) {
   predHeader.addEventListener('mousedown', function(e) {
     // Don't drag if clicking on a button inside the header
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    // Don't drag in vertical mode (fills the bar, no repositioning needed)
+    if (displayMode === 'vertical') return;
 
     isDragging = true;
     dragStartX = e.clientX;
@@ -1708,6 +2025,12 @@ if (predHeader) {
 
 // Reposition on window resize (keep on screen)
 window.addEventListener('resize', function() {
+  if (displayMode === 'vertical') {
+    // Keep pinned to top-left in vertical mode
+    predictionOverlay.style.left = '0px';
+    predictionOverlay.style.top = '0px';
+    return;
+  }
   var rect = predictionOverlay.getBoundingClientRect();
   setOverlayPosition(rect.left, rect.top);
 });
@@ -1715,7 +2038,7 @@ window.addEventListener('resize', function() {
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
-applyCompactMode(compactMode);
+applyDisplayMode(displayMode);
 applyLayout(resultsLayout);
 restoreOverlayPosition();
 initAuth();
