@@ -1,7 +1,7 @@
 /* ======================================================================
    Peet Pics — The Vault · App logic
    Routes: #/ (landing) · #/gallery/:room · #/artwork/:id
-   Data:  loaded from ./gallery-data.js (1541 works) — thumbUrl fixed to imageUrl
+   Data:  loaded from ./gallery-data.js (dynamic count from GALLERY_DATA) — thumbUrl fixed to imageUrl
    Images: hotlinked from i.postimg.cc (the original image host)
    ====================================================================== */
 (function () {
@@ -298,11 +298,7 @@
     if (!navMenu) return;
     var counts = {};
     ROOMS.forEach(function (r) {
-      if (r.id === 'nacky') {
-        counts[r.id] = 48; // curated selection
-      } else {
-        counts[r.id] = (WORKS_BY_ROOM[r.id] || []).length;
-      }
+      counts[r.id] = (WORKS_BY_ROOM[r.id] || []).length;
     });
     counts.all = ARTWORKS.length;
     counts.favourites = 0; // no favourites store in this build
@@ -732,11 +728,7 @@
   function renderLanding() {
     var counts = {};
     ROOMS.forEach(function (r) {
-      if (r.id === 'nacky') {
-        counts[r.id] = 48; // curated selection
-      } else {
-        counts[r.id] = (WORKS_BY_ROOM[r.id] || []).length;
-      }
+      counts[r.id] = (WORKS_BY_ROOM[r.id] || []).length;
     });
     var totalWorks = ARTWORKS.length;
 
