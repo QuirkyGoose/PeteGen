@@ -2,12 +2,14 @@
    Peet Pics — The Vault · App logic
    Routes: #/ · #/gallery/:room · #/artwork/:id · #/live · #/search/:q · #/submit
    Also reads clean paths (/artwork/:id) so shared links with OG previews render.
-   Kill Wha easter egg removed (its inlined base64 was the only corruption-prone
-   asset and the only manual step). Submitter attribution is DORMANT (only lights
-   up if submitters.json exists).
+   Kill Wha easter egg removed. Submitter credits AUTO-EXTRACTED from titles
+   ("...kindly donated to the collection by NAME"); submitters.json = optional override.
 ====================================================================== */
 (function () {
 'use strict';
+// CANARY — if this line does NOT appear in the console after a hard refresh,
+// the file on disk is NOT this build (cache, or the overwrite didn't take).
+console.log('%c[Peet Pics]%c app.js loaded · build 2026-07-20b · favourites · recent · submit · live · density/sort · donor-autodetect', 'color:#b894d9;font-weight:bold', 'color:inherit');
 
 var ROOMS = [
   { id: 'pobots',      name: 'Pobots',        tagline: 'Robots. Peets. The intersection thereof.',          color: 'amber',  hex: '#d4a853' },
@@ -29,6 +31,49 @@ var routeEl = document.getElementById('route');
 var footerEl = document.getElementById('footer');
 var backBtn = document.getElementById('backBtn');
 
+// ====================================================================
+// SUBMITTER AUTO-DETECTION (from titles) + optional manual override
+// ====================================================================
+var SUBMITTER_RE = /kindly\s+donated\s+to\s+the\s+collection\s+by\s+([\s\S]+)$/i;
+var SUBMITTER_BY_ID = {};
+function cleanDonorName(raw) {
+  return String(raw || '')
+    .replace(/\s+[-–—|]\s+.*$/, '')
+    .replace(/\s*\(.*$/, '')
+    .replace(/[.,;:]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function extractDonor(title) {
+  var m = SUBMITTER_RE.exec(String(title || ''));
+  if (!m) return null;
+  var n = cleanDonorName(m[1]);
+  return n || null;
+}
+function friendByName(key) {
+  if (!FRIENDS) return null;
+  for (var i = 0; i < FRIENDS.length; i++) {
+    if ((FRIENDS[i].name || '').toLowerCase() === key) return FRIENDS[i];
+  }
+  return null;
+}
+function buildSubmitterIndex() {
+  SUBMITTER_BY_ID = {};
+  ARTWORKS.forEach(function (w) {
+    var n = extractDonor(w.title);
+    if (n) SUBMITTER_BY_ID[w.id] = n;
+  });
+  var ids = Object.keys(SUBMITTER_BY_ID);
+  try {
+    console.log('%c[Peet Pics]%c submitter auto-detection', 'color:#b894d9;font-weight:bold', 'color:inherit', ids.length, 'donor(s) parsed from titles');
+    if (ids.length) {
+      console.table(ids.slice(0, 30).map(function (id) {
+        return { id: id, extracted: SUBMITTER_BY_ID[id], title: (ARTWORKS_BY_ID[id] || {}).title };
+      }));
+    }
+  } catch (e) {}
+}
+
 function loadGalleryData() {
   return new Promise(function (resolve, reject) {
     if (window.GALLERY_DATA) {
@@ -45,6 +90,7 @@ function loadGalleryData() {
         WORKS_BY_ROOM[roomId] = works;
         ARTWORKS = ARTWORKS.concat(works);
       });
+      buildSubmitterIndex();
       resolve(json);
     } else reject(new Error('gallery-data.js failed to load — window.GALLERY_DATA is undefined'));
   });
@@ -62,6 +108,7 @@ function generateFallbackTags(roomId, title) {
   return tags.filter(function (t) { if (seen[t]) return false; seen[t] = true; return true; }).slice(0, 4);
 }
 
+// Recently Added — guarded so a desynced edit degrades instead of crashing.
 function getRecentWorks(days) {
   var cutoff = Date.now() - (days || 30) * 86400000;
   return ARTWORKS.filter(function (w) {
@@ -70,7 +117,6 @@ function getRecentWorks(days) {
     return !isNaN(t) && t >= cutoff;
   }).sort(function (a, b) { return new Date(b.addedAt) - new Date(a.addedAt); });
 }
-
 function formatLastUpdated() {
   var d = GALLERY_DATA && GALLERY_DATA.lastUpdated;
   if (!d) return '';
@@ -78,9 +124,8 @@ function formatLastUpdated() {
   return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// ── Router (hash-first, falls back to clean path for shared OG links) ──
+// ── Router ──
 function navigate(hash) { if (hash === '') hash = '#/'; window.location.hash = hash; }
-
 function parseRoute() {
   var hash = window.location.hash.slice(1);
   if (!hash || hash === '/') {
@@ -198,8 +243,8 @@ function buildNavDropdown() {
   var counts = {};
   ROOMS.forEach(function (r) { counts[r.id] = (WORKS_BY_ROOM[r.id] || []).length; });
   counts.all = ARTWORKS.length;
-  counts.new = getRecentWorks(30).length;
-  counts.favourites = loadFavourites().length;
+  counts.new = (typeof getRecentWorks === 'function') ? getRecentWorks(30).length : 0; // guarded
+  counts.favourites = (typeof loadFavourites === 'function') ? loadFavourites().length : 0; // guarded
 
   var collectionsHtml = ROOMS.map(function (r) {
     var isActive = currentRoomId() === r.id;
@@ -232,13 +277,13 @@ function buildNavDropdown() {
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>' +
       '<span class="nav-item-name">Friends</span><span class="nav-item-tag">Pete\'s collaborators</span><span class="nav-item-count">' + (FRIENDS||[]).length + '</span>' + SVG_ICONS.check + '</button>' +
     '<button class="nav-dropdown-item' + (shopActive?' is-active':'') + '" style="--dot-color:var(--sage);" data-room="__shop" role="option" aria-selected="' + (shopActive?'true':'false') + '">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"/></svg>' +
       '<span class="nav-item-name">Shop</span><span class="nav-item-tag">Official merch on Fourthwall</span>' + SVG_ICONS.check + '</button>' +
     '<button class="nav-dropdown-item' + (submitActive?' is-active':'') + '" style="--dot-color:var(--violet);" data-room="__submit" role="option" aria-selected="' + (submitActive?'true':'false') + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-item-icon" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
       '<span class="nav-item-name">Submit a Pic</span><span class="nav-item-tag">Add your own to the vault</span>' + SVG_ICONS.check + '</button>';
 
-  var rvList = loadRecentlyViewed();
+  var rvList = (typeof loadRecentlyViewed === 'function') ? loadRecentlyViewed() : [];
   var rvHtml = '';
   if (rvList.length > 0) {
     var rvItems = rvList.map(function (w) {
@@ -391,7 +436,6 @@ function revealNsfw(id) {
 }
 function cssEscape(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s); }
 
-// One delegated listener replaces all inline onclick handlers (CSP-friendly).
 document.addEventListener('click', function (e) {
   var nsfw = e.target.closest('[data-nsfw-reveal]');
   if (nsfw) { e.preventDefault(); revealNsfw(nsfw.getAttribute('data-nsfw-reveal')); return; }
@@ -463,6 +507,7 @@ function navigateToRandom() {
 }
 
 function renderRecentStrip() {
+  if (typeof getRecentWorks !== 'function') return ''; // guarded
   var recent = getRecentWorks(30).filter(function (w) { return !isNsfw(w); }).slice(0, 12);
   if (recent.length === 0) {
     return '<section id="recently-added" class="screen"><div class="recent-inner"><div class="recent-header">' +
@@ -587,64 +632,7 @@ function renderLanding() {
   }); });
 }
 
-// ====================================================================
-// GALLERY VIEW CONTROLS — density + sort (persisted per browser)
-// ====================================================================
-var SORT_OPTIONS = [
-  { id: 'archived', label: 'As archived' },
-  { id: 'new',      label: 'Newest' },
-  { id: 'az',       label: 'A–Z' },
-  { id: 'za',       label: 'Z–A' },
-  { id: 'random',   label: 'Random' },
-];
-var DENSITY_OPTIONS = [
-  { id: 'spacious',    label: 'Spacious' },
-  { id: 'comfortable', label: 'Comfortable' },
-  { id: 'compact',     label: 'Compact' },
-];
-var SORT_KEY = 'peetpics_gallery_sort';
-var DENSITY_KEY = 'peetpics_grid_density';
-function loadGallerySort() {
-  try { var s = localStorage.getItem(SORT_KEY); if (s && SORT_OPTIONS.some(function (o) { return o.id === s; })) return s; } catch (e) {}
-  return 'archived';
-}
-function saveGallerySort(s) { try { localStorage.setItem(SORT_KEY, s); } catch (e) {} }
-function loadGridDensity() {
-  try { var d = localStorage.getItem(DENSITY_KEY); if (d && DENSITY_OPTIONS.some(function (o) { return o.id === d; })) return d; } catch (e) {}
-  return 'comfortable';
-}
-function saveGridDensity(d) { try { localStorage.setItem(DENSITY_KEY, d); } catch (e) {} }
-function sortWorks(list, mode) {
-  var out = list.slice();
-  if (mode === 'new') {
-    out.sort(function (a, b) {
-      var ta = a.addedAt ? new Date(a.addedAt).getTime() : 0;
-      var tb = b.addedAt ? new Date(b.addedAt).getTime() : 0;
-      return tb - ta;
-    });
-  } else if (mode === 'az') {
-    out.sort(function (a, b) { return (a.title || '').localeCompare(b.title || ''); });
-  } else if (mode === 'za') {
-    out.sort(function (a, b) { return (b.title || '').localeCompare(a.title || ''); });
-  } else if (mode === 'random') {
-    for (var i = out.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = out[i]; out[i] = out[j]; out[j] = t; }
-  }
-  return out;
-}
-function galleryControlsHtml(sort, density) {
-  function group(opts, current, kind) {
-    return '<div class="gc-group" role="group" aria-label="' + (kind === 'sort' ? 'Sort order' : 'Grid density') + '">' +
-      '<span class="gc-label">' + (kind === 'sort' ? 'Sort' : 'Density') + '</span>' +
-      opts.map(function (o) {
-        return '<button class="gc-btn' + (o.id === current ? ' active' : '') + '" data-' + kind + '="' + o.id + '" aria-pressed="' + (o.id === current ? 'true' : 'false') + '">' + o.label + '</button>';
-      }).join('') + '</div>';
-  }
-  return group(SORT_OPTIONS, sort, 'sort') + group(DENSITY_OPTIONS, density, 'density');
-}
-
-// ====================================================================
-// GALLERY RENDER (lazy-loading + "load more" + density/sort controls)
-// ====================================================================
+// ── Gallery ──
 var PAGE_SIZE = 48;
 var galleryScrollHandler = null;
 function renderGallery(roomId) {
@@ -661,9 +649,9 @@ function renderGallery(roomId) {
     title = room.name; tagline = room.tagline; hex = room.hex;
   } else if (room) { works = WORKS_BY_ROOM[roomId] || []; title = room.name; tagline = room.tagline; hex = room.hex; }
   else if (roomId === 'all') { works = ARTWORKS.slice(); title = 'The Full Archive'; tagline = 'Every piece in the vault, all at once. Browse at your own pace.'; }
-  else if (roomId === 'new') { works = getRecentWorks(30); title = 'Recently Added'; tagline = 'Fresh arrivals from the last 30 days, newest first.'; hex = '#9bbf9b'; }
+  else if (roomId === 'new') { works = (typeof getRecentWorks === 'function') ? getRecentWorks(30) : []; title = 'Recently Added'; tagline = 'Fresh arrivals from the last 30 days, newest first.'; hex = '#9bbf9b'; } // guarded
   else if (roomId === 'favourites') {
-    var favIds = loadFavourites();
+    var favIds = (typeof loadFavourites === 'function') ? loadFavourites() : [];
     works = ARTWORKS.filter(function (w) { return favIds.indexOf(w.id) !== -1; });
     title = 'Favourites'; tagline = 'Your hand-picked favourites, stored in this browser.'; hex = '#d9a3b8';
   } else {
@@ -804,15 +792,17 @@ function renderArtwork(id) {
   var nsfwOverlay = (nsfw && !revealed) ? '<div class="nsfw-overlay nsfw-overlay-detail" data-nsfw-reveal="' + escapeHtml(w.id) + '"><div class="nsfw-tag">NSFW</div><div class="nsfw-cta">Click image to reveal</div></div>' : '';
   var isNew = w.addedAt && (Date.now() - new Date(w.addedAt).getTime()) < 7 * 86400000;
 
-  // Submitter credit — DORMANT unless submitters.json has this id
-  var sub = SUBMITTERS[w.id];
+  var donorName = (SUBMITTERS[w.id] && (SUBMITTERS[w.id].name || SUBMITTERS[w.id].handle)) || SUBMITTER_BY_ID[w.id] || null;
   var creditHtml = '';
-  if (sub) {
-    creditHtml = '<div class="artwork-credit">' +
-      '<span class="artwork-credit-label">Submitted by</span>' +
-      '<a class="artwork-credit-name" href="https://twitch.tv/' + escapeHtml(sub.handle || '') + '" target="_blank" rel="noopener">' +
-        '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>' +
-        escapeHtml(sub.name || sub.handle) + '</a></div>';
+  if (donorName) {
+    var dfr = friendByName(donorName.toLowerCase());
+    var nameHtml = escapeHtml(donorName);
+    var creditInner = dfr
+      ? '<a class="artwork-credit-name" href="' + escapeHtml(dfr.channel) + '" target="_blank" rel="noopener">' +
+          '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>' +
+          nameHtml + '</a>'
+      : '<span class="artwork-credit-name">' + nameHtml + '</span>';
+    creditHtml = '<div class="artwork-credit"><span class="artwork-credit-label">Kindly donated by</span>' + creditInner + '</div>';
   }
 
   var html = '<div class="artwork-view screen"><div class="artwork-detail">' +
@@ -857,11 +847,11 @@ function renderArtwork(id) {
   });
 }
 
-// ── Config ─
+// ── Config ──
 var SCHEDULE = null, FRIENDS = null, NACKY_CONFIG = null;
 var NSFW_IDS = [], NSFW_SET = new Set(), NSFW_REVEALED = new Set();
 var SITE_CONFIG = null;
-var SUBMITTERS = {}; // DORMANT: empty unless you populate submitters.json
+var SUBMITTERS = {};
 
 function isNsfw(work) { return !!(work && work.id && NSFW_SET.has(work.id)); }
 function rebuildNsfwSet() { NSFW_SET = new Set(NSFW_IDS); }
@@ -961,7 +951,7 @@ function renderFriends() {
   });
 }
 
-// ── Shop ─
+// ── Shop ──
 var SHOP_URL = 'https://agoodpete-shop.fourthwall.com/en-gbp';
 function renderShop() {
   routeEl.innerHTML = '<div class="shop-view screen"><div class="shop-header">' +
@@ -988,45 +978,47 @@ function renderShop() {
       '<div class="shop-feature"><div class="shop-feature-icon">🖼️</div><div class="shop-feature-text">Prints</div><div class="shop-feature-sub">Art prints & posters</div></div></div></div>';
 }
 
-// ====================================================================
-// SUBMIT A PIC PAGE
-// Real flow: make a pic → grab the Discord invite from Pete's Twitch chat
-// (posted while he's live) → share it in the Discord. There is NO permanent
-// Discord URL, so the CTA points at the Twitch channel and the copy explains
-// the hop. IF a permanent invite ever exists, change SUBMIT_CTA_URL + the
-// button label — that's the only edit needed. The Wall of Fame below stays
-// DORMANT unless submitters.json exists.
-// ====================================================================
-var SUBMIT_CTA_URL = 'https://twitch.tv/AGoodPete'; // Discord invite lives in this channel's chat during streams
-
+// ── Submit page + Wall of Fame (auto-built from titles) ──
+var SUBMIT_CTA_URL = 'https://twitch.tv/AGoodPete';
 function getContributors() {
   var counts = {};
   Object.keys(SUBMITTERS || {}).forEach(function (id) {
     var s = SUBMITTERS[id];
-    var key = s.handle || s.name;
-    if (!counts[key]) counts[key] = { name: s.name, handle: s.handle, count: 0 };
+    var key = (s.name || s.handle || '').toLowerCase();
+    if (!key) return;
+    if (!counts[key]) counts[key] = { name: s.name || s.handle, handle: s.handle || null, count: 0 };
+    counts[key].count++;
+  });
+  Object.keys(SUBMITTER_BY_ID).forEach(function (id) {
+    if (SUBMITTERS && SUBMITTERS[id]) return;
+    var name = SUBMITTER_BY_ID[id];
+    var key = name.toLowerCase();
+    if (!counts[key]) {
+      var fr = friendByName(key);
+      counts[key] = { name: name, handle: fr ? fr.handle : null, count: 0 };
+    }
     counts[key].count++;
   });
   return Object.keys(counts).map(function (k) { return counts[k]; }).sort(function (a, b) { return b.count - a.count; });
 }
-
 function renderSubmit() {
   var contributors = getContributors();
   var wallHtml = '';
   if (contributors.length > 0) {
-    var rows = contributors.slice(0, 12).map(function (c, i) {
+    var rows = contributors.slice(0, 24).map(function (c, i) {
       var rank = i === 0 ? ' gold' : (i === 1 ? ' silver' : (i === 2 ? ' bronze' : ''));
-      return '<a class="contributor-card" href="https://twitch.tv/' + escapeHtml(c.handle || '') + '" target="_blank" rel="noopener">' +
+      var tag = c.handle ? 'a' : 'div';
+      var href = c.handle ? ' href="https://twitch.tv/' + escapeHtml(c.handle) + '" target="_blank" rel="noopener"' : '';
+      return '<' + tag + ' class="contributor-card' + rank + '-card"' + href + '>' +
         '<span class="contributor-rank' + rank + '">' + (i + 1) + '</span>' +
-        '<div class="contributor-info"><div class="contributor-name">' + escapeHtml(c.name || c.handle) + '</div>' +
-        '<div class="contributor-handle">@' + escapeHtml(c.handle || '') + '</div></div>' +
-        '<span class="contributor-count">' + c.count + ' pic' + (c.count === 1 ? '' : 's') + '</span></a>';
+        '<div class="contributor-info"><div class="contributor-name">' + escapeHtml(c.name) + '</div>' +
+        (c.handle ? '<div class="contributor-handle">@' + escapeHtml(c.handle) + '</div>' : '<div class="contributor-handle">community donor</div>') + '</div>' +
+        '<span class="contributor-count">' + c.count + ' pic' + (c.count === 1 ? '' : 's') + '</span></' + tag + '>';
     }).join('');
     wallHtml = '<div class="submit-section"><h2 class="submit-h2">Wall of <span class="thin">Fame</span></h2>' +
-      '<p class="submit-lead">The community members keeping the vault stocked. Credits appear on every artwork they submit.</p>' +
+      '<p class="submit-lead">Auto-built from the "kindly donated to the collection by …" line in each submitted title. Names that match a known friend link through to their Twitch; everyone else is honoured by name.</p>' +
       '<div class="contributors-grid">' + rows + '</div></div>';
   }
-
   routeEl.innerHTML = '<div class="submit-view screen">' +
     '<div class="submit-header">' +
       '<div class="gallery-breadcrumb"><a href="#/">Peet Pics</a><span class="sep">/</span><span class="cur">Submit a Pic</span></div>' +
@@ -1056,7 +1048,7 @@ function renderSubmit() {
   '</div>';
 }
 
-// ── Search ─
+// ── Search ──
 function renderSearch(query) {
   query = (query || '').trim();
   var results = [];
@@ -1124,11 +1116,8 @@ var lightboxCaption = document.getElementById('lightboxCaption');
 var currentLightboxId = null;
 var currentLightboxList = [];
 function openLightbox(id, list) {
-  currentLightboxId = id;
-  currentLightboxList = list || ARTWORKS;
-  updateLightbox();
-  lightbox.classList.add('open');
-  document.body.style.overflow = 'hidden';
+  currentLightboxId = id; currentLightboxList = list || ARTWORKS;
+  updateLightbox(); lightbox.classList.add('open'); document.body.style.overflow = 'hidden';
 }
 function closeLightbox() { lightbox.classList.remove('open'); document.body.style.overflow = ''; }
 function updateLightbox() {
@@ -1278,7 +1267,7 @@ function renderLive() {
   showSlide();
 }
 
-// ── Keyboard shortcuts overlay (the easter-egg "Secret" row was removed with Kill Wha) ──
+// ── Keyboard shortcuts overlay ──
 var shortcutsModal = null;
 function buildShortcutsModal() {
   var el = document.createElement('div');
@@ -1417,7 +1406,7 @@ function loop() {
   }
 }
 
-// ── Boot ─
+// ── Boot ──
 routeEl.innerHTML = '<div class="loading-screen"><div class="loading-spinner"></div><div class="loading-text">Loading the vault…</div></div>';
 resize(); rebuildMetaballs();
 rafId = requestAnimationFrame(loop);
@@ -1455,32 +1444,37 @@ function checkTwitchLive() {
   setLiveState('checking', 'Checking');
   var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   var timeoutId = null;
-  if (controller) timeoutId = setTimeout(function(){ try{ controller.abort(); }catch(e){} }, 6000);
+  if (controller) timeoutId = setTimeout(function(){ try { controller.abort(); } catch(e) {} }, 6000);
   var fetchOpts = controller ? { signal: controller.signal, cache: 'no-store' } : { cache: 'no-store' };
-  fetch(TWITCH_UPTIME_URL, fetchOpts).then(function (res) {
-    if (timeoutId) clearTimeout(timeoutId);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.text();
-  }).then(function (text) {
-    text = text.trim();
-    if (text.toLowerCase().indexOf('offline') !== -1) setLiveState('offline', 'Offline');
-    else {
-      setLiveState('live', 'Live');
-      var vcController = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      var vcTimeout = null;
-      if (vcController) vcTimeout = setTimeout(function(){ try{ vcController.abort(); }catch(e){} }, 4000);
-      var vcOpts = vcController ? { signal: vcController.signal, cache: 'no-store' } : {};
-      fetch(TWITCH_VIEWERS_URL, vcOpts).then(function (r) { if(vcTimeout) clearTimeout(vcTimeout); return r.text(); })
-        .then(function (viewers) {
-          viewers = viewers.trim();
-          if (viewers && !isNaN(parseInt(viewers,10))) { if (liveText) liveText.textContent = 'Live \u00b7 ' + parseInt(viewers,10).toLocaleString(); }
-        }).catch(function () { if(vcTimeout) clearTimeout(vcTimeout); });
-    }
-  }).catch(function (err) {
-    if (timeoutId) clearTimeout(timeoutId);
-    console.warn('Twitch live check failed:', err && err.message ? err.message : err);
-    setLiveState('offline', 'Offline');
-  });
+  fetch(TWITCH_UPTIME_URL, fetchOpts)
+    .then(function (res) {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      text = text.trim();
+      if (text.toLowerCase().indexOf('offline') !== -1) setLiveState('offline', 'Offline');
+      else {
+        setLiveState('live', 'Live');
+        var vcController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var vcTimeout = null;
+        if (vcController) vcTimeout = setTimeout(function(){ try{ vcController.abort(); }catch(e){} }, 4000);
+        var vcOpts = vcController ? { signal: vcController.signal, cache: 'no-store' } : {};
+        fetch(TWITCH_VIEWERS_URL, vcOpts)
+          .then(function (r) { if(vcTimeout) clearTimeout(vcTimeout); return r.text(); })
+          .then(function (viewers) {
+            viewers = viewers.trim();
+            if (viewers && !isNaN(parseInt(viewers,10))) { if (liveText) liveText.textContent = 'Live \u00b7 ' + parseInt(viewers,10).toLocaleString(); }
+          })
+          .catch(function () { if(vcTimeout) clearTimeout(vcTimeout); });
+      }
+    })
+    .catch(function (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      console.warn('Twitch live check failed:', err && err.message ? err.message : err);
+      setLiveState('offline', 'Offline');
+    });
 }
 checkTwitchLive();
 setInterval(checkTwitchLive, TWITCH_CHECK_INTERVAL);
@@ -1568,6 +1562,37 @@ function toggleFavourite(id) {
   if (route.name === 'gallery' && route.room === 'favourites') render();
 }
 
+// ── Gallery controls (density + sort) ──
+var SORT_OPTIONS = [
+  { id: 'archived', label: 'As archived' }, { id: 'new', label: 'Newest' },
+  { id: 'az', label: 'A–Z' }, { id: 'za', label: 'Z–A' }, { id: 'random', label: 'Random' },
+];
+var DENSITY_OPTIONS = [
+  { id: 'spacious', label: 'Spacious' }, { id: 'comfortable', label: 'Comfortable' }, { id: 'compact', label: 'Compact' },
+];
+var SORT_KEY = 'peetpics_gallery_sort';
+var DENSITY_KEY = 'peetpics_grid_density';
+function loadGallerySort() { try { var s = localStorage.getItem(SORT_KEY); if (s && SORT_OPTIONS.some(function(o){return o.id===s;})) return s; } catch(e){} return 'archived'; }
+function saveGallerySort(s) { try { localStorage.setItem(SORT_KEY, s); } catch(e){} }
+function loadGridDensity() { try { var d = localStorage.getItem(DENSITY_KEY); if (d && DENSITY_OPTIONS.some(function(o){return o.id===d;})) return d; } catch(e){} return 'comfortable'; }
+function saveGridDensity(d) { try { localStorage.setItem(DENSITY_KEY, d); } catch(e){} }
+function sortWorks(list, mode) {
+  var out = list.slice();
+  if (mode === 'new') out.sort(function(a,b){ var ta=a.addedAt?new Date(a.addedAt).getTime():0; var tb=b.addedAt?new Date(b.addedAt).getTime():0; return tb-ta; });
+  else if (mode === 'az') out.sort(function(a,b){ return (a.title||'').localeCompare(b.title||''); });
+  else if (mode === 'za') out.sort(function(a,b){ return (b.title||'').localeCompare(a.title||''); });
+  else if (mode === 'random') { for (var i=out.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=out[i]; out[i]=out[j]; out[j]=t; } }
+  return out;
+}
+function galleryControlsHtml(sort, density) {
+  function group(opts, current, kind) {
+    return '<div class="gc-group" role="group" aria-label="' + (kind==='sort'?'Sort order':'Grid density') + '">' +
+      '<span class="gc-label">' + (kind==='sort'?'Sort':'Density') + '</span>' +
+      opts.map(function(o){ return '<button class="gc-btn' + (o.id===current?' active':'') + '" data-' + kind + '="' + o.id + '" aria-pressed="' + (o.id===current?'true':'false') + '">' + o.label + '</button>'; }).join('') + '</div>';
+  }
+  return group(SORT_OPTIONS, sort, 'sort') + group(DENSITY_OPTIONS, density, 'density');
+}
+
 // ── Slideshow ──
 var slideshow = document.getElementById('slideshow');
 var slideshowImage = document.getElementById('slideshowImage');
@@ -1581,16 +1606,11 @@ var slideshowProgressFill = document.getElementById('slideshowProgressFill');
 var slideshowState = { works: [], index: 0, playing: false, speed: 5000, speedOptions: [3000,5000,8000,12000], speedIndex: 1, timer: null, progressTimer: null };
 function openSlideshow(workList, startIndex) {
   if (!workList || workList.length === 0) return;
-  slideshowState.works = workList;
-  slideshowState.index = startIndex || 0;
-  slideshow.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  updateSlideshowSlide();
+  slideshowState.works = workList; slideshowState.index = startIndex || 0;
+  slideshow.classList.add('open'); document.body.style.overflow = 'hidden'; updateSlideshowSlide();
 }
 function closeSlideshow() {
-  slideshow.classList.remove('open');
-  document.body.style.overflow = '';
-  slideshowState.playing = false;
+  slideshow.classList.remove('open'); document.body.style.overflow = ''; slideshowState.playing = false;
   if (slideshowState.timer) { clearTimeout(slideshowState.timer); slideshowState.timer = null; }
   if (slideshowState.progressTimer) { cancelAnimationFrame(slideshowState.progressTimer); slideshowState.progressTimer = null; }
   updateSlideshowPlayButton();
@@ -1600,8 +1620,7 @@ function updateSlideshowSlide() {
   if (!w) return;
   slideshowImage.classList.remove('visible');
   setTimeout(function () {
-    slideshowImage.src = w.imageUrl || w.thumbUrl;
-    slideshowImage.alt = w.title || '';
+    slideshowImage.src = w.imageUrl || w.thumbUrl; slideshowImage.alt = w.title || '';
     slideshowImage.onload = function () { slideshowImage.classList.add('visible'); };
     setTimeout(function () { slideshowImage.classList.add('visible'); }, 500);
   }, 300);
@@ -1617,8 +1636,7 @@ function updateSlideshowSlide() {
 function scheduleSlideshowAdvance() {
   if (slideshowState.timer) clearTimeout(slideshowState.timer);
   if (slideshowState.progressTimer) cancelAnimationFrame(slideshowState.progressTimer);
-  var startTime = performance.now();
-  var duration = slideshowState.speed;
+  var startTime = performance.now(); var duration = slideshowState.speed;
   function tickProgress() {
     var pct = Math.min(100, ((performance.now() - startTime) / duration) * 100);
     if (slideshowProgressFill) slideshowProgressFill.style.width = pct + '%';
@@ -1630,13 +1648,9 @@ function scheduleSlideshowAdvance() {
 function slideshowNext() { slideshowState.index = (slideshowState.index + 1) % slideshowState.works.length; updateSlideshowSlide(); }
 function slideshowPrev() { slideshowState.index = (slideshowState.index - 1 + slideshowState.works.length) % slideshowState.works.length; updateSlideshowSlide(); }
 function toggleSlideshowPlay() {
-  slideshowState.playing = !slideshowState.playing;
-  updateSlideshowPlayButton();
+  slideshowState.playing = !slideshowState.playing; updateSlideshowPlayButton();
   if (slideshowState.playing) scheduleSlideshowAdvance();
-  else {
-    if (slideshowState.timer) { clearTimeout(slideshowState.timer); slideshowState.timer = null; }
-    if (slideshowState.progressTimer) { cancelAnimationFrame(slideshowState.progressTimer); slideshowState.progressTimer = null; }
-  }
+  else { if (slideshowState.timer) { clearTimeout(slideshowState.timer); slideshowState.timer = null; } if (slideshowState.progressTimer) { cancelAnimationFrame(slideshowState.progressTimer); slideshowState.progressTimer = null; } }
 }
 function updateSlideshowPlayButton() {
   if (slideshowState.playing) { slideshowPlayLabel.textContent = 'Pause'; slideshowPlayBtn.classList.add('active'); }
@@ -1654,8 +1668,7 @@ document.getElementById('slideshowNext').addEventListener('click', slideshowNext
 slideshowPlayBtn.addEventListener('click', toggleSlideshowPlay);
 slideshowSpeedBtn.addEventListener('click', cycleSlideshowSpeed);
 function startSlideshowFromCurrentGallery() {
-  var route = parseRoute();
-  var works = [];
+  var route = parseRoute(); var works = [];
   if (route.name === 'gallery') works = WORKS_BY_ROOM[route.room] || ARTWORKS;
   else if (route.name === 'artwork') { var w = ARTWORKS_BY_ID[route.id]; if (w) works = WORKS_BY_ROOM[w.gallery] || ARTWORKS; }
   else works = ARTWORKS;
