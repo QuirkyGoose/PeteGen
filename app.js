@@ -2,6 +2,9 @@
    Peet Pics — The Vault · App logic
    Routes: #/ · #/gallery/:room · #/artwork/:id · #/live · #/search/:q · #/submit
    Also reads clean paths (/artwork/:id) so shared links with OG previews render.
+   Kill Wha easter egg removed (its inlined base64 was the only corruption-prone
+   asset and the only manual step). Submitter attribution is DORMANT (only lights
+   up if submitters.json exists).
 ====================================================================== */
 (function () {
 'use strict';
@@ -388,6 +391,7 @@ function revealNsfw(id) {
 }
 function cssEscape(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s); }
 
+// One delegated listener replaces all inline onclick handlers (CSP-friendly).
 document.addEventListener('click', function (e) {
   var nsfw = e.target.closest('[data-nsfw-reveal]');
   if (nsfw) { e.preventDefault(); revealNsfw(nsfw.getAttribute('data-nsfw-reveal')); return; }
@@ -513,11 +517,15 @@ function renderLanding() {
           '<img class="merch-carousel-img active" src="https://imgproxy.fourthwall.dev/Zret4ee8Hfm1TNx9Puy2aLavHahAEdmVIudQ3xeMvDc/w:720/sm:1/enc/4hv55ZYBz-XLTsST/BJHvtP9Z-Bq6v2u7/1oqTgXPn1K-ph1tW/pnjSuXyRs9c4_qUz/rkznrPXByCQLTQOf/tLExhEJxjKOKkKaP/JQ51DYP4X713H8NN/kkkpfUwzPbyAVC3_/hizMYC3dMTt1A2yK/9KDzoztDsswh8pyj/CepTYpTQHFIVPA9X/jkbNLENbxH4k8hDK/InyL9mK7YNx-6Vf5/cTjWP5fDYO2Usj3X/v0K_ZkBZm4I.jpg" alt="Mean Gene\'s Burger Revival — product 1" loading="eager" />' +
           '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/e7HXLfkGN79mM40YNEs1nubgul4GnorOIuSQB7Y9FlQ/w:1920/sm:1/enc/Prl8-2yoqioNCHqa/3Nonh-HOJz9JJNoe/aukNSA4bP5EYPV0l/AlDLUlu_wlWDbMEF/trmnssC6E90q307e/n8MxKKA9CjGLGCbg/8YOeoMFCh-8pbckc/-e88XLOPSoxfndTi/6V2fYZWSFhdE9MzQ/81-50b7o1qc8VRr4/dU3WCZI-VZReq55w/OEEY_1kqXv_RCE6e/PGKmS6nqlHA-Teo8/T5r_yR6hOplKZwnw/Imn2J67GU8A.jpg" alt="Mean Gene\'s Burger Revival — product 2" loading="lazy" />' +
           '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/1tftAXUwM9fBp0p-6p9m6XtQyFo52TTaUW_px_qTgLo/w:720/sm:1/enc/2SzkJoVLbgOQCa-C/6Idz-yYcuPbj4RQw/XagWQ-_kRYzcPIZa/JhLFzlYZgqIervgZ/5DnktycqteepmvHD/ADFP10a14eISyP94/M1q94AdHck3apvQn/vR2M-Pa4F14l2W-3/kMygo4d3Jiv5azvS/WAhAEEpShumgqiSr/Cerk9MrufT5W6ee0/6UvchuOwRIhDyIcL/4KGmwUqvvrmEKdgl/Po9z4SdW3-GMbI5c/MqbWGCx5y9w.webp" alt="Mean Gene\'s Burger Revival — product 3" loading="lazy" />' +
+          '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/eGBbtYwnoQkKbvCIDjXvL7h9Ewmw24_t8Er9c6teutc/w:1920/sm:1/enc/3TuvBqDU8TszqpNI/ZgJ83FbKMdk5aGUS/BRhbA8OuIBzGHyaf/kOFBx4w3ZqR3jGP0/-cfwJlqsyZn13gmV/MbdoW6pnngkqBru_/6Esd2h4YzxDxy8kA/l1fg5hrc_5yzQmgS/-1ssNnszLwEun4dY/xdKiEBVs2aFZpAlv/HMa26tD1ZZG1pJgc/6kCFqvRNheVIvCY0/DpQctU18QDKLrfuM/KXlUiljQ-mi2AxsU/LfvSNcWdB_Y.jpg" alt="Mean Gene\'s Burger Revival — product 4" loading="lazy" />' +
+          '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/7xS9gFl8afUIn25_0jolshAqmSSG06rvoRdc18YG-oA/w:1920/sm:1/enc/IktB9XPhgvXMDj1v/Jx93Zxj2SNybnlab/COdGZEN_Tbor_mJq/ekEyOsccqPH-OjBf/xW6IFFsS8fhj7Mk_/z0RhUzyE7M1IkExT/Iu2EZbykMTQqrpGg/rjapg4TgjYB6Pw7Z/JU3NP5TqkN-8REpL/asbBVbNcEkq4HO37/-GtkR0M5zkM5Q-Pk/u2jkJZxQA2D7ALsw/AEd3gVw6kJ1IvAIy/PchlyNUggxoI-wHT/J02VhWNYOAQ.jpg" alt="Mean Gene\'s Burger Revival — product 5" loading="lazy" />' +
+          '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/52D__Km22WjLzet9hz2D6yvxOSOC2ssmR2lSIfl6Iao/w:1920/sm:1/enc/D7w1jo8Ekh_18MLY/P8VZnL35qbSSEnqL/0221Z36sfprH-9sG/ZKEm49_JMKEMFKpZ/8AygSF8KULHV_tzF/SbBlP0zXM_3Karkf/AUmtMbeKNMx3GsEF/cjnzDMf1w4KPyp7a/OmUD-_FCdT8PpOHc/aTXETGcble25Ru0F/4ss4nR2mLzmQwKoP/kQrfZ2ub7z08SxPA/Y4irZkABIONMERFQ/fdUJfmldXIZHMGcr/-8O1xgw6TQ8.jpg" alt="Mean Gene\'s Burger Revival — product 6" loading="lazy" />' +
+          '<img class="merch-carousel-img" src="https://imgproxy.fourthwall.dev/yWx9hXR1uRo0jxjB33GRptFsCjpQvCCpa57nA2T1FnI/w:1920/sm:1/enc/HoGA__vrCn_dh99G/tWiIENzm8t8IUiEr/dmze2nfzWkyTsaU7/x4Xv_FqGgd3nofqA/-TSU0Tf2IVrjfS4v/Znf8Tf2zdxlLI2Jg/4hE80YTKd_nr2nzn/menDN12I9iZsBmC7/oLTOy53Fsic-exew/fopwkZLiLMMqkP6E/-E9pdR55AMIRp-j5/vgzx0o4FVW6qYHln/5sBVnJGYFl6xkbqn/IlAFVx6s7sWVHymr/ARLezZ8KOZs.jpg" alt="Mean Gene\'s Burger Revival — product 7" loading="lazy" />' +
         '</div>' +
         '<div class="merch-banner-badge">MERCH DROP</div>' +
         '<div class="merch-banner-body">' +
           '<div class="merch-banner-title">Mean Gene\'s Burger Revival</div>' +
-          '<div class="merch-banner-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</div>' +
+          '<div class="merch-banner-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</div>' +
           '<a class="merch-banner-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
             '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Shop the Collection' +
             '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div>' +
@@ -796,7 +804,7 @@ function renderArtwork(id) {
   var nsfwOverlay = (nsfw && !revealed) ? '<div class="nsfw-overlay nsfw-overlay-detail" data-nsfw-reveal="' + escapeHtml(w.id) + '"><div class="nsfw-tag">NSFW</div><div class="nsfw-cta">Click image to reveal</div></div>' : '';
   var isNew = w.addedAt && (Date.now() - new Date(w.addedAt).getTime()) < 7 * 86400000;
 
-  // Submitter credit — DORMANT unless submitters.json has this id (see note at top)
+  // Submitter credit — DORMANT unless submitters.json has this id
   var sub = SUBMITTERS[w.id];
   var creditHtml = '';
   if (sub) {
@@ -849,7 +857,7 @@ function renderArtwork(id) {
   });
 }
 
-// ── Config ──
+// ── Config ─
 var SCHEDULE = null, FRIENDS = null, NACKY_CONFIG = null;
 var NSFW_IDS = [], NSFW_SET = new Set(), NSFW_REVEALED = new Set();
 var SITE_CONFIG = null;
@@ -953,7 +961,7 @@ function renderFriends() {
   });
 }
 
-// ── Shop ──
+// ── Shop ─
 var SHOP_URL = 'https://agoodpete-shop.fourthwall.com/en-gbp';
 function renderShop() {
   routeEl.innerHTML = '<div class="shop-view screen"><div class="shop-header">' +
@@ -965,7 +973,7 @@ function renderShop() {
       '<svg class="icon-muted" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>' +
       '<svg class="icon-unmuted" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button></div>' +
     '<div class="shop-drop-content"><div class="shop-drop-badge">NEW DROP</div><h2 class="shop-drop-title">Mean Gene\'s Burger Revival</h2>' +
-      '<p class="shop-drop-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</p>' +
+      '<p class="shop-drop-copy">Watch out Big Burger Boys! In 1998 Mean Gene went toe-to-toe with the Big Burger Boys when he established Mean Gene\'s Burgers. I don\'t think he won but I\'m not sure that matters! The shirt in the advert was beautiful and I wanted to recreate it for a new generation. Probably don\'t call the phone number…and nobody tell Gene!</p>' +
       '<a class="shop-drop-btn" href="https://agoodpete-shop.fourthwall.com/en-gbp/collections/mean-genes-burger-revival" target="_blank" rel="noopener">' +
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Shop Mean Gene\'s Collection' +
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div></div>' +
@@ -980,8 +988,16 @@ function renderShop() {
       '<div class="shop-feature"><div class="shop-feature-icon">🖼️</div><div class="shop-feature-text">Prints</div><div class="shop-feature-sub">Art prints & posters</div></div></div></div>';
 }
 
-// ── Submit a Pic page (DORMANT wall-of-fame unless submitters.json is populated) ──
-var SUBMISSIONS_SHEET = 'https://docs.google.com/spreadsheets/d/1wScbL0TrHCmo17wN_vx8LxzWRA-K6BDfMekyY6JsI0A/edit?gid=0#gid=0';
+// ====================================================================
+// SUBMIT A PIC PAGE
+// Real flow: make a pic → grab the Discord invite from Pete's Twitch chat
+// (posted while he's live) → share it in the Discord. There is NO permanent
+// Discord URL, so the CTA points at the Twitch channel and the copy explains
+// the hop. IF a permanent invite ever exists, change SUBMIT_CTA_URL + the
+// button label — that's the only edit needed. The Wall of Fame below stays
+// DORMANT unless submitters.json exists.
+// ====================================================================
+var SUBMIT_CTA_URL = 'https://twitch.tv/AGoodPete'; // Discord invite lives in this channel's chat during streams
 
 function getContributors() {
   var counts = {};
@@ -1015,30 +1031,32 @@ function renderSubmit() {
     '<div class="submit-header">' +
       '<div class="gallery-breadcrumb"><a href="#/">Peet Pics</a><span class="sep">/</span><span class="cur">Submit a Pic</span></div>' +
       '<h1 class="submit-title">Submit a <span class="thin">Pic</span></h1>' +
-      '<p class="submit-subtitle">The Vault is built by the community. Found a legendary Peet moment? Made some Peet-adjacent art? Immortalise it here.</p>' +
-      '<a class="submit-cta" href="' + SUBMISSIONS_SHEET + '" target="_blank" rel="noopener">' +
-        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
-        ' Open the Submissions Spreadsheet' +
-        '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M7 17 17 7M7 7h10v10"/></svg></a>' +
+      '<p class="submit-subtitle">The Vault is built by the community. Made some Peet-adjacent art, or found a legendary Peet moment? Here\'s how to get it into the archive.</p>' +
+      '<a class="submit-cta" href="' + SUBMIT_CTA_URL + '" target="_blank" rel="noopener">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>' +
+        ' Open Pete\'s Twitch channel' +
+        '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M7 17 17 7M7 7h10v10"/></svg>' +
+      '</a>' +
+      '<span style="display:block;margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;color:var(--t3);max-width:54ch;line-height:1.6;">The Discord invite is posted in Pete\'s chat while he\'s live. Copy it, join the server, then drop your pic in the right channel.</span>' +
     '</div>' +
     '<div class="submit-steps">' +
-      '<div class="submit-step"><div class="submit-step-num">1</div><div class="submit-step-body"><h3 class="submit-h3">Find or make a Peet Pic</h3><p class="submit-step-text">A screenshot, a drawing, a cursed photoshop — anything Peet-adjacent counts. Pobots, Prestlers, Cultural Artefacts, and the occasional unhinged Pisc.</p></div></div>' +
-      '<div class="submit-step"><div class="submit-step-num">2</div><div class="submit-step-body"><h3 class="submit-h3">Add it to the spreadsheet</h3><p class="submit-step-text">Drop the image link, a title, and your Twitch handle into the community spreadsheet. That\'s it — no forms, no accounts.</p></div></div>' +
-      '<div class="submit-step"><div class="submit-step-num">3</div><div class="submit-step-body"><h3 class="submit-h3">It gets archived</h3><p class="submit-step-text">The scraper pulls approved submissions into the Vault automatically, and your name is credited on the artwork page forever.</p></div></div>' +
+      '<div class="submit-step"><div class="submit-step-num">1</div><div class="submit-step-body"><h3 class="submit-h3">Make a Peet Pic</h3><p class="submit-step-text">A screenshot, a drawing, a cursed photoshop — anything Peet-adjacent counts. Pobots, Prestlers, Cultural Artefacts, and the occasional unhinged Pisc.</p></div></div>' +
+      '<div class="submit-step"><div class="submit-step-num">2</div><div class="submit-step-body"><h3 class="submit-h3">Grab the Discord link from Twitch</h3><p class="submit-step-text">While Pete\'s streaming, the Discord invite is posted in chat. Pop into the stream, copy the link, and join the server. (There\'s no permanent link on the site — invites are shared live.)</p></div></div>' +
+      '<div class="submit-step"><div class="submit-step-num">3</div><div class="submit-step-body"><h3 class="submit-h3">Share it in the Discord</h3><p class="submit-step-text">Drop your pic in the right channel. The community reacts, mods take a look, and the best ones get archived into the Vault — credited to you.</p></div></div>' +
     '</div>' +
     '<div class="submit-section"><h2 class="submit-h2">House <span class="thin">Rules</span></h2>' +
       '<ul class="submit-rules">' +
         '<li><b>Keep it Peet-adjacent.</b> If it wouldn\'t make chat spam emotes, it probably doesn\'t belong.</li>' +
         '<li><b>Credit original artists</b> when you know them — especially for fan art.</li>' +
-        '<li><b>NSFW goes through review.</b> Approved NSFW works are blurred behind a click-to-reveal gate. Nothing extreme.</li>' +
-        '<li><b>No duplicates.</b> Check the Vault first — the pic may already be archived.</li>' +
+        '<li><b>Flag anything NSFW</b> in Discord so mods can gate it. The Vault blurs approved NSFW behind a click-to-reveal.</li>' +
+        '<li><b>No duplicates.</b> Have a quick look through the Vault first — your pic might already be archived.</li>' +
         '<li><b>Be excellent to each other.</b> Mods have the final say, and they\'re lovely about it.</li>' +
       '</ul></div>' +
     wallHtml +
   '</div>';
 }
 
-// ── Search ──
+// ── Search ─
 function renderSearch(query) {
   query = (query || '').trim();
   var results = [];
@@ -1260,7 +1278,7 @@ function renderLive() {
   showSlide();
 }
 
-// ── Keyboard shortcuts overlay ──
+// ── Keyboard shortcuts overlay (the easter-egg "Secret" row was removed with Kill Wha) ──
 var shortcutsModal = null;
 function buildShortcutsModal() {
   var el = document.createElement('div');
@@ -1278,8 +1296,6 @@ function buildShortcutsModal() {
       '<div class="shortcut-row"><span class="shortcut-desc">Previous / Next</span><span class="shortcut-keys"><kbd>←</kbd><kbd>→</kbd></span></div>' +
       '<div class="shortcut-row"><span class="shortcut-desc">Play / Pause</span><span class="shortcut-keys"><kbd>Space</kbd></span></div>' +
       '<div class="shortcut-row"><span class="shortcut-desc">Close</span><span class="shortcut-keys"><kbd>Esc</kbd></span></div></div>' +
-    '<div class="shortcuts-group"><div class="shortcuts-group-label">Secret</div>' +
-      '<div class="shortcut-row"><span class="shortcut-desc">…something whale-shaped</span><span class="shortcut-keys"><kbd>↑</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd><kbd>←</kbd><kbd>→</kbd><kbd>B</kbd><kbd>A</kbd></span></div></div>' +
     '</div></div>';
   document.body.appendChild(el);
   el.addEventListener('click', function (e) { if (e.target === el) toggleShortcuts(); });
@@ -1401,7 +1417,7 @@ function loop() {
   }
 }
 
-// ── Boot ──
+// ── Boot ─
 routeEl.innerHTML = '<div class="loading-screen"><div class="loading-spinner"></div><div class="loading-text">Loading the vault…</div></div>';
 resize(); rebuildMetaballs();
 rafId = requestAnimationFrame(loop);
@@ -1663,56 +1679,6 @@ document.addEventListener('keydown', function (e) {
   }
   if (shortcutsModal && shortcutsModal.classList.contains('open')) return;
   if (e.key === 's' || e.key === 'S') { e.preventDefault(); startSlideshowFromCurrentGallery(); }
-});
-
-// ── Secret theme: Kill Wha Mode ──
-// ⚠️ MANUAL STEP: paste the WORKING base64 from your on-disk app.js over this
-// placeholder. Do NOT use any base64 copied from chat — the chat inserts spaces
-// into it and breaks it (a broken gif would blank the page when this fires).
-var KILL_WHA_GIF = 'data:image/gif;base64,PASTE_YOUR_WORKING_BASE64_HERE';
-var konamiSequence = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-var konamiPos = 0;
-var killWhaActive = false;
-function activateKillWha() {
-  if (killWhaActive) return;
-  killWhaActive = true;
-  var style = document.createElement('style');
-  style.id = 'kill-wha-theme';
-  style.textContent = '' +
-    'body * { background-image: url("' + KILL_WHA_GIF + '") !important; background-size: contain !important; background-repeat: repeat !important; background-position: center !important; color: transparent !important; text-shadow: none !important; border-color: transparent !important; box-shadow: none !important; outline: none !important; }' +
-    'body img, body video, body canvas, body svg { display: none !important; }' +
-    'body *::before, body *::after { content: " " !important; background-image: url("' + KILL_WHA_GIF + '") !important; background-size: contain !important; background-repeat: repeat !important; color: transparent !important; }' +
-    'body { background-image: url("' + KILL_WHA_GIF + '") !important; background-size: 177px 160px !important; background-repeat: repeat !important; }' +
-    '#kill-wha-overlay { position: fixed; inset: 0; z-index: 999999; background-image: url("' + KILL_WHA_GIF + '") !important; background-size: 177px 160px !important; background-repeat: repeat !important; pointer-events: none; animation: killWhaScroll 8s linear infinite; }' +
-    '@keyframes killWhaScroll { from { background-position: 0 0; } to { background-position: 177px 160px; } }' +
-    '#kill-wha-hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 1000000; padding: 10px 20px; background: #000; color: #fff !important; font-family: monospace; font-size: 12px; letter-spacing: 0.1em; border-radius: 100px; border: 2px solid #fff; text-shadow: none !important; }';
-  document.head.appendChild(style);
-  var overlay = document.createElement('div'); overlay.id = 'kill-wha-overlay'; document.body.appendChild(overlay);
-  var hint = document.createElement('div'); hint.id = 'kill-wha-hint';
-  hint.textContent = 'KILL WHA MODE \u2014 press Esc to exit';
-  document.body.appendChild(hint);
-  console.log('%c\ud83d\udc33 KILL WHA MODE ACTIVATED \ud83d\udc33', 'font-size:24px;color:#00ffff;');
-}
-function deactivateKillWha() {
-  if (!killWhaActive) return;
-  killWhaActive = false;
-  var style = document.getElementById('kill-wha-theme'); if (style) style.remove();
-  var overlay = document.getElementById('kill-wha-overlay'); if (overlay) overlay.remove();
-  var hint = document.getElementById('kill-wha-hint'); if (hint) hint.remove();
-}
-document.addEventListener('keydown', function (e) {
-  if (killWhaActive) { if (e.key === 'Escape') deactivateKillWha(); return; }
-  var tag = (e.target.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-  if (e.target.isContentEditable) return;
-  var key = e.key;
-  var expected = konamiSequence[konamiPos];
-  if (key === expected || key.toLowerCase() === expected) {
-    konamiPos++;
-    if (konamiPos === konamiSequence.length) { activateKillWha(); konamiPos = 0; }
-  } else {
-    konamiPos = (key === konamiSequence[0] || key.toLowerCase() === konamiSequence[0]) ? 1 : 0;
-  }
 });
 
 })();
