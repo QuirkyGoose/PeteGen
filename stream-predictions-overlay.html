@@ -5,61 +5,121 @@
 <meta name="viewport" content="width=1920, height=1080, initial-scale=1">
 <meta name="color-scheme" content="dark" />
 <title>Stream Predictions</title>
+
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>P</text></svg>" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 
 <!-- ═══════════════════════════════════════════════════════════════
-     STREAM PREDICTIONS OVERLAY — LIVE TWITCH INTEGRATION
-     Automatically receives prediction events from Twitch via
-     EventSub WebSocket. No backend needed.
+     STREAM PREDICTIONS OVERLAY
+     Build: 2026-07-22-phase3-4-5-original
 
-     HOW TO USE:
-     1. Add as a Browser Source in OBS (URL or local file)
-     2. Click "Connect Twitch" — authorizes with Twitch
-     3. Page goes blank after connecting (success!)
-     4. Start a prediction on your Twitch channel
-     5. The overlay appears automatically with live vote data
+     Phase 3:
+     - EventSub reconnect hardening
+     - keepalive watchdog
+     - exponential backoff
+     - duplicate notification protection
+     - revocation handling
+     - token expiry handling
+     - debug panel (?debug=1)
+     - reset (?reset=1)
 
-     KEYBOARD SHORTCUTS:
-       H     Hide/Show overlay
-       C     Clear current prediction display
-       D     Disconnect (re-show connect button)
+     Phase 4:
+     - ?mode=full|vertical|compact
+     - ?layout=bottom|right
+     - ?scale=0.4–2
+     - ?safe=px
+     - ?clickthrough=1
+     - ?test=active|locked|resolved|canceled
+     - per-mode saved position
+     - postMessage control API
+
+     Phase 5:
+     - locked/canceled visual polish
+     - leader highlight polish
+     - optional plate background
+     - optional high-contrast mode
+     - optional reduced-motion mode
+     - smoother state treatment
      ═══════════════════════════════════════════════════════════════ -->
+
+<script>
+(function () {
+  var P = new URLSearchParams(window.location.search);
+
+  function flag(name) {
+    var v = P.get(name);
+    return v !== null && v !== '0' && v !== 'false';
+  }
+
+  var h = document.documentElement;
+
+  if (flag('clickthrough')) h.classList.add('clickthrough');
+  if (flag('plate')) h.classList.add('plate');
+  if (P.get('contrast') === 'high') h.classList.add('contrast-high');
+  if (P.get('motion') === 'off') h.classList.add('motion-off');
+  if (flag('debug')) h.classList.add('debug');
+
+  var scale = parseFloat(P.get('scale'));
+  if (isFinite(scale)) {
+    scale = Math.min(2, Math.max(0.4, scale));
+    h.style.setProperty('--overlay-scale', String(scale));
+  }
+
+  var safe = parseInt(P.get('safe'), 10);
+  if (isFinite(safe) && safe >= 0) {
+    h.style.setProperty('--safe', safe + 'px');
+  }
+})();
+</script>
 
 <style>
   :root {
     --bg: #020203;
     --panel: #08080a;
     --panel-hover: rgba(255, 255, 255, 0.04);
+
     --t1: rgba(255, 255, 255, 0.92);
     --t2: rgba(255, 255, 255, 0.55);
     --t3: rgba(255, 255, 255, 0.32);
     --t4: rgba(255, 255, 255, 0.18);
+
     --line: rgba(255, 255, 255, 0.08);
     --line-soft: rgba(255, 255, 255, 0.05);
+
     --amber: #d4a853;
     --amber-soft: rgba(212, 168, 83, 0.5);
+
     --red: #c4473a;
     --ok: #88b576;
+
     --body: 'Geist', system-ui, sans-serif;
     --mono: 'Geist Mono', ui-monospace, monospace;
     --serif: 'Instrument Serif', Georgia, serif;
-    /* Outcome colors — cycled through for multi-option predictions */
-    --c0: #5b8def;
-    --c1: #e85b9b;
-    --c2: #88b576;
-    --c3: #d4a853;
-    --c4: #b894d9;
-    --c5: #d49274;
-    --c6: #5bcdef;
-    --c7: #ef8b5b;
-    --c8: #9b5bef;
-    --c9: #5befb8;
+
+    --overlay-scale: 1;
+    --safe: 0px;
+
+    /* Outcome colours — no blue/purple/cyan */
+    --c0: #d4a853;
+    --c1: #d49274;
+    --c2: #9bbf9b;
+    --c3: #d9a3b8;
+    --c4: #e8c87a;
+    --c5: #cf8b4a;
+    --c6: #b57e8f;
+    --c7: #a3b57a;
+    --c8: #c47a5a;
+    --c9: #c4473a;
   }
 
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
   html, body {
     width: 1920px;
@@ -75,12 +135,54 @@
     position: relative;
   }
 
-  /* ═══ FLOATING TEST BUTTON ═══ */
-  .float-test-btn {
-    display: none !important;
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
   }
 
-  /* ═══ CONNECT SCREEN ═══ */
+  /* ═══ Phase 4/5 display modifiers ═══ */
+
+  html.clickthrough * {
+    pointer-events: none !important;
+  }
+
+  html.motion-off *,
+  html.motion-off *::before,
+  html.motion-off *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  html.plate .prediction-overlay {
+    background: rgba(2, 2, 3, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  html.contrast-high .prediction-overlay {
+    background: #000000;
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  html.contrast-high .pred-question,
+  html.contrast-high .pred-option-text,
+  html.contrast-high .pred-option-pct,
+  html.contrast-high .pred-footer-meta,
+  html.contrast-high .pred-footer-status {
+    color: #ffffff;
+  }
+
+  html.contrast-high .pred-option {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  html.contrast-high .pred-option-bar {
+    opacity: 0.18;
+  }
+
+  /* ═══ Connect screen ═══ */
+
   .connect-screen {
     position: fixed;
     inset: 0;
@@ -92,7 +194,10 @@
     gap: 24px;
     background: var(--bg);
   }
-  .connect-screen.hidden { display: none; }
+
+  .connect-screen.hidden {
+    display: none;
+  }
 
   .connect-title {
     font-family: var(--serif);
@@ -101,6 +206,7 @@
     color: var(--t1);
     letter-spacing: -0.02em;
   }
+
   .connect-title em {
     font-style: italic;
     color: var(--amber);
@@ -114,7 +220,7 @@
     text-transform: uppercase;
     color: var(--t3);
     text-align: center;
-    max-width: 400px;
+    max-width: 420px;
     line-height: 1.6;
   }
 
@@ -125,25 +231,47 @@
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--t1);
-    background: rgba(91, 71, 128, 0.15);
-    border: 1px solid rgba(91, 71, 128, 0.4);
+    background: rgba(212, 168, 83, 0.12);
+    border: 1px solid rgba(212, 168, 83, 0.35);
     border-radius: 100px;
     padding: 14px 32px;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease,
+      opacity 0.2s ease;
     display: flex;
     align-items: center;
     gap: 10px;
     text-decoration: none;
   }
+
   .connect-btn:hover {
-    background: rgba(91, 71, 128, 0.25);
-    border-color: rgba(91, 71, 128, 0.6);
+    background: rgba(212, 168, 83, 0.2);
+    border-color: rgba(212, 168, 83, 0.55);
+    transform: translateY(-1px);
   }
+
+  .connect-btn:active {
+    transform: translateY(0);
+  }
+
+  .connect-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
   .connect-btn svg {
     width: 20px;
     height: 20px;
     fill: currentColor;
+  }
+
+  .connect-btn--test {
+    background: rgba(212, 168, 83, 0.08);
+    border-color: rgba(212, 168, 83, 0.3);
+    color: var(--amber);
   }
 
   .connect-status {
@@ -154,10 +282,55 @@
     color: var(--t3);
     margin-top: 8px;
   }
-  .connect-status.error { color: var(--red); }
-  .connect-status.success { color: var(--ok); }
 
-  /* ═══ PREDICTION OVERLAY ═══ */
+  .connect-status.error {
+    color: var(--red);
+  }
+
+  .connect-status.success {
+    color: var(--ok);
+  }
+
+  /* ═══ Floating test button ═══ */
+
+  .float-test-btn {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 400;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--t2);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .float-test-btn.visible {
+    display: flex;
+  }
+
+  .float-test-btn:hover {
+    color: var(--amber);
+    border-color: var(--amber-soft);
+    transform: translateY(-1px);
+  }
+
+  .float-test-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  /* ═══ Prediction overlay ═══ */
+
   .prediction-overlay {
     position: absolute;
     top: 0;
@@ -173,33 +346,61 @@
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    transform: scale(var(--overlay-scale, 1));
+    transform-origin: top left;
     animation: overlayIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
-  .prediction-overlay.visible { display: flex; }
-  .prediction-overlay.hidden { display: none; }
-  .prediction-overlay.vertical.visible { display: flex; }
 
-  @keyframes overlayIn {
-    from { opacity: 0; margin-top: 20px; }
-    to   { opacity: 1; margin-top: 0; }
+  .prediction-overlay.visible {
+    display: flex;
   }
 
-  /* ── Header (draggable) ── */
+  .prediction-overlay.hidden {
+    display: none !important;
+  }
+
+  @keyframes overlayIn {
+    from {
+      opacity: 0;
+      margin-top: 20px;
+    }
+    to {
+      opacity: 1;
+      margin-top: 0;
+    }
+  }
+
+  .prediction-overlay.slide-out {
+    animation: overlayOut 0.5s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  @keyframes overlayOut {
+    from {
+      opacity: 1;
+      margin-top: 0;
+    }
+    to {
+      opacity: 0;
+      margin-top: 20px;
+    }
+  }
+
+  /* ── Header ── */
+
   .pred-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line-soft);
     cursor: move;
     cursor: grab;
     user-select: none;
     -webkit-user-select: none;
   }
+
   .pred-header:active {
     cursor: grabbing;
-  }
-  .pred-header {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--line-soft);
   }
 
   .pred-label {
@@ -223,19 +424,34 @@
     animation: dotPulse 2s ease-in-out infinite;
     flex-shrink: 0;
   }
+
   .pred-dot.locked {
     background: var(--red);
     box-shadow: 0 0 8px var(--red);
     animation: none;
   }
+
   .pred-dot.ended {
     background: var(--ok);
     box-shadow: 0 0 8px var(--ok);
     animation: none;
   }
+
+  .pred-dot.canceled {
+    background: var(--red);
+    box-shadow: 0 0 8px var(--red);
+    animation: none;
+  }
+
   @keyframes dotPulse {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50%      { opacity: 1;   transform: scale(1.3); }
+    0%, 100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.3);
+    }
   }
 
   .pred-timer {
@@ -246,17 +462,53 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.06em;
   }
+
   .pred-timer.urgent {
     color: var(--red);
     animation: urgentBlink 1s ease-in-out infinite;
   }
-  .pred-timer.ended { color: var(--t3); }
+
+  .pred-timer.ended {
+    color: var(--t3);
+  }
+
   @keyframes urgentBlink {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.4; }
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  /* ── Countdown progress bar ── */
+
+  .pred-progress {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .pred-progress.visible {
+    opacity: 1;
+  }
+
+  .pred-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--amber), #e8c87a);
+    box-shadow: 0 0 8px rgba(212, 168, 83, 0.35);
+    transition: width 1s linear;
+  }
+
+  .pred-progress-fill.urgent {
+    background: linear-gradient(90deg, var(--red), #e08a7a);
+    box-shadow: 0 0 8px rgba(196, 71, 58, 0.35);
   }
 
   /* ── Question ── */
+
   .pred-question {
     padding: 12px 16px 10px;
     font-family: var(--serif);
@@ -267,7 +519,47 @@
     letter-spacing: -0.005em;
   }
 
+  .prediction-overlay[data-status="canceled"] .pred-question {
+    color: var(--t2);
+  }
+
+  /* ── Body ── */
+
+  .pred-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pred-body.layout-right {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .pred-body.layout-right .pred-options {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pred-body.layout-right .pred-results {
+    width: 200px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--line-soft);
+    padding: 8px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .pred-body.layout-right .pred-results::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .pred-body.layout-right .pred-results::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 2px;
+  }
+
   /* ── Options ── */
+
   .pred-options {
     padding: 0 16px 14px;
     display: flex;
@@ -281,13 +573,48 @@
     overflow: hidden;
     border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.02);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      opacity 0.3s ease,
+      filter 0.3s ease;
     animation: optionIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
 
   @keyframes optionIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .prediction-overlay[data-status="locked"] .pred-option {
+    opacity: 0.82;
+  }
+
+  .prediction-overlay[data-status="locked"] .pred-option-bar {
+    opacity: 0.08 !important;
+  }
+
+  .prediction-overlay[data-status="canceled"] .pred-option {
+    opacity: 0.55;
+    filter: saturate(0.55);
+  }
+
+  .prediction-overlay[data-status="canceled"] .pred-option-bar {
+    opacity: 0.05 !important;
+  }
+
+  .pred-option.leading {
+    border-color: rgba(212, 168, 83, 0.32);
+  }
+
+  .pred-option.leading .pred-option-pct {
+    color: var(--t1);
   }
 
   .pred-option.winner {
@@ -318,6 +645,7 @@
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
+    transition: box-shadow 0.3s ease;
   }
 
   .pred-option-text {
@@ -360,9 +688,11 @@
     border-radius: 3px;
     flex-shrink: 0;
   }
-  .pred-option.winner .pred-winner-badge { display: inline-block; }
 
-  /* ── Top contributor (shown during active prediction) ── */
+  .pred-option.winner .pred-winner-badge {
+    display: inline-block;
+  }
+
   .pred-top-contributor {
     font-family: var(--mono);
     font-size: 9px;
@@ -377,42 +707,27 @@
     text-overflow: ellipsis;
     display: none;
   }
-  .pred-top-contributor.visible { display: block; }
-  .pred-top-contributor .tc-name { color: var(--t2); }
 
-  /* ── Body (holds options + results) ── */
-  .pred-body {
-    display: flex;
-    flex-direction: column;
+  .pred-top-contributor.visible {
+    display: block;
   }
-  /* Side-by-side layout: results appear to the right */
-  .pred-body.layout-right {
-    flex-direction: row;
-    align-items: stretch;
-  }
-  .pred-body.layout-right .pred-options {
-    flex: 1;
-    min-width: 0;
-  }
-  .pred-body.layout-right .pred-results {
-    width: 200px;
-    flex-shrink: 0;
-    border-left: 1px solid var(--line-soft);
-    padding: 8px 12px;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  .pred-body.layout-right .pred-results::-webkit-scrollbar { width: 3px; }
-  .pred-body.layout-right .pred-results::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 
-  /* ── Post-resolution results (points won/lost) ── */
+  .pred-top-contributor .tc-name {
+    color: var(--t2);
+  }
+
+  /* ── Results ── */
+
   .pred-results {
     padding: 0 16px 14px;
     display: none;
     flex-direction: column;
     gap: 4px;
   }
-  .pred-results.visible { display: flex; }
+
+  .pred-results.visible {
+    display: flex;
+  }
 
   .pred-result-row {
     display: flex;
@@ -427,9 +742,16 @@
     font-weight: 500;
     animation: resultIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
+
   @keyframes resultIn {
-    from { opacity: 0; transform: translateX(-8px); }
-    to   { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   .pred-result-name {
@@ -440,17 +762,21 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
   .pred-result-amount {
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.04em;
   }
+
   .pred-result-amount.won {
     color: var(--ok);
   }
+
   .pred-result-amount.lost {
     color: var(--red);
   }
+
   .pred-result-color {
     width: 6px;
     height: 6px;
@@ -458,272 +784,8 @@
     flex-shrink: 0;
   }
 
-  /* ── Winner celebration particles ── */
-  .celebration-particle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 50;
-    will-change: transform, opacity;
-  }
-
-  /* ── Slide-out animation on dismiss ── */
-  .prediction-overlay.slide-out {
-    animation: overlayOut 0.5s cubic-bezier(0.4, 0, 1, 1) both;
-  }
-  @keyframes overlayOut {
-    from { opacity: 1; margin-top: 0; }
-    to   { opacity: 0; margin-top: 20px; }
-  }
-
-  /* ── Compact toggle button (in header) ── */
-  .compact-toggle-btn {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: transparent;
-    border: 1px solid var(--line);
-    color: var(--t3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: color 0.2s ease, border-color 0.2s ease;
-    padding: 0;
-  }
-  .compact-toggle-btn:hover {
-    color: var(--amber);
-    border-color: var(--amber-soft);
-  }
-  .prediction-overlay.compact .compact-toggle-btn {
-    color: var(--amber);
-    border-color: var(--amber-soft);
-  }
-  .compact-toggle-btn.active {
-    color: var(--amber);
-    border-color: var(--amber-soft);
-  }
-
-  /* ═══ VERTICAL MODE — compact bar anchored to top-left, sized to content ═══ */
-  .prediction-overlay.vertical {
-    width: 220px;
-    top: 0;
-    left: 0;
-    bottom: auto;
-    max-height: 100vh;
-    border-radius: 0;
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .prediction-overlay.vertical.visible {
-    display: flex;
-  }
-  .prediction-overlay.vertical .pred-header {
-    padding: 10px 14px;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .prediction-overlay.vertical .pred-label {
-    font-size: 9px;
-    gap: 6px;
-    flex: 1;
-  }
-  .prediction-overlay.vertical .pred-timer {
-    font-size: 14px;
-    font-weight: 700;
-  }
-  .prediction-overlay.vertical .pred-question {
-    padding: 6px 14px 8px;
-    font-size: 14px;
-    line-height: 1.3;
-    flex-shrink: 0;
-  }
-  .prediction-overlay.vertical .pred-body {
-    flex: 0 1 auto;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .prediction-overlay.vertical .pred-options {
-    flex: 0 1 auto;
-    padding: 4px 10px;
-    gap: 4px;
-    overflow-y: auto;
-    max-height: 50vh;
-  }
-  .prediction-overlay.vertical .pred-options::-webkit-scrollbar { width: 3px; }
-  .prediction-overlay.vertical .pred-options::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
-  .prediction-overlay.vertical .pred-option {
-    height: 36px;
-    border-radius: 6px;
-  }
-  .prediction-overlay.vertical .pred-option-content {
-    padding: 0 10px;
-    height: 100%;
-  }
-  .prediction-overlay.vertical .pred-option-color {
-    display: none;
-  }
-  .prediction-overlay.vertical .pred-option-bar {
-    opacity: 0.2;
-    border-radius: 6px;
-  }
-  .prediction-overlay.vertical .pred-option-text {
-    font-size: 11px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .prediction-overlay.vertical .pred-option-pct {
-    font-size: 12px;
-    font-weight: 700;
-  }
-  .prediction-overlay.vertical .pred-winner-badge {
-    display: none !important;
-  }
-  .prediction-overlay.vertical .pred-top-contributor {
-    display: none !important;
-  }
-  .prediction-overlay.vertical .pred-results {
-    display: none !important;
-  }
-  .prediction-overlay.vertical .pred-footer {
-    padding: 8px 14px;
-    flex-shrink: 0;
-  }
-  .prediction-overlay.vertical .pred-footer-meta {
-    font-size: 8px;
-  }
-  .prediction-overlay.vertical .pred-footer-status {
-    font-size: 8px;
-  }
-  .prediction-overlay.vertical .pred-status-dot {
-    width: 4px;
-    height: 4px;
-  }
-  .prediction-overlay.vertical .compact-toggle-btn {
-    width: 22px;
-    height: 22px;
-  }
-  .prediction-overlay.vertical .compact-toggle-btn svg {
-    width: 12px;
-    height: 12px;
-  }
-
-  /* ═══ COMPACT MODE — horizontal single-row per option ═══ */
-  .prediction-overlay.compact {
-    width: 320px;
-    bottom: 20px;
-    max-height: 80vh;
-  }
-  .prediction-overlay.compact .pred-header {
-    padding: 5px 10px;
-    border-bottom: 1px solid var(--line-soft);
-    flex-shrink: 0;
-  }
-  .prediction-overlay.compact .pred-label {
-    font-size: 8px;
-    gap: 5px;
-  }
-  .prediction-overlay.compact .pred-label span:last-child {
-    display: none;
-  }
-  .prediction-overlay.compact .pred-timer {
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .prediction-overlay.compact .pred-question {
-    display: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
-  }
-  .prediction-overlay.compact .pred-body {
-    display: block;
-    overflow: hidden;
-    flex: 0 1 auto !important;
-    max-height: none;
-  }
-  .prediction-overlay.compact .pred-results {
-    display: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    height: 0 !important;
-    max-height: 0 !important;
-    overflow: hidden !important;
-    flex: 0 0 0 !important;
-  }
-  .prediction-overlay.compact .pred-question {
-    display: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    height: 0 !important;
-    max-height: 0 !important;
-    overflow: hidden !important;
-    flex: 0 0 0 !important;
-  }
-  .prediction-overlay.compact .pred-options {
-    padding: 6px 10px;
-    gap: 4px;
-  }
-  .prediction-overlay.compact .pred-option {
-    border-radius: 6px;
-    height: 28px;
-  }
-  .prediction-overlay.compact .pred-option-content {
-    padding: 0 10px;
-    height: 100%;
-  }
-  .prediction-overlay.compact .pred-option-color {
-    display: none;
-  }
-  .prediction-overlay.compact .pred-option-bar {
-    opacity: 0.18;
-    border-radius: 6px;
-  }
-  .prediction-overlay.compact .pred-option-text {
-    font-size: 11px;
-    font-weight: 500;
-  }
-  .prediction-overlay.compact .pred-option-pct {
-    font-size: 12px;
-    font-weight: 700;
-  }
-  .prediction-overlay.compact .pred-winner-badge {
-    display: none !important;
-  }
-  .prediction-overlay.compact .pred-top-contributor {
-    display: none !important;
-  }
-  .prediction-overlay.compact .pred-footer {
-    padding: 4px 10px;
-    flex-shrink: 0;
-  }
-  .prediction-overlay.compact .pred-footer-meta {
-    font-size: 7px;
-  }
-  .prediction-overlay.compact .pred-footer-status {
-    font-size: 7px;
-  }
-  .prediction-overlay.compact .pred-status-dot {
-    width: 4px;
-    height: 4px;
-  }
-  .prediction-overlay.compact .compact-toggle-btn {
-    width: 20px;
-    height: 20px;
-  }
-  .prediction-overlay.compact .compact-toggle-btn svg {
-    width: 11px;
-    height: 11px;
-  }
-
   /* ── Footer ── */
+
   .pred-footer {
     display: flex;
     align-items: center;
@@ -759,18 +821,330 @@
     border-radius: 50%;
     background: var(--t3);
   }
+
   .pred-status-dot.active {
     background: var(--ok);
     box-shadow: 0 0 6px var(--ok);
   }
+
   .pred-status-dot.locked {
     background: var(--red);
   }
+
   .pred-status-dot.ended {
     background: var(--amber);
   }
 
-  /* ═══ TOAST ═══ */
+  .pred-status-dot.canceled {
+    background: var(--red);
+  }
+
+  /* ── Header buttons ── */
+
+  .compact-toggle-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--t3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+    padding: 0;
+  }
+
+  .compact-toggle-btn:hover {
+    color: var(--amber);
+    border-color: var(--amber-soft);
+  }
+
+  .compact-toggle-btn.active {
+    color: var(--amber);
+    border-color: var(--amber-soft);
+  }
+
+  /* ═══ Vertical mode ═══ */
+
+  .prediction-overlay.vertical {
+    width: 220px;
+    top: 0;
+    left: 0;
+    bottom: auto;
+    max-height: 100vh;
+    border-radius: 0;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .prediction-overlay.vertical.visible {
+    display: flex;
+  }
+
+  .prediction-overlay.vertical .pred-header {
+    padding: 10px 14px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .prediction-overlay.vertical .pred-label {
+    font-size: 9px;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .prediction-overlay.vertical .pred-timer {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .prediction-overlay.vertical .pred-question {
+    padding: 6px 14px 8px;
+    font-size: 14px;
+    line-height: 1.3;
+    flex-shrink: 0;
+  }
+
+  .prediction-overlay.vertical .pred-body {
+    flex: 0 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .prediction-overlay.vertical .pred-options {
+    flex: 0 1 auto;
+    padding: 4px 10px;
+    gap: 4px;
+    overflow-y: auto;
+    max-height: 50vh;
+  }
+
+  .prediction-overlay.vertical .pred-options::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .prediction-overlay.vertical .pred-options::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 2px;
+  }
+
+  .prediction-overlay.vertical .pred-option {
+    height: 36px;
+    border-radius: 6px;
+  }
+
+  .prediction-overlay.vertical .pred-option-content {
+    padding: 0 10px;
+    height: 100%;
+  }
+
+  .prediction-overlay.vertical .pred-option-color {
+    display: none;
+  }
+
+  .prediction-overlay.vertical .pred-option-bar {
+    opacity: 0.2;
+    border-radius: 6px;
+  }
+
+  .prediction-overlay.vertical .pred-option-text {
+    font-size: 11px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .prediction-overlay.vertical .pred-option-pct {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .prediction-overlay.vertical .pred-winner-badge {
+    display: none !important;
+  }
+
+  .prediction-overlay.vertical .pred-top-contributor {
+    display: none !important;
+  }
+
+  .prediction-overlay.vertical .pred-results {
+    display: none !important;
+  }
+
+  .prediction-overlay.vertical .pred-footer {
+    padding: 8px 14px;
+    flex-shrink: 0;
+  }
+
+  .prediction-overlay.vertical .pred-footer-meta {
+    font-size: 8px;
+  }
+
+  .prediction-overlay.vertical .pred-footer-status {
+    font-size: 8px;
+  }
+
+  .prediction-overlay.vertical .pred-status-dot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .prediction-overlay.vertical .compact-toggle-btn {
+    width: 22px;
+    height: 22px;
+  }
+
+  .prediction-overlay.vertical .compact-toggle-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* ═══ Compact mode ═══ */
+
+  .prediction-overlay.compact {
+    width: 320px;
+    bottom: 20px;
+    max-height: 80vh;
+  }
+
+  .prediction-overlay.compact .pred-header {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-shrink: 0;
+  }
+
+  .prediction-overlay.compact .pred-label {
+    font-size: 8px;
+    gap: 5px;
+  }
+
+  .prediction-overlay.compact .pred-label span:last-child {
+    display: none;
+  }
+
+  .prediction-overlay.compact .pred-timer {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .prediction-overlay.compact .pred-question {
+    display: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    flex: 0 0 0 !important;
+  }
+
+  .prediction-overlay.compact .pred-body {
+    display: block;
+    overflow: hidden;
+    flex: 0 1 auto !important;
+    max-height: none;
+  }
+
+  .prediction-overlay.compact .pred-results {
+    display: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    flex: 0 0 0 !important;
+  }
+
+  .prediction-overlay.compact .pred-options {
+    padding: 6px 10px;
+    gap: 4px;
+  }
+
+  .prediction-overlay.compact .pred-option {
+    border-radius: 6px;
+    height: 28px;
+  }
+
+  .prediction-overlay.compact .pred-option-content {
+    padding: 0 10px;
+    height: 100%;
+  }
+
+  .prediction-overlay.compact .pred-option-color {
+    display: none;
+  }
+
+  .prediction-overlay.compact .pred-option-bar {
+    opacity: 0.18;
+    border-radius: 6px;
+  }
+
+  .prediction-overlay.compact .pred-option-text {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .prediction-overlay.compact .pred-option-pct {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .prediction-overlay.compact .pred-winner-badge {
+    display: none !important;
+  }
+
+  .prediction-overlay.compact .pred-top-contributor {
+    display: none !important;
+  }
+
+  .prediction-overlay.compact .pred-footer {
+    padding: 4px 10px;
+    flex-shrink: 0;
+  }
+
+  .prediction-overlay.compact .pred-footer-meta {
+    font-size: 7px;
+  }
+
+  .prediction-overlay.compact .pred-footer-status {
+    font-size: 7px;
+  }
+
+  .prediction-overlay.compact .pred-status-dot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .prediction-overlay.compact .compact-toggle-btn {
+    width: 20px;
+    height: 20px;
+  }
+
+  .prediction-overlay.compact .compact-toggle-btn svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  /* ═══ Celebration particles ═══ */
+
+  .celebration-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 50;
+    will-change: transform, opacity;
+  }
+
+  /* ═══ Toast ═══ */
+
   .toast {
     position: fixed;
     bottom: 32px;
@@ -787,20 +1161,30 @@
     padding: 8px 16px;
     opacity: 0;
     transform: translateY(10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+      opacity 0.3s ease,
+      transform 0.3s ease;
     pointer-events: none;
     z-index: 300;
   }
+
   .toast.visible {
     opacity: 1;
     transform: translateY(0);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
+  .toast--success {
+    color: var(--ok);
+    border-color: rgba(136, 181, 118, 0.4);
   }
 
-  /* ═══ FLOATING WINNER/LOSER NOTIFICATIONS (compact/vertical mode) ═══ */
+  .toast--error {
+    color: var(--red);
+    border-color: rgba(196, 71, 58, 0.4);
+  }
+
+  /* ═══ Compact floating results ═══ */
+
   .compact-results {
     position: fixed;
     pointer-events: none;
@@ -809,7 +1193,13 @@
     padding-bottom: 6px;
     width: 320px;
   }
-  .compact-results.visible { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+
+  .compact-results.visible {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+  }
 
   .compact-result-item {
     font-family: var(--mono);
@@ -826,17 +1216,16 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    animation: floatResultIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
     opacity: 0;
     transform: translateY(-8px);
+    transition:
+      opacity 0.35s ease,
+      transform 0.35s ease;
   }
+
   .compact-result-item.show {
     opacity: 1;
     transform: translateY(0);
-  }
-  @keyframes floatResultIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
   }
 
   .compact-result-dot {
@@ -845,17 +1234,55 @@
     border-radius: 50%;
     flex-shrink: 0;
   }
+
   .compact-result-name {
     color: var(--t1);
   }
+
   .compact-result-amount {
     font-variant-numeric: tabular-nums;
   }
+
   .compact-result-amount.won {
     color: var(--ok);
   }
+
   .compact-result-amount.lost {
     color: var(--red);
+  }
+
+  /* ═══ Debug panel ═══ */
+
+  #sp-debug {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    max-width: 340px;
+    background: rgba(2, 2, 3, 0.88);
+    border: 1px solid var(--line);
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.45;
+    letter-spacing: 0.04em;
+    padding: 10px 12px;
+    border-radius: 10px;
+    pointer-events: none;
+    white-space: pre;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    display: none;
+  }
+
+  html.debug #sp-debug {
+    display: block;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 </style>
 </head>
@@ -864,47 +1291,76 @@
 <!-- Connect screen -->
 <div class="connect-screen" id="connectScreen">
   <div class="connect-title">Stream <em>Predictions</em></div>
-  <div class="connect-sub">Connect your Twitch account to receive live prediction events automatically. The overlay will appear whenever a prediction starts on your channel.</div>
+
+  <div class="connect-sub">
+    Connect your Twitch account to receive live prediction events automatically.
+    The overlay will appear whenever a prediction starts on your channel.
+  </div>
+
   <a class="connect-btn" id="connectBtn" href="#">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+    </svg>
     <span>Connect Twitch</span>
   </a>
-  <button class="connect-btn" id="testBtn" style="background: rgba(212, 168, 83, 0.08); border-color: rgba(212, 168, 83, 0.3); color: var(--amber);">
+
+  <button class="connect-btn connect-btn--test" id="testBtn" type="button">
     <span>Run Test Prediction</span>
   </button>
+
   <div class="connect-status" id="connectStatus"></div>
 </div>
 
-<!-- Floating test button (visible when connected, hidden when on connect screen) -->
-<button class="float-test-btn" id="floatTestBtn" title="Run test prediction (T)" onclick="runTestPrediction();return false;">
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+<!-- Floating test button -->
+<button class="float-test-btn" id="floatTestBtn" title="Run test prediction (T)" type="button">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+  </svg>
 </button>
 
-<!-- Floating results for compact/vertical mode (outside overlay so it's not clipped) -->
+<!-- Floating results for compact/vertical mode -->
 <div class="compact-results" id="compactResults"></div>
 
 <!-- Prediction overlay -->
-<div class="prediction-overlay" id="predictionOverlay">
+<div class="prediction-overlay" id="predictionOverlay" data-status="idle">
   <div class="pred-header">
     <div class="pred-label">
       <span class="pred-dot" id="predDot"></span>
       <span>Prediction</span>
     </div>
+
     <div style="display:flex;align-items:center;gap:10px;">
-      <button class="compact-toggle-btn" id="layoutToggleBtn" title="Toggle results layout (L)" onclick="toggleLayout();return false;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      <button class="compact-toggle-btn" id="layoutToggleBtn" title="Toggle results layout (L)" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="15" y1="3" x2="15" y2="21"/>
+        </svg>
       </button>
-      <button class="compact-toggle-btn" id="compactToggleBtn" title="Cycle display mode (K)" onclick="cycleDisplayMode();return false;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+
+      <button class="compact-toggle-btn" id="compactToggleBtn" title="Cycle display mode (K)" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 14 10 14 10 20"/>
+          <polyline points="20 10 14 10 14 4"/>
+          <line x1="14" y1="10" x2="21" y2="3"/>
+          <line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
       </button>
+
       <div class="pred-timer" id="predTimer">—</div>
     </div>
   </div>
+
+  <div class="pred-progress" id="predProgress" aria-hidden="true">
+    <div class="pred-progress-fill" id="predProgressFill"></div>
+  </div>
+
   <div class="pred-question" id="predQuestion">—</div>
+
   <div class="pred-body" id="predBody">
     <div class="pred-options" id="predOptions"></div>
     <div class="pred-results" id="predResults"></div>
   </div>
+
   <div class="pred-footer">
     <div class="pred-footer-meta" id="predMeta">Prediction Active</div>
     <div class="pred-footer-status">
@@ -918,957 +1374,1721 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-// CONFIG — You need to register a Twitch app and put your
-// client_id here. See instructions below.
-//
-// TO SET UP:
-// 1. Go to https://dev.twitch.tv/console/apps
-// 2. Register a new application
-//    - Name: Stream Predictions
-//    - OAuth Redirect URLs: add the URL where this file is hosted
-//      (e.g. https://your-domain.com/stream-predictions-overlay.html)
-//      OR http://localhost if testing locally
-//    - Category: Application Integration
-// 3. Copy the Client ID and paste it below
-// 4. Set REDIRECT_URI to match the redirect URL you registered
-// ═══════════════════════════════════════════════════════════════
-var CLIENT_ID = '3iov7b5p32ry0cvbbr79sygd91o7a5';
-var REDIRECT_URI = window.location.origin + window.location.pathname;
-var SCOPES = 'channel:read:predictions channel:manage:predictions';
-var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
-var COMPACT_KEY = 'stream-predictions-compact';
-var LAYOUT_KEY = 'stream-predictions-layout'; // 'bottom' or 'right'
+(function () {
+  'use strict';
 
-// URL params
-var P = new URLSearchParams(window.location.search);
+  // ═══════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════
 
-// Display mode: 'full' or 'vertical' (compact mode removed)
-// Default is 'vertical' — user can toggle to 'full' via the button (preference persists)
-var displayMode = 'vertical';
-if (P.get('vertical') === 'true' || P.get('compact') === 'true') {
-  displayMode = 'vertical';
-} else if (P.get('vertical') === 'false' || P.get('full') === 'true') {
-  displayMode = 'full';
-} else {
-  try { displayMode = localStorage.getItem(COMPACT_KEY) || 'vertical'; } catch(e) {}
-}
-// Migrate old values
-if (displayMode === 'true' || displayMode === 'compact') displayMode = 'vertical';
-if (displayMode === 'false') displayMode = 'full';
+  var BUILD = '2026-07-22-phase3-4-5-original';
 
-var compactMode = (displayMode !== 'full');
+  console.log(
+    '%c[Stream Predictions]%c build ' + BUILD,
+    'color:#d4a853;font-weight:bold',
+    'color:inherit'
+  );
 
-function applyDisplayMode(mode) {
-  displayMode = mode;
-  compactMode = (mode !== 'full');
-  if (predictionOverlay) {
-    predictionOverlay.classList.toggle('compact', mode === 'compact');
-    predictionOverlay.classList.toggle('vertical', mode === 'vertical');
-    // In vertical mode, override any saved drag position to fill the bar
-    if (mode === 'vertical') {
-      predictionOverlay.style.left = '0px';
-      predictionOverlay.style.top = '0px';
+  // ═══════════════════════════════════════════════════════════════
+  // URL PARAMS
+  // ═══════════════════════════════════════════════════════════════
+
+  var P = new URLSearchParams(window.location.search);
+
+  function paramFlag(name) {
+    var v = P.get(name);
+    return v !== null && v !== '0' && v !== 'false';
+  }
+
+  function clamp(n, min, max) {
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function shortId(id) {
+    var s = String(id || '');
+    return s.length > 10 ? s.slice(0, 10) + '…' : s;
+  }
+
+  var didReset = paramFlag('reset');
+
+  var STORAGE_KEYS = [
+    'stream-predictions-twitch-token',
+    'stream-predictions-twitch-token-expires',
+    'stream-predictions-mode',
+    'stream-predictions-compact',
+    'stream-predictions-layout',
+    'stream-predictions-position-full',
+    'stream-predictions-position-vertical',
+    'stream-predictions-position-compact'
+  ];
+
+  if (didReset) {
+    try {
+      STORAGE_KEYS.forEach(function (key) {
+        localStorage.removeItem(key);
+      });
+    } catch (e) {}
+  }
+
+  var CLIENT_ID = P.get('client_id') || '3iov7b5p32ry0cvbbr79sygd91o7a5';
+
+  var REDIRECT_URI =
+    P.get('redirect_uri') ||
+    (window.location.origin && window.location.origin !== 'null'
+      ? window.location.origin + window.location.pathname
+      : window.location.href.split('#')[0]);
+
+  var SCOPES = 'channel:read:predictions';
+
+  var TOKEN_STORAGE_KEY = 'stream-predictions-twitch-token';
+  var TOKEN_EXPIRY_KEY = 'stream-predictions-twitch-token-expires';
+  var MODE_KEY = 'stream-predictions-mode';
+  var LAYOUT_KEY = 'stream-predictions-layout';
+  var POS_PREFIX = 'stream-predictions-position-';
+
+  var ui = {
+    scale: clamp(parseFloat(P.get('scale')) || 1, 0.4, 2),
+    safe: Math.max(0, parseInt(P.get('safe'), 10) || 0),
+    clickthrough: paramFlag('clickthrough'),
+    plate: paramFlag('plate'),
+    contrastHigh: P.get('contrast') === 'high',
+    motionOff: P.get('motion') === 'off',
+    debug: paramFlag('debug')
+  };
+
+  var docEl = document.documentElement;
+
+  if (ui.clickthrough) docEl.classList.add('clickthrough');
+  if (ui.plate) docEl.classList.add('plate');
+  if (ui.contrastHigh) docEl.classList.add('contrast-high');
+  if (ui.motionOff) docEl.classList.add('motion-off');
+  if (ui.debug) docEl.classList.add('debug');
+
+  docEl.style.setProperty('--overlay-scale', String(ui.scale));
+  docEl.style.setProperty('--safe', ui.safe + 'px');
+
+  var displayMode = (function () {
+    var m = P.get('mode');
+    if (m === 'full' || m === 'vertical' || m === 'compact') return m;
+
+    if (paramFlag('vertical') || paramFlag('compact')) return 'vertical';
+    if (paramFlag('full')) return 'full';
+
+    try {
+      var stored = localStorage.getItem(MODE_KEY) || localStorage.getItem('stream-predictions-compact');
+      if (stored === 'full' || stored === 'vertical' || stored === 'compact') return stored;
+      if (stored === 'true' || stored === '1') return 'vertical';
+      if (stored === 'false' || stored === '0') return 'full';
+    } catch (e) {}
+
+    return 'vertical';
+  })();
+
+  var resultsLayout = (function () {
+    if (P.get('layout') === 'right') return 'right';
+    if (P.get('layout') === 'bottom') return 'bottom';
+
+    try {
+      return localStorage.getItem(LAYOUT_KEY) === 'right' ? 'right' : 'bottom';
+    } catch (e) {
+      return 'bottom';
+    }
+  })();
+
+  // ═══════════════════════════════════════════════════════════════
+  // DOM REFS
+  // ═══════════════════════════════════════════════════════════════
+
+  var connectScreen = document.getElementById('connectScreen');
+  var connectBtn = document.getElementById('connectBtn');
+  var connectStatus = document.getElementById('connectStatus');
+  var testBtn = document.getElementById('testBtn');
+  var floatTestBtn = document.getElementById('floatTestBtn');
+  var compactResults = document.getElementById('compactResults');
+
+  var predictionOverlay = document.getElementById('predictionOverlay');
+  var predQuestion = document.getElementById('predQuestion');
+  var predOptions = document.getElementById('predOptions');
+  var predResults = document.getElementById('predResults');
+  var predTimer = document.getElementById('predTimer');
+  var predDot = document.getElementById('predDot');
+  var predMeta = document.getElementById('predMeta');
+  var predStatusDot = document.getElementById('predStatusDot');
+  var predStatusText = document.getElementById('predStatusText');
+  var predBody = document.getElementById('predBody');
+  var layoutToggleBtn = document.getElementById('layoutToggleBtn');
+  var compactToggleBtn = document.getElementById('compactToggleBtn');
+  var toastEl = document.getElementById('toast');
+
+  var predProgress = document.getElementById('predProgress');
+  var predProgressFill = document.getElementById('predProgressFill');
+
+  // ═══════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════
+
+  var accessToken = null;
+  var broadcasterId = null;
+  var eventSubSocket = null;
+  var currentPrediction = null;
+  var timerInterval = null;
+  var hideTimer = null;
+
+  var reconnectAttempts = 0;
+  var suppressReconnect = false;
+  var lastKeepalive = 0;
+  var keepaliveTimer = null;
+  var KEEPALIVE_TIMEOUT = 15000;
+
+  var testTimers = [];
+  var testActive = false;
+
+  var lastPercents = {};
+  var seenMessageIds = [];
+  var subscriptionErrorShown = false;
+
+  var OUTCOME_COLORS = [
+    'var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)',
+    'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)', 'var(--c9)'
+  ];
+
+  var debugState = {
+    build: BUILD,
+    ws: 'idle',
+    token: 'none',
+    prediction: 'none',
+    lastMessage: '',
+    reconnects: 0,
+    subscriptions: 0,
+    mode: displayMode,
+    layout: resultsLayout,
+    scale: ui.scale,
+    safe: ui.safe
+  };
+
+  var debugEl = null;
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════
+
+  function prefersReducedMotion() {
+    return ui.motionOff ||
+      (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function normaliseStatus(status) {
+    return String(status || '').toUpperCase();
+  }
+
+  function parseTimestamp(value) {
+    if (!value) return null;
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    var parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function isDuplicateNotification(msg) {
+    var id = msg && msg.metadata && msg.metadata.message_id;
+    if (!id) return false;
+
+    if (seenMessageIds.indexOf(id) !== -1) return true;
+
+    seenMessageIds.push(id);
+    if (seenMessageIds.length > 100) seenMessageIds.shift();
+
+    return false;
+  }
+
+  function showToast(text, type) {
+    if (!toastEl) return;
+
+    toastEl.textContent = text;
+    toastEl.className = 'toast' + (type ? ' toast--' + type : '');
+
+    void toastEl.offsetWidth;
+    toastEl.classList.add('visible');
+
+    setTimeout(function () {
+      toastEl.classList.remove('visible');
+    }, 2500);
+  }
+
+  function setConnectStatus(text, tone) {
+    if (!connectStatus) return;
+
+    connectStatus.textContent = text;
+    connectStatus.classList.remove('error', 'success');
+
+    if (tone) connectStatus.classList.add(tone);
+  }
+
+  function clearCompactResults() {
+    if (!compactResults) return;
+    compactResults.classList.remove('visible');
+    compactResults.textContent = '';
+  }
+
+  function clearHideTimer() {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
     }
   }
-  try { localStorage.setItem(COMPACT_KEY, mode); } catch(e) {}
-}
 
-// Legacy function — still used by the header button onclick
-function applyCompactMode(on) {
-  if (on) applyDisplayMode('vertical');
-  else applyDisplayMode('full');
-}
-
-function cycleDisplayMode() {
-  if (displayMode === 'full') applyDisplayMode('vertical');
-  else applyDisplayMode('full');
-  showToast(displayMode === 'full' ? 'Full mode' : 'Vertical mode');
-}
-
-// Results layout: 'bottom' (default) or 'right' (side-by-side)
-var resultsLayout = 'bottom';
-try { resultsLayout = localStorage.getItem(LAYOUT_KEY) || 'bottom'; } catch(e) {}
-if (P.get('layout') === 'right') resultsLayout = 'right';
-
-function applyLayout(layout) {
-  resultsLayout = layout;
-  var body = document.getElementById('predBody');
-  if (body) {
-    body.classList.toggle('layout-right', layout === 'right');
-  }
-  var btn = document.getElementById('layoutToggleBtn');
-  if (btn) {
-    btn.classList.toggle('active', layout === 'right');
-  }
-  try { localStorage.setItem(LAYOUT_KEY, layout); } catch(e) {}
-}
-
-function toggleLayout() {
-  applyLayout(resultsLayout === 'right' ? 'bottom' : 'right');
-  showToast(resultsLayout === 'right' ? 'Results: right' : 'Results: below');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DOM REFS
-// ═══════════════════════════════════════════════════════════════
-var connectScreen = document.getElementById('connectScreen');
-var connectBtn = document.getElementById('connectBtn');
-var connectStatus = document.getElementById('connectStatus');
-var predictionOverlay = document.getElementById('predictionOverlay');
-var predQuestion = document.getElementById('predQuestion');
-var predOptions = document.getElementById('predOptions');
-var predResults = document.getElementById('predResults');
-var predTimer = document.getElementById('predTimer');
-var predDot = document.getElementById('predDot');
-var predMeta = document.getElementById('predMeta');
-var predStatusDot = document.getElementById('predStatusDot');
-var predStatusText = document.getElementById('predStatusText');
-var toastEl = document.getElementById('toast');
-
-// ═══════════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════════
-var accessToken = null;
-var broadcasterId = null;
-var eventSubSocket = null;
-var currentPrediction = null;
-var timerInterval = null;
-
-var OUTCOME_COLORS = [
-  'var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)',
-  'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)', 'var(--c9)'
-];
-
-// ═══════════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════════
-function showToast(text) {
-  toastEl.textContent = text;
-  toastEl.classList.add('visible');
-  setTimeout(function() { toastEl.classList.remove('visible'); }, 2500);
-}
-
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════════════════════
-function initAuth() {
-  if (!CLIENT_ID) {
-    connectStatus.textContent = 'No Client ID configured — see instructions in the file';
-    connectStatus.classList.add('error');
-    return;
+  function clearTestTimers() {
+    for (var i = 0; i < testTimers.length; i++) {
+      clearTimeout(testTimers[i]);
+    }
+    testTimers = [];
   }
 
-  // Build OAuth URL
-  var authUrl = 'https://id.twitch.tv/oauth2/authorize?client_id=' + CLIENT_ID +
-    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
-    '&response_type=token&scope=' + encodeURIComponent(SCOPES);
-  connectBtn.setAttribute('href', authUrl);
+  function animatePercentText(el, from, to) {
+    if (prefersReducedMotion() || from === to) {
+      el.textContent = Math.round(to) + '%';
+      return;
+    }
 
-  // Check for token in URL hash (redirect back from Twitch)
-  var hash = window.location.hash.substring(1);
-  var params = new URLSearchParams(hash);
-  if (params.get('access_token')) {
-    accessToken = params.get('access_token');
-    try { localStorage.setItem(TOKEN_STORAGE_KEY, accessToken); } catch(e) {}
-    // Clean the URL (remove the token from the address bar)
-    window.history.replaceState(null, '', window.location.pathname);
-    connectStatus.textContent = 'Connected! Loading…';
-    connectStatus.classList.add('success');
-    processToken(accessToken);
-    return;
+    var duration = 500;
+    var startTime = performance.now();
+
+    function tick(now) {
+      var progress = Math.min(1, (now - startTime) / duration);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var value = from + (to - from) * eased;
+
+      el.textContent = Math.round(value) + '%';
+
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
   }
 
-  // Check for stored token
-  try {
-    var stored = localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (stored) {
-      accessToken = stored;
-      connectStatus.textContent = 'Restoring connection…';
+  // ═══════════════════════════════════════════════════════════════
+  // DEBUG PANEL
+  // ═══════════════════════════════════════════════════════════════
+
+  function ensureDebugPanel() {
+    if (!ui.debug || debugEl) return;
+
+    debugEl = document.createElement('div');
+    debugEl.id = 'sp-debug';
+    document.body.appendChild(debugEl);
+  }
+
+  function updateDebug(patch) {
+    if (patch) {
+      Object.keys(patch).forEach(function (key) {
+        debugState[key] = patch[key];
+      });
+    }
+
+    if (!ui.debug) return;
+
+    ensureDebugPanel();
+    if (!debugEl) return;
+
+    var lines = [
+      '[Stream Predictions]',
+      'build: ' + debugState.build,
+      'ws: ' + debugState.ws,
+      'token: ' + debugState.token,
+      'prediction: ' + debugState.prediction,
+      'last: ' + (debugState.lastMessage || '—'),
+      'reconnects: ' + debugState.reconnects,
+      'subs: ' + debugState.subscriptions,
+      'mode: ' + debugState.mode,
+      'layout: ' + debugState.layout,
+      'scale: ' + debugState.scale,
+      'safe: ' + debugState.safe
+    ];
+
+    debugEl.textContent = lines.join('\n');
+  }
+
+  function enableDebug() {
+    ui.debug = true;
+    docEl.classList.add('debug');
+    updateDebug();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DISPLAY MODE + LAYOUT + POSITION
+  // ═══════════════════════════════════════════════════════════════
+
+  function positionKey() {
+    return POS_PREFIX + displayMode;
+  }
+
+  function savePosition(data) {
+    try {
+      localStorage.setItem(positionKey(), JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  function setOverlayPosition(x, y) {
+    if (displayMode === 'vertical') {
+      predictionOverlay.style.left = ui.safe + 'px';
+      predictionOverlay.style.top = ui.safe + 'px';
+      predictionOverlay.style.bottom = '';
+      savePosition({ x: ui.safe, y: ui.safe });
+      return;
+    }
+
+    if (displayMode === 'compact') {
+      predictionOverlay.style.left = ui.safe + 'px';
+      predictionOverlay.style.top = 'auto';
+      predictionOverlay.style.bottom = ui.safe + 'px';
+      savePosition({ x: ui.safe, bottom: ui.safe });
+      return;
+    }
+
+    var w = (predictionOverlay.offsetWidth || 560) * ui.scale;
+    var h = (predictionOverlay.offsetHeight || 300) * ui.scale;
+
+    x = Math.max(ui.safe, Math.min(window.innerWidth - w - ui.safe, x));
+    y = Math.max(ui.safe, Math.min(window.innerHeight - h - ui.safe, y));
+
+    predictionOverlay.style.left = x + 'px';
+    predictionOverlay.style.top = y + 'px';
+    predictionOverlay.style.bottom = '';
+
+    savePosition({ x: x, y: y });
+  }
+
+  function restoreOverlayPosition() {
+    if (displayMode !== 'full') {
+      setOverlayPosition(ui.safe, ui.safe);
+      return;
+    }
+
+    try {
+      var saved = JSON.parse(localStorage.getItem(positionKey()) || 'null');
+      if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
+        setOverlayPosition(saved.x, saved.y);
+        return;
+      }
+    } catch (e) {}
+
+    var defaultX = Math.max(ui.safe, (window.innerWidth - 560 * ui.scale) / 2);
+    var defaultY = Math.max(ui.safe, window.innerHeight - 400 * ui.scale - ui.safe);
+
+    setOverlayPosition(defaultX, defaultY);
+  }
+
+  function applyDisplayMode(mode) {
+    displayMode = mode;
+
+    predictionOverlay.classList.toggle('vertical', mode === 'vertical');
+    predictionOverlay.classList.toggle('compact', mode === 'compact');
+
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch (e) {}
+
+    restoreOverlayPosition();
+    updateDebug({ mode: mode });
+  }
+
+  function cycleDisplayMode() {
+    if (displayMode === 'full') applyDisplayMode('vertical');
+    else applyDisplayMode('full');
+
+    showToast(displayMode === 'full' ? 'Full mode' : 'Vertical mode');
+  }
+
+  function applyLayout(layout) {
+    resultsLayout = layout;
+
+    if (predBody) predBody.classList.toggle('layout-right', layout === 'right');
+    if (layoutToggleBtn) layoutToggleBtn.classList.toggle('active', layout === 'right');
+
+    try {
+      localStorage.setItem(LAYOUT_KEY, layout);
+    } catch (e) {}
+
+    updateDebug({ layout: layout });
+  }
+
+  function toggleLayout() {
+    applyLayout(resultsLayout === 'right' ? 'bottom' : 'right');
+    showToast(resultsLayout === 'right' ? 'Results: right' : 'Results: below');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUTH
+  // ═══════════════════════════════════════════════════════════════
+
+  function initAuth() {
+    if (didReset) {
+      setConnectStatus('Reset complete — connect Twitch', 'success');
+      showToast('Overlay reset');
+      updateDebug({ token: 'cleared' });
+    }
+
+    if (!CLIENT_ID) {
+      setConnectStatus('No Client ID configured — add ?client_id=YOUR_CLIENT_ID', 'error');
+      connectBtn.removeAttribute('href');
+      updateDebug({ token: 'missing client id' });
+
+      connectBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setConnectStatus('No Client ID configured', 'error');
+      });
+
+      return;
+    }
+
+    var authUrl =
+      'https://id.twitch.tv/oauth2/authorize?client_id=' + encodeURIComponent(CLIENT_ID) +
+      '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
+      '&response_type=token' +
+      '&scope=' + encodeURIComponent(SCOPES);
+
+    connectBtn.setAttribute('href', authUrl);
+
+    var hash = window.location.hash.substring(1);
+    var params = new URLSearchParams(hash);
+
+    if (params.get('access_token')) {
+      accessToken = params.get('access_token');
+
+      var expiresIn = parseInt(params.get('expires_in'), 10) || 0;
+
+      try {
+        localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+
+        if (expiresIn > 0) {
+          localStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + expiresIn * 1000));
+        } else {
+          localStorage.removeItem(TOKEN_EXPIRY_KEY);
+        }
+      } catch (e) {}
+
+      try {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      } catch (e) {}
+
+      setConnectStatus('Connected! Loading…', 'success');
+      updateDebug({ token: 'received' });
+
       processToken(accessToken);
       return;
     }
-  } catch(e) {}
 
-  // No token — show connect button
-  connectStatus.textContent = 'Click to connect your Twitch account';
-}
+    try {
+      var stored = localStorage.getItem(TOKEN_STORAGE_KEY);
+      var expiry = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0', 10);
 
-async function processToken(token) {
-  accessToken = token;
+      if (stored) {
+        if (expiry && Date.now() >= expiry - 60000) {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(TOKEN_EXPIRY_KEY);
 
-  // Get broadcaster ID
-  try {
-    var resp = await fetch('https://api.twitch.tv/helix/users', {
-      headers: {
-        'Client-ID': CLIENT_ID,
-        'Authorization': 'Bearer ' + token
+          setConnectStatus('Session expired — reconnect', 'error');
+          updateDebug({ token: 'expired' });
+          return;
+        }
+
+        accessToken = stored;
+        setConnectStatus('Restoring connection…');
+        updateDebug({ token: 'stored' });
+
+        processToken(accessToken);
+        return;
       }
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    var data = await resp.json();
-    if (data.data && data.data.length > 0) {
-      broadcasterId = data.data[0].id;
-      connectScreen.classList.add('hidden');
-      // Show the floating test button when connected
-      document.getElementById('floatTestBtn').classList.add('visible');
-      showToast('Connected to Twitch');
-      // Subscribe to prediction events
-      subscribeToPredictions();
-      // Also check for any active prediction right now
-      fetchActivePrediction();
-    } else {
-      throw new Error('No user data');
+    } catch (e) {}
+
+    if (!didReset) {
+      setConnectStatus('Click to connect your Twitch account');
     }
-  } catch(e) {
-    // Re-show the connect screen so the user can see the error + retry
-    connectScreen.classList.remove('hidden');
-    document.getElementById('floatTestBtn').classList.remove('visible');
-    connectStatus.textContent = 'Connection failed: ' + e.message + ' — click Connect Twitch to retry';
-    connectStatus.classList.add('error');
-    connectStatus.classList.remove('success');
-    // Clear bad token
-    try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(err) {}
+
+    updateDebug({ token: 'none' });
+  }
+
+  async function processToken(token) {
+    accessToken = token;
+    connectBtn.classList.add('loading');
+
+    try {
+      var resp = await fetch('https://api.twitch.tv/helix/users', {
+        headers: {
+          'Client-ID': CLIENT_ID,
+          'Authorization': 'Bearer ' + token
+        }
+      });
+
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+      var data = await resp.json();
+
+      if (data.data && data.data.length > 0) {
+        broadcasterId = data.data[0].id;
+
+        connectScreen.classList.add('hidden');
+        connectBtn.classList.remove('loading');
+
+        if (floatTestBtn) floatTestBtn.classList.add('visible');
+
+        showToast('Connected to Twitch', 'success');
+
+        reconnectAttempts = 0;
+
+        updateDebug({
+          token: 'valid',
+          ws: 'connecting'
+        });
+
+        subscribeToPredictions();
+        fetchActivePrediction();
+      } else {
+        throw new Error('No user data');
+      }
+    } catch (e) {
+      connectScreen.classList.remove('hidden');
+      connectBtn.classList.remove('loading');
+
+      if (floatTestBtn) floatTestBtn.classList.remove('visible');
+
+      setConnectStatus(
+        'Connection failed: ' + e.message + ' — click Connect Twitch to retry',
+        'error'
+      );
+
+      updateDebug({
+        token: 'invalid',
+        ws: 'disconnected'
+      });
+
+      try {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_EXPIRY_KEY);
+      } catch (err) {}
+
+      accessToken = null;
+      broadcasterId = null;
+    }
+  }
+
+  function disconnect() {
+    suppressReconnect = true;
+
+    stopKeepaliveWatchdog();
+
+    if (eventSubSocket) {
+      try {
+        eventSubSocket.close();
+      } catch (e) {}
+      eventSubSocket = null;
+    }
+
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    clearHideTimer();
+    clearTestTimers();
+    clearCompactResults();
+
+    testActive = false;
     accessToken = null;
+    broadcasterId = null;
+    currentPrediction = null;
+    lastPercents = {};
+
+    predictionOverlay.classList.remove('visible', 'slide-out');
+    connectScreen.classList.remove('hidden');
+
+    if (floatTestBtn) floatTestBtn.classList.remove('visible');
+
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    } catch (e) {}
+
+    setConnectStatus('Disconnected');
+    updateDebug({
+      ws: 'disconnected',
+      token: 'cleared',
+      prediction: 'none',
+      subscriptions: 0
+    });
   }
-}
 
-function disconnect() {
-  if (eventSubSocket) {
-    eventSubSocket.close();
-    eventSubSocket = null;
+  // ═══════════════════════════════════════════════════════════════
+  // EVENTSUB WEBSOCKET
+  // ═══════════════════════════════════════════════════════════════
+
+  function subscribeToPredictions() {
+    connectEventSub('wss://eventsub.wss.twitch.tv/ws');
   }
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(e) {}
-  accessToken = null;
-  broadcasterId = null;
-  currentPrediction = null;
-  predictionOverlay.classList.remove('visible');
-  connectScreen.classList.remove('hidden');
-  document.getElementById('floatTestBtn').classList.remove('visible');
-  connectStatus.textContent = 'Disconnected';
-  connectStatus.classList.remove('success', 'error');
-}
 
-// ═══════════════════════════════════════════════════════════════
-// EVENTSUB WEBSOCKET SUBSCRIPTION
-// ═══════════════════════════════════════════════════════════════
-async function subscribeToPredictions() {
-  try {
-    // Step 1: Create EventSub subscription with WebSocket transport
-    // First, we need to get a WebSocket session ID
-    var wsUrl = 'wss://eventsub.wss.twitch.tv/ws';
+  function connectEventSub(url) {
+    if (eventSubSocket && eventSubSocket.readyState !== WebSocket.CLOSED) {
+      suppressReconnect = true;
 
-    eventSubSocket = new WebSocket(wsUrl);
+      try {
+        eventSubSocket.close();
+      } catch (e) {}
+    }
 
-    eventSubSocket.onopen = function() {
-      console.log('EventSub WebSocket connected');
+    updateDebug({ ws: 'connecting' });
+
+    eventSubSocket = new WebSocket(url);
+    lastKeepalive = Date.now();
+
+    startKeepaliveWatchdog();
+
+    eventSubSocket.onopen = function () {
+      updateDebug({ ws: 'connected' });
     };
 
-    eventSubSocket.onmessage = function(event) {
-      var msg = JSON.parse(event.data);
+    eventSubSocket.onmessage = handleEventSubMessage;
 
-      // Welcome message — contains session_id we need for subscriptions
-      if (msg.metadata && msg.metadata.message_type === 'session_welcome') {
-        var sessionId = msg.payload.session.id;
-        console.log('EventSub session:', sessionId);
-        // Now create subscriptions using this session ID
-        createSubscriptions(sessionId);
-      }
+    eventSubSocket.onerror = function (e) {
+      console.error('EventSub WebSocket error:', e);
+      updateDebug({ ws: 'error' });
+    };
 
-      // Keepalive — just acknowledge, no action needed
-      if (msg.metadata && msg.metadata.message_type === 'session_keepalive') {
+    eventSubSocket.onclose = function () {
+      stopKeepaliveWatchdog();
+      updateDebug({ ws: 'closed' });
+
+      if (suppressReconnect) {
+        suppressReconnect = false;
         return;
       }
 
-      // Prediction events
-      if (msg.metadata && msg.metadata.message_type === 'notification') {
-        var subType = msg.metadata.subscription_type;
-        var payload = msg.payload.event;
-
-        if (subType === 'channel.prediction.begin') {
-          onPredictionBegin(payload);
-        } else if (subType === 'channel.prediction.progress') {
-          onPredictionProgress(payload);
-        } else if (subType === 'channel.prediction.lock') {
-          onPredictionLock(payload);
-        } else if (subType === 'channel.prediction.end') {
-          onPredictionEnd(payload);
-        }
-      }
-
-      // Reconnect — Twitch wants us to reconnect to a new URL
-      if (msg.metadata && msg.metadata.message_type === 'session_reconnect') {
-        var newUrl = msg.payload.session.reconnect_url;
-        console.log('EventSub reconnecting to:', newUrl);
-        eventSubSocket.close();
-        eventSubSocket = new WebSocket(newUrl);
-        // Re-attach handlers
-        eventSubSocket.onmessage = this.onmessage;
-        eventSubSocket.onerror = this.onerror;
-        eventSubSocket.onclose = this.onclose;
-      }
+      scheduleReconnect();
     };
-
-    eventSubSocket.onerror = function(e) {
-      console.error('EventSub WebSocket error:', e);
-    };
-
-    eventSubSocket.onclose = function() {
-      console.log('EventSub WebSocket closed, reconnecting in 5s…');
-      setTimeout(function() {
-        if (accessToken && broadcasterId) {
-          subscribeToPredictions();
-        }
-      }, 5000);
-    };
-
-  } catch(e) {
-    console.error('EventSub subscription failed:', e);
   }
-}
 
-async function createSubscriptions(sessionId) {
-  var subscriptionTypes = [
-    {
-      type: 'channel.prediction.begin',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    },
-    {
-      type: 'channel.prediction.progress',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    },
-    {
-      type: 'channel.prediction.lock',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
-    },
-    {
-      type: 'channel.prediction.end',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId }
+  function scheduleReconnect() {
+    if (!accessToken || !broadcasterId) return;
+
+    var delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts));
+    reconnectAttempts++;
+
+    updateDebug({
+      reconnects: reconnectAttempts,
+      ws: 'reconnecting in ' + Math.round(delay / 1000) + 's'
+    });
+
+    setTimeout(function () {
+      if (accessToken && broadcasterId) {
+        subscribeToPredictions();
+      }
+    }, delay);
+  }
+
+  function startKeepaliveWatchdog() {
+    stopKeepaliveWatchdog();
+
+    keepaliveTimer = setInterval(function () {
+      if (!eventSubSocket || eventSubSocket.readyState !== WebSocket.OPEN) return;
+
+      if (Date.now() - lastKeepalive > KEEPALIVE_TIMEOUT) {
+        console.warn('EventSub keepalive timeout — reconnecting');
+
+        updateDebug({ ws: 'keepalive timeout' });
+
+        suppressReconnect = true;
+
+        try {
+          eventSubSocket.close();
+        } catch (e) {}
+
+        scheduleReconnect();
+      }
+    }, 5000);
+  }
+
+  function stopKeepaliveWatchdog() {
+    if (keepaliveTimer) {
+      clearInterval(keepaliveTimer);
+      keepaliveTimer = null;
     }
-  ];
+  }
 
-  for (var i = 0; i < subscriptionTypes.length; i++) {
-    var sub = subscriptionTypes[i];
+  function handleEventSubMessage(event) {
+    var msg;
+
     try {
-      var resp = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
-        method: 'POST',
-        headers: {
-          'Client-ID': CLIENT_ID,
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          type: sub.type,
-          version: sub.version,
-          condition: sub.condition,
-          transport: {
-            method: 'websocket',
-            session_id: sessionId
-          }
-        })
+      msg = JSON.parse(event.data);
+    } catch (e) {
+      return;
+    }
+
+    lastKeepalive = Date.now();
+
+    if (!msg.metadata) return;
+
+    var messageType = msg.metadata.message_type;
+
+    updateDebug({ lastMessage: messageType });
+
+    if (messageType === 'session_welcome') {
+      reconnectAttempts = 0;
+      subscriptionErrorShown = false;
+
+      var sessionId = msg.payload.session.id;
+      console.log('EventSub session:', sessionId);
+
+      updateDebug({
+        ws: 'connected · welcome',
+        reconnects: 0
       });
 
-      if (resp.ok) {
-        console.log('Subscribed to ' + sub.type);
-      } else {
-        var err = await resp.json();
-        console.warn('Subscription to ' + sub.type + ' failed:', err.message || resp.status);
+      createSubscriptions(sessionId);
+      return;
+    }
+
+    if (messageType === 'session_keepalive') {
+      return;
+    }
+
+    if (messageType === 'notification') {
+      if (isDuplicateNotification(msg)) {
+        console.log('Duplicate notification ignored:', msg.metadata.message_id);
+        return;
       }
-    } catch(e) {
-      console.warn('Subscription to ' + sub.type + ' error:', e.message);
+
+      var subType = msg.metadata.subscription_type;
+      var payload = msg.payload.event;
+
+      updateDebug({ lastMessage: 'notification:' + subType });
+
+      if (subType === 'channel.prediction.begin') {
+        onPredictionBegin(payload);
+      } else if (subType === 'channel.prediction.progress') {
+        onPredictionProgress(payload);
+      } else if (subType === 'channel.prediction.lock') {
+        onPredictionLock(payload);
+      } else if (subType === 'channel.prediction.end') {
+        onPredictionEnd(payload);
+      }
+
+      return;
+    }
+
+    if (messageType === 'session_reconnect') {
+      var newUrl = msg.payload.session.reconnect_url;
+      console.log('EventSub reconnect requested:', newUrl);
+
+      updateDebug({ ws: 'reconnect requested' });
+
+      connectEventSub(newUrl);
+      return;
+    }
+
+    if (messageType === 'revocation') {
+      console.warn('EventSub subscription revoked:', msg);
+
+      showToast('Subscription revoked — reconnect required', 'error');
+
+      updateDebug({
+        lastMessage: 'revocation',
+        subscriptions: 0
+      });
+
+      disconnect();
+      return;
     }
   }
-}
 
-// ═══════════════════════════════════════════════════════════════
-// FETCH ACTIVE PREDICTION (on load — in case one is already running)
-// ═══════════════════════════════════════════════════════════════
-async function fetchActivePrediction() {
-  try {
-    var resp = await fetch('https://api.twitch.tv/helix/predictions?broadcaster_id=' + broadcasterId, {
-      headers: {
-        'Client-ID': CLIENT_ID,
-        'Authorization': 'Bearer ' + accessToken
+  async function createSubscriptions(sessionId) {
+    var subscriptionTypes = [
+      {
+        type: 'channel.prediction.begin',
+        version: '1',
+        condition: { broadcaster_user_id: broadcasterId }
+      },
+      {
+        type: 'channel.prediction.progress',
+        version: '1',
+        condition: { broadcaster_user_id: broadcasterId }
+      },
+      {
+        type: 'channel.prediction.lock',
+        version: '1',
+        condition: { broadcaster_user_id: broadcasterId }
+      },
+      {
+        type: 'channel.prediction.end',
+        version: '1',
+        condition: { broadcaster_user_id: broadcasterId }
       }
-    });
-    if (!resp.ok) return;
-    var data = await resp.json();
-    if (data.data && data.data.length > 0) {
-      // Find any active or locked prediction
-      for (var i = 0; i < data.data.length; i++) {
-        var pred = data.data[i];
-        if (pred.status === 'ACTIVE' || pred.status === 'LOCKED') {
-          onPredictionBegin(pred);
-          if (pred.status === 'LOCKED') onPredictionLock(pred);
+    ];
+
+    var okCount = 0;
+
+    for (var i = 0; i < subscriptionTypes.length; i++) {
+      var sub = subscriptionTypes[i];
+
+      try {
+        var resp = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+          method: 'POST',
+          headers: {
+            'Client-ID': CLIENT_ID,
+            'Authorization': 'Bearer ' + accessToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            type: sub.type,
+            version: sub.version,
+            condition: sub.condition,
+            transport: {
+              method: 'websocket',
+              session_id: sessionId
+            }
+          })
+        });
+
+        if (resp.status === 401) {
+          console.warn('Twitch token invalid during subscription creation');
+          disconnect();
+          return;
+        }
+
+        if (resp.ok) {
+          okCount++;
+          console.log('Subscribed to ' + sub.type);
+          updateDebug({ subscriptions: okCount });
+        } else {
+          var err = await resp.json().catch(function () {
+            return {};
+          });
+
+          console.warn(
+            'Subscription to ' + sub.type + ' failed:',
+            err.message || resp.status
+          );
+
+          if (!subscriptionErrorShown) {
+            subscriptionErrorShown = true;
+            showToast('Subscription failed — check console', 'error');
+          }
+        }
+      } catch (e) {
+        console.warn('Subscription to ' + sub.type + ' error:', e.message);
+
+        if (!subscriptionErrorShown) {
+          subscriptionErrorShown = true;
+          showToast('Subscription error — check console', 'error');
+        }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // FETCH ACTIVE PREDICTION
+  // ═══════════════════════════════════════════════════════════════
+
+  async function fetchActivePrediction() {
+    try {
+      var resp = await fetch(
+        'https://api.twitch.tv/helix/predictions?broadcaster_id=' + broadcasterId,
+        {
+          headers: {
+            'Client-ID': CLIENT_ID,
+            'Authorization': 'Bearer ' + accessToken
+          }
+        }
+      );
+
+      if (resp.status === 401) {
+        disconnect();
+        return;
+      }
+
+      if (!resp.ok) return;
+
+      var data = await resp.json();
+
+      if (data.data && data.data.length > 0) {
+        for (var i = 0; i < data.data.length; i++) {
+          var pred = data.data[i];
+
+          if (pred.status === 'ACTIVE' || pred.status === 'LOCKED') {
+            onPredictionBegin(pred);
+
+            if (pred.status === 'LOCKED') {
+              onPredictionLock(pred);
+            }
+
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch active prediction:', e.message);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PREDICTION EVENT HANDLERS
+  // ═══════════════════════════════════════════════════════════════
+
+  function onPredictionBegin(payload) {
+    clearHideTimer();
+    clearCompactResults();
+
+    lastPercents = {};
+
+    currentPrediction = {
+      id: payload.id,
+      title: payload.title,
+      outcomes: payload.outcomes || [],
+      status: 'ACTIVE',
+      lockedAt: null,
+      startsAt: parseTimestamp(payload.startsAt || payload.created_at) || Date.now(),
+      endsAt: parseTimestamp(payload.endsAt || payload.ends_at),
+      winningOutcomeId: null
+    };
+
+    updateDebug({ prediction: 'active · ' + shortId(payload.id) });
+
+    renderPrediction();
+    startTimer();
+  }
+
+  function onPredictionProgress(payload) {
+    if (!currentPrediction || currentPrediction.id !== payload.id) {
+      onPredictionBegin(payload);
+      return;
+    }
+
+    if (currentPrediction.status !== 'ACTIVE') return;
+
+    currentPrediction.outcomes = payload.outcomes || currentPrediction.outcomes;
+
+    if (payload.ends_at) {
+      currentPrediction.endsAt = parseTimestamp(payload.ends_at);
+    }
+
+    renderPrediction();
+  }
+
+  function onPredictionLock(payload) {
+    if (!currentPrediction || currentPrediction.id !== payload.id) return;
+
+    if (
+      currentPrediction.status === 'RESOLVED' ||
+      currentPrediction.status === 'CANCELED'
+    ) {
+      return;
+    }
+
+    currentPrediction.status = 'LOCKED';
+    currentPrediction.lockedAt = payload.locked_at;
+
+    updateDebug({ prediction: 'locked · ' + shortId(payload.id) });
+
+    renderPrediction();
+  }
+
+  function onPredictionEnd(payload) {
+    if (!currentPrediction || currentPrediction.id !== payload.id) return;
+
+    var status = normaliseStatus(payload.status);
+
+    currentPrediction.status = status;
+    currentPrediction.winningOutcomeId = payload.winning_outcome_id || null;
+
+    if (payload.outcomes) {
+      currentPrediction.outcomes = payload.outcomes;
+    }
+
+    if (status === 'RESOLVED' && payload.winning_outcome_id) {
+      for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+        currentPrediction.outcomes[i].isWinner =
+          currentPrediction.outcomes[i].id === payload.winning_outcome_id;
+      }
+    }
+
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    updateDebug({ prediction: status.toLowerCase() + ' · ' + shortId(payload.id) });
+
+    renderPrediction();
+
+    if (status === 'RESOLVED') {
+      spawnCelebration();
+
+      if (displayMode !== 'full') {
+        setTimeout(showCompactResults, 100);
+      }
+    }
+
+    scheduleOverlayHide(status === 'RESOLVED' ? 15000 : 8000);
+  }
+
+  function scheduleOverlayHide(delay) {
+    clearHideTimer();
+
+    var predictionId = currentPrediction ? currentPrediction.id : null;
+
+    hideTimer = setTimeout(function () {
+      if (!currentPrediction || currentPrediction.id !== predictionId) return;
+
+      clearCompactResults();
+
+      predictionOverlay.classList.add('slide-out');
+
+      setTimeout(function () {
+        predictionOverlay.classList.remove('visible', 'slide-out');
+        currentPrediction = null;
+        lastPercents = {};
+
+        updateDebug({ prediction: 'none' });
+      }, 500);
+    }, delay);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════
+
+  function renderPrediction() {
+    if (!currentPrediction) {
+      predictionOverlay.classList.remove('visible');
+      return;
+    }
+
+    predictionOverlay.classList.add('visible');
+    predictionOverlay.classList.remove('hidden');
+
+    var status = currentPrediction.status;
+
+    predictionOverlay.setAttribute('data-status', status.toLowerCase());
+    predQuestion.textContent = currentPrediction.title || '—';
+
+    var isLocked = status === 'LOCKED';
+    var isResolved = status === 'RESOLVED';
+    var isCanceled = status === 'CANCELED';
+    var isEnded = isResolved || isCanceled;
+
+    predDot.className = 'pred-dot';
+    predStatusDot.className = 'pred-status-dot';
+
+    if (isCanceled) {
+      predDot.classList.add('canceled');
+      predStatusDot.classList.add('canceled');
+      predStatusText.textContent = 'Canceled';
+      predTimer.classList.add('ended');
+    } else if (isEnded) {
+      predDot.classList.add('ended');
+      predStatusDot.classList.add('ended');
+      predStatusText.textContent = 'Ended';
+      predTimer.classList.add('ended');
+    } else if (isLocked) {
+      predDot.classList.add('locked');
+      predStatusDot.classList.add('locked');
+      predStatusText.textContent = 'Locked';
+      predTimer.classList.remove('ended');
+    } else {
+      predStatusDot.classList.add('active');
+      predStatusText.textContent = 'Active';
+      predTimer.classList.remove('ended');
+    }
+
+    var totalPoints = 0;
+
+    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+      totalPoints += parseInt(currentPrediction.outcomes[i].channel_points) || 0;
+    }
+
+    var statusLabel = 'Prediction Active';
+
+    if (isResolved) statusLabel = 'Prediction Resolved';
+    else if (isCanceled) statusLabel = 'Prediction Canceled';
+    else if (isLocked) statusLabel = 'Prediction Locked';
+
+    predMeta.textContent =
+      statusLabel +
+      (totalPoints > 0 ? ' · ' + totalPoints.toLocaleString() + ' pts' : '');
+
+    var leadingIndex = -1;
+
+    if (!isEnded) {
+      var maxPts = -1;
+      var tie = false;
+
+      for (var l = 0; l < currentPrediction.outcomes.length; l++) {
+        var lpts = parseInt(currentPrediction.outcomes[l].channel_points) || 0;
+
+        if (lpts > maxPts) {
+          maxPts = lpts;
+          leadingIndex = l;
+          tie = false;
+        } else if (lpts === maxPts && maxPts > 0) {
+          tie = true;
+        }
+      }
+
+      if (tie) leadingIndex = -1;
+    }
+
+    var existingOptions = predOptions.querySelectorAll('.pred-option');
+
+    var needsRebuild =
+      existingOptions.length !== currentPrediction.outcomes.length;
+
+    if (!needsRebuild) {
+      for (var c = 0; c < currentPrediction.outcomes.length; c++) {
+        if (
+          !existingOptions[c] ||
+          existingOptions[c].getAttribute('data-id') !== String(currentPrediction.outcomes[c].id)
+        ) {
+          needsRebuild = true;
           break;
         }
       }
     }
-  } catch(e) {
-    console.warn('Could not fetch active prediction:', e.message);
-  }
-}
 
-// ═══════════════════════════════════════════════════════════════
-// PREDICTION EVENT HANDLERS
-// ═══════════════════════════════════════════════════════════════
-function onPredictionBegin(payload) {
-  currentPrediction = {
-    id: payload.id,
-    title: payload.title,
-    outcomes: payload.outcomes || [],
-    status: 'ACTIVE',
-    lockedAt: null,
-    endsAt: payload.ends_at
-  };
-  renderPrediction();
-  startTimer();
-}
+    if (needsRebuild) {
+      predOptions.textContent = '';
 
-function onPredictionProgress(payload) {
-  if (!currentPrediction || currentPrediction.id !== payload.id) {
-    // New prediction we didn't catch the begin for
-    onPredictionBegin(payload);
-    return;
-  }
-  // Update outcomes with latest vote counts
-  currentPrediction.outcomes = payload.outcomes || currentPrediction.outcomes;
-  renderPrediction();
-}
+      for (var a = 0; a < currentPrediction.outcomes.length; a++) {
+        var outcome = currentPrediction.outcomes[a];
+        var color = OUTCOME_COLORS[a % OUTCOME_COLORS.length];
 
-function onPredictionLock(payload) {
-  if (!currentPrediction || currentPrediction.id !== payload.id) return;
-  currentPrediction.status = 'LOCKED';
-  currentPrediction.lockedAt = payload.locked_at;
-  renderPrediction();
-}
+        var optionEl = document.createElement('div');
+        optionEl.className = 'pred-option';
+        optionEl.setAttribute('data-id', String(outcome.id));
+        optionEl.style.animationDelay = a * 0.08 + 's';
 
-function onPredictionEnd(payload) {
-  if (!currentPrediction || currentPrediction.id !== payload.id) return;
-  currentPrediction.status = payload.status; // RESOLVED, CANCELED, etc.
-  currentPrediction.winningOutcomeId = payload.winning_outcome_id;
+        var bar = document.createElement('div');
+        bar.className = 'pred-option-bar';
+        bar.style.background = color;
+        bar.style.opacity = '0.12';
+        bar.style.transform = 'scaleX(0)';
 
-  // Update outcomes with final data (includes top_predictors with won/lost amounts)
-  if (payload.outcomes) {
-    currentPrediction.outcomes = payload.outcomes;
-  }
+        var content = document.createElement('div');
+        content.className = 'pred-option-content';
 
-  // Mark winner if resolved
-  if (payload.status === 'RESOLVED' && payload.winning_outcome_id) {
-    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-      currentPrediction.outcomes[i].isWinner = (currentPrediction.outcomes[i].id === payload.winning_outcome_id);
-    }
-  }
+        var colorDot = document.createElement('div');
+        colorDot.className = 'pred-option-color';
+        colorDot.style.background = color;
 
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  renderPrediction();
+        var text = document.createElement('div');
+        text.className = 'pred-option-text';
 
-  // Winner celebration particles
-  if (payload.status === 'RESOLVED') {
-    spawnCelebration();
-    // Show floating results in compact or vertical mode
-    // Small delay to ensure DOM is ready after renderPrediction
-    if (displayMode !== 'full') {
-      setTimeout(showCompactResults, 100);
-    }
-  }
+        var badge = document.createElement('span');
+        badge.className = 'pred-winner-badge';
+        badge.textContent = 'Winner';
 
-  // Slide-out after 15 seconds
-  setTimeout(function() {
-    if (currentPrediction && currentPrediction.id === payload.id) {
-      // Clear compact results
-      var cr = document.getElementById('compactResults');
-      if (cr) { cr.classList.remove('visible'); cr.innerHTML = ''; }
-      predictionOverlay.classList.add('slide-out');
-      setTimeout(function() {
-        predictionOverlay.classList.remove('visible', 'slide-out');
-        currentPrediction = null;
-      }, 500);
-    }
-  }, 15000);
-}
+        var pct = document.createElement('div');
+        pct.className = 'pred-option-pct';
+        pct.textContent = '0%';
 
-// ═══════════════════════════════════════════════════════════════
-// COMPACT FLOATING RESULTS — shows winner/loser names above the overlay
-// ═══════════════════════════════════════════════════════════════
-function showCompactResults() {
-  if (!currentPrediction) return;
-  var container = document.getElementById('compactResults');
-  if (!container) return;
+        content.appendChild(colorDot);
+        content.appendChild(text);
+        content.appendChild(badge);
+        content.appendChild(pct);
 
-  // Position the results relative to the overlay
-  var overlayRect = predictionOverlay.getBoundingClientRect();
-  if (displayMode === 'vertical') {
-    // Vertical bar fills the full height on the left — float results to its right
-    // (anchored to the top of the viewport, just below where the overlay starts)
-    container.style.left = (overlayRect.right + 8) + 'px';
-    container.style.width = '260px';
-    container.style.bottom = '';
-    container.style.top = '20px';
-  } else {
-    // Compact mode — float results above the overlay
-    container.style.left = overlayRect.left + 'px';
-    container.style.width = overlayRect.width + 'px';
-    container.style.bottom = (window.innerHeight - overlayRect.top + 6) + 'px';
-    container.style.top = '';
-  }
+        var top = document.createElement('div');
+        top.className = 'pred-top-contributor';
 
-  var allPredictors = [];
-  for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-    var outcome = currentPrediction.outcomes[i];
-    var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-    if (outcome.top_predictors && outcome.top_predictors.length > 0) {
-      for (var j = 0; j < outcome.top_predictors.length; j++) {
-        var pred = outcome.top_predictors[j];
-        allPredictors.push({
-          name: pred.user_name || 'Unknown',
-          won: parseInt(pred.channel_points_won) || 0,
-          used: parseInt(pred.channel_points_used) || 0,
-          color: (pred.color && pred.color !== '') ? pred.color : outcomeColor,
-          isWinner: outcome.isWinner === true
-        });
+        optionEl.appendChild(bar);
+        optionEl.appendChild(content);
+        optionEl.appendChild(top);
+
+        predOptions.appendChild(optionEl);
       }
+
+      existingOptions = predOptions.querySelectorAll('.pred-option');
     }
-  }
 
-  // Fallback: if no top_predictors data, show outcome titles instead
-  if (allPredictors.length === 0) {
-    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-      var outcome = currentPrediction.outcomes[i];
-      var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-      allPredictors.push({
-        name: outcome.title || 'Unknown',
-        won: parseInt(outcome.channel_points) || 0,
-        used: parseInt(outcome.channel_points) || 0,
-        color: outcomeColor,
-        isWinner: outcome.isWinner === true
-      });
-    }
-  }
+    var nextPercents = {};
 
-  // Sort: winners first (by amount won), then losers (by amount lost)
-  allPredictors.sort(function(a, b) {
-    if (a.isWinner && !b.isWinner) return -1;
-    if (!a.isWinner && b.isWinner) return 1;
-    return b.won - a.won;
-  });
+    for (var b = 0; b < currentPrediction.outcomes.length; b++) {
+      var outcome2 = currentPrediction.outcomes[b];
+      var pts = parseInt(outcome2.channel_points) || 0;
+      var pctValue = totalPoints > 0 ? Math.round((pts / totalPoints) * 100) : 0;
+      var baseColor = OUTCOME_COLORS[b % OUTCOME_COLORS.length];
+      var isWinner = outcome2.isWinner === true;
+      var isLeading = b === leadingIndex;
 
-  var showCount = Math.min(6, allPredictors.length);
-  var html = '';
-  for (var i = 0; i < showCount; i++) {
-    var p = allPredictors[i];
-    var amountText, amountClass;
-    if (p.isWinner) {
-      amountText = '+' + p.won.toLocaleString();
-      amountClass = 'won';
-    } else {
-      amountText = '\u2212' + p.used.toLocaleString();
-      amountClass = 'lost';
-    }
-    html += '<div class="compact-result-item" style="animation-delay:' + (i * 0.1) + 's;">' +
-      '<div class="compact-result-dot" style="background:' + p.color + ';"></div>' +
-      '<span class="compact-result-name">' + escapeHtml(p.name) + '</span>' +
-      '<span class="compact-result-amount ' + amountClass + '">' + amountText + '</span>' +
-    '</div>';
-  }
+      nextPercents[outcome2.id] = pctValue;
 
-  container.innerHTML = html;
-  container.classList.add('visible');
+      var topContributor = null;
 
-  // Trigger the show animation on each item
-  var items = container.querySelectorAll('.compact-result-item');
-  for (var i = 0; i < items.length; i++) {
-    (function(item, delay) {
-      setTimeout(function() { item.classList.add('show'); }, delay * 100 + 50);
-    })(items[i], i);
-  }
-}
+      if (!isEnded && outcome2.top_predictors && outcome2.top_predictors.length > 0) {
+        topContributor = outcome2.top_predictors[0];
 
-// ═══════════════════════════════════════════════════════════════
-// CELEBRATION PARTICLES
-// ═══════════════════════════════════════════════════════════════
-function spawnCelebration() {
-  var winnerEl = predictionOverlay.querySelector('.pred-option.winner');
-  if (!winnerEl) return;
-
-  var rect = winnerEl.getBoundingClientRect();
-  var centerX = rect.left + rect.width / 2;
-  var centerY = rect.top + rect.height / 2;
-
-  var colors = ['#d4a853', '#e8c87a', '#88b576', '#5b8def', '#e85b9b'];
-  var particleCount = 30;
-
-  for (var i = 0; i < particleCount; i++) {
-    var p = document.createElement('div');
-    p.className = 'celebration-particle';
-    p.style.background = colors[Math.floor(Math.random() * colors.length)];
-    p.style.left = centerX + 'px';
-    p.style.top = centerY + 'px';
-    p.style.boxShadow = '0 0 6px ' + p.style.background;
-    document.body.appendChild(p);
-
-    var angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
-    var velocity = 80 + Math.random() * 120;
-    var vx = Math.cos(angle) * velocity;
-    var vy = Math.sin(angle) * velocity - 40; // slight upward bias
-    var rotation = Math.random() * 720;
-    var duration = 800 + Math.random() * 600;
-
-    var startTime = Date.now();
-    (function(particle, vx, vy, rotation, duration, startTime) {
-      function animate() {
-        var elapsed = Date.now() - startTime;
-        var progress = elapsed / duration;
-        if (progress >= 1) {
-          particle.remove();
-          return;
-        }
-        var x = vx * progress;
-        var y = vy * progress + 0.5 * 200 * progress * progress; // gravity
-        var r = rotation * progress;
-        var opacity = 1 - progress;
-        particle.style.transform = 'translate(' + x + 'px, ' + y + 'px) rotate(' + r + 'deg)';
-        particle.style.opacity = opacity;
-        requestAnimationFrame(animate);
-      }
-      animate();
-    })(p, vx, vy, rotation, duration, startTime);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// RENDER
-// ═══════════════════════════════════════════════════════════════
-function renderPrediction() {
-  if (!currentPrediction) {
-    predictionOverlay.classList.remove('visible');
-    return;
-  }
-
-  predictionOverlay.classList.add('visible');
-  predQuestion.textContent = currentPrediction.title || '—';
-
-  // Status
-  var isLocked = currentPrediction.status === 'LOCKED';
-  var isEnded = currentPrediction.status === 'RESOLVED' || currentPrediction.status === 'CANCELED';
-
-  predDot.className = 'pred-dot';
-  predStatusDot.className = 'pred-status-dot';
-  if (isEnded) {
-    predDot.classList.add('ended');
-    predStatusDot.classList.add('ended');
-    predStatusText.textContent = 'Ended';
-    predMeta.textContent = currentPrediction.status === 'RESOLVED' ? 'Prediction Resolved' : 'Prediction Canceled';
-    predTimer.classList.add('ended');
-  } else if (isLocked) {
-    predDot.classList.add('locked');
-    predStatusDot.classList.add('locked');
-    predStatusText.textContent = 'Locked';
-    predMeta.textContent = 'Prediction Locked';
-    predTimer.classList.remove('ended');
-  } else {
-    predStatusDot.classList.add('active');
-    predStatusText.textContent = 'Active';
-    predMeta.textContent = 'Prediction Active';
-    predTimer.classList.remove('ended');
-  }
-
-  // Calculate total points
-  var totalPoints = 0;
-  for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-    var pts = parseInt(currentPrediction.outcomes[i].channel_points) || 0;
-    totalPoints += pts;
-  }
-
-  // Render options — update in place if elements exist, otherwise build from scratch
-  var existingOptions = predOptions.querySelectorAll('.pred-option');
-  var needsRebuild = existingOptions.length !== currentPrediction.outcomes.length;
-
-  if (needsRebuild) {
-    // Full rebuild (first render or outcome count changed)
-    var html = '';
-    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-      var outcome = currentPrediction.outcomes[i];
-      var color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-      html += '<div class="pred-option" data-idx="' + i + '" style="animation-delay:' + (i * 0.08) + 's;">' +
-        '<div class="pred-option-bar" style="background: ' + color + '; opacity: 0.12; transform: scaleX(0);"></div>' +
-        '<div class="pred-option-content">' +
-          '<div class="pred-option-color" style="background: ' + color + ';"></div>' +
-          '<div class="pred-option-text"></div>' +
-          '<span class="pred-winner-badge">Winner</span>' +
-          '<div class="pred-option-pct">0%</div>' +
-        '</div>' +
-        '<div class="pred-top-contributor"></div>' +
-      '</div>';
-    }
-    predOptions.innerHTML = html;
-    existingOptions = predOptions.querySelectorAll('.pred-option');
-  }
-
-  // Update each option in place (no DOM destruction = smooth transitions)
-  for (var i = 0; i < currentPrediction.outcomes.length; i++) {
-    var outcome = currentPrediction.outcomes[i];
-    var pts = parseInt(outcome.channel_points) || 0;
-    var pct = totalPoints > 0 ? Math.round(pts / totalPoints * 100) : 0;
-    var color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-    var isWinner = outcome.isWinner === true;
-
-    // Check for top contributor (during active prediction)
-    var topContributor = null;
-    if (!isEnded && outcome.top_predictors && outcome.top_predictors.length > 0) {
-      var top = outcome.top_predictors[0];
-      for (var j = 0; j < outcome.top_predictors.length; j++) {
-        if ((outcome.top_predictors[j].channel_points_used || 0) > (top.channel_points_used || 0)) {
-          top = outcome.top_predictors[j];
+        for (var d = 1; d < outcome2.top_predictors.length; d++) {
+          if (
+            (outcome2.top_predictors[d].channel_points_used || 0) >
+            (topContributor.channel_points_used || 0)
+          ) {
+            topContributor = outcome2.top_predictors[d];
+          }
         }
       }
-      topContributor = top;
+
+      var option = existingOptions[b];
+      if (!option) continue;
+
+      var barEl = option.querySelector('.pred-option-bar');
+      barEl.style.background = baseColor;
+      barEl.style.transform = 'scaleX(' + pctValue / 100 + ')';
+
+      var colorEl = option.querySelector('.pred-option-color');
+      colorEl.style.background = baseColor;
+      colorEl.style.boxShadow = isLeading ? '0 0 8px ' + baseColor : '';
+
+      option.querySelector('.pred-option-text').textContent = outcome2.title || '—';
+
+      var pctEl = option.querySelector('.pred-option-pct');
+      var fromPct = typeof lastPercents[outcome2.id] === 'number'
+        ? lastPercents[outcome2.id]
+        : 0;
+
+      animatePercentText(pctEl, fromPct, pctValue);
+
+      option.classList.toggle('winner', isWinner);
+      option.classList.toggle('leading', isLeading);
+
+      var tcEl = option.querySelector('.pred-top-contributor');
+
+      if (topContributor && topContributor.user_name && !isEnded) {
+        var contribPoints = parseInt(topContributor.channel_points_used) || 0;
+
+        tcEl.textContent = '';
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'tc-name';
+        nameSpan.textContent = topContributor.user_name;
+
+        tcEl.appendChild(nameSpan);
+        tcEl.appendChild(
+          document.createTextNode(' bet ' + contribPoints.toLocaleString() + ' pts')
+        );
+
+        tcEl.classList.add('visible');
+      } else {
+        tcEl.classList.remove('visible');
+        tcEl.textContent = '';
+      }
     }
 
-    // Use top contributor's color if available
-    var barColor = color;
-    if (topContributor && topContributor.color && topContributor.color !== '') {
-      barColor = topContributor.color;
-    }
+    lastPercents = nextPercents;
 
-    var optionEl = existingOptions[i];
-    if (!optionEl) continue;
-
-    // Update bar (smooth CSS transition handles the animation)
-    var barEl = optionEl.querySelector('.pred-option-bar');
-    barEl.style.background = barColor;
-    barEl.style.transform = 'scaleX(' + (pct / 100) + ')';
-
-    // Update color dot
-    optionEl.querySelector('.pred-option-color').style.background = barColor;
-
-    // Update text
-    optionEl.querySelector('.pred-option-text').textContent = outcome.title;
-
-    // Update percentage
-    optionEl.querySelector('.pred-option-pct').textContent = pct + '%';
-
-    // Update winner state
-    optionEl.classList.toggle('winner', isWinner);
-
-    // Update top contributor
-    var tcEl = optionEl.querySelector('.pred-top-contributor');
-    if (topContributor && topContributor.user_name && !isEnded) {
-      var contribPoints = parseInt(topContributor.channel_points_used) || 0;
-      tcEl.innerHTML = '<span class="tc-name">' + escapeHtml(topContributor.user_name) + '</span> bet ' + contribPoints.toLocaleString() + ' pts';
-      tcEl.classList.add('visible');
-    } else {
-      tcEl.classList.remove('visible');
-    }
+    renderResults(isEnded, isResolved);
+    updateTimerDisplay();
   }
 
-  // Render results (points won/lost) after resolution
-  if (isEnded && currentPrediction.status === 'RESOLVED') {
-    var resultsHtml = '';
+  function renderResults(isEnded, isResolved) {
+    if (!isEnded || !isResolved || displayMode !== 'full') {
+      predResults.classList.remove('visible');
+      predResults.textContent = '';
+      return;
+    }
+
     var allPredictors = [];
 
-    // Collect all top_predictors from all outcomes
     for (var i = 0; i < currentPrediction.outcomes.length; i++) {
       var outcome = currentPrediction.outcomes[i];
       var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+
       if (outcome.top_predictors) {
         for (var j = 0; j < outcome.top_predictors.length; j++) {
           var pred = outcome.top_predictors[j];
+
           allPredictors.push({
             name: pred.user_name || 'Unknown',
             won: parseInt(pred.channel_points_won) || 0,
             used: parseInt(pred.channel_points_used) || 0,
-            color: (pred.color && pred.color !== '') ? pred.color : outcomeColor,
+            color: outcomeColor,
             isWinner: outcome.isWinner === true
           });
         }
       }
     }
 
-    // Sort by points won (descending), show top 8
-    allPredictors.sort(function(a, b) { return b.won - a.won; });
+    allPredictors.sort(function (a, b) {
+      return b.won - a.won;
+    });
+
     var showCount = Math.min(8, allPredictors.length);
 
-    for (var i = 0; i < showCount; i++) {
-      var p = allPredictors[i];
-      var amountText, amountClass;
+    predResults.textContent = '';
+
+    for (var k = 0; k < showCount; k++) {
+      var p = allPredictors[k];
+
+      var row = document.createElement('div');
+      row.className = 'pred-result-row';
+      row.style.animationDelay = k * 0.06 + 's';
+
+      var dot = document.createElement('div');
+      dot.className = 'pred-result-color';
+      dot.style.background = p.color;
+
+      var name = document.createElement('div');
+      name.className = 'pred-result-name';
+      name.textContent = p.name;
+
+      var amount = document.createElement('div');
+      amount.className = 'pred-result-amount ' + (p.isWinner ? 'won' : 'lost');
 
       if (p.isWinner) {
-        amountText = '+' + p.won.toLocaleString() + ' pts';
-        amountClass = 'won';
+        amount.textContent = '+' + p.won.toLocaleString() + ' pts';
       } else {
-        amountText = '\u2212' + p.used.toLocaleString() + ' pts';
-        amountClass = 'lost';
+        amount.textContent = '\u2212' + p.used.toLocaleString() + ' pts';
       }
 
-      resultsHtml += '<div class="pred-result-row" style="animation-delay:' + (i * 0.06) + 's;">' +
-        '<div class="pred-result-color" style="background: ' + p.color + ';"></div>' +
-        '<div class="pred-result-name">' + escapeHtml(p.name) + '</div>' +
-        '<div class="pred-result-amount ' + amountClass + '">' + amountText + '</div>' +
-      '</div>';
+      row.appendChild(dot);
+      row.appendChild(name);
+      row.appendChild(amount);
+
+      predResults.appendChild(row);
     }
 
-    if (resultsHtml && displayMode === 'full') {
-      predResults.innerHTML = resultsHtml;
-      predResults.classList.add('visible');
+    predResults.classList.add('visible');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // TIMER + PROGRESS
+  // ═══════════════════════════════════════════════════════════════
+
+  function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+
+    updateTimerDisplay();
+    timerInterval = setInterval(updateTimerDisplay, 1000);
+  }
+
+  function updateTimerDisplay() {
+    if (!currentPrediction || !currentPrediction.endsAt) {
+      predTimer.textContent = '—';
+      updateProgress();
+      return;
+    }
+
+    var status = currentPrediction.status;
+    var isLocked = status === 'LOCKED';
+    var isResolved = status === 'RESOLVED';
+    var isCanceled = status === 'CANCELED';
+    var isEnded = isResolved || isCanceled;
+
+    if (isCanceled) {
+      predTimer.textContent = 'Canceled';
+      predTimer.classList.remove('urgent');
+      updateProgress();
+      return;
+    }
+
+    if (isLocked || isEnded) {
+      predTimer.textContent = isEnded ? 'Done' : 'Locked';
+      predTimer.classList.remove('urgent');
+      updateProgress();
+      return;
+    }
+
+    var now = Date.now();
+    var ends = currentPrediction.endsAt;
+    var remaining = Math.max(0, Math.floor((ends - now) / 1000));
+
+    var min = Math.floor(remaining / 60);
+    var sec = remaining % 60;
+
+    predTimer.textContent =
+      (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+
+    predTimer.classList.toggle('urgent', remaining <= 30 && remaining > 0);
+
+    updateProgress();
+  }
+
+  function updateProgress() {
+    if (!predProgress || !predProgressFill) return;
+
+    if (!currentPrediction) {
+      predProgress.classList.remove('visible');
+      predProgressFill.style.width = '0%';
+      predProgressFill.classList.remove('urgent');
+      return;
+    }
+
+    var status = currentPrediction.status;
+
+    if (status === 'CANCELED') {
+      predProgress.classList.add('visible');
+      predProgressFill.style.width = '0%';
+      predProgressFill.classList.remove('urgent');
+      return;
+    }
+
+    if (status === 'LOCKED' || status === 'RESOLVED') {
+      predProgress.classList.add('visible');
+      predProgressFill.style.width = '100%';
+      predProgressFill.classList.remove('urgent');
+      return;
+    }
+
+    if (status === 'ACTIVE' && currentPrediction.startsAt && currentPrediction.endsAt) {
+      var total = currentPrediction.endsAt - currentPrediction.startsAt;
+      var remaining = currentPrediction.endsAt - Date.now();
+
+      if (total <= 0) {
+        predProgress.classList.add('visible');
+        predProgressFill.style.width = '0%';
+        predProgressFill.classList.remove('urgent');
+        return;
+      }
+
+      var pct = clamp((remaining / total) * 100, 0, 100);
+
+      predProgress.classList.add('visible');
+      predProgressFill.style.width = pct + '%';
+      predProgressFill.classList.toggle('urgent', remaining <= 30000 && remaining > 0);
+
+      return;
+    }
+
+    predProgress.classList.remove('visible');
+    predProgressFill.style.width = '0%';
+    predProgressFill.classList.remove('urgent');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // COMPACT FLOATING RESULTS
+  // ═══════════════════════════════════════════════════════════════
+
+  function showCompactResults() {
+    if (!currentPrediction) return;
+    if (!compactResults) return;
+    if (currentPrediction.status !== 'RESOLVED') return;
+
+    var overlayRect = predictionOverlay.getBoundingClientRect();
+
+    if (displayMode === 'vertical') {
+      compactResults.style.left = overlayRect.right + 8 + 'px';
+      compactResults.style.width = '260px';
+      compactResults.style.bottom = '';
+      compactResults.style.top = Math.max(12, overlayRect.top + 12) + 'px';
     } else {
-      predResults.classList.remove('visible');
+      compactResults.style.left = overlayRect.left + 'px';
+      compactResults.style.width = overlayRect.width + 'px';
+      compactResults.style.bottom =
+        window.innerHeight - overlayRect.top + 6 + 'px';
+      compactResults.style.top = '';
     }
-  } else {
-    predResults.classList.remove('visible');
-    predResults.innerHTML = '';
-  }
-}
 
-// ═══════════════════════════════════════════════════════════════
-// TIMER
-// ═══════════════════════════════════════════════════════════════
-function startTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  updateTimerDisplay();
-  timerInterval = setInterval(updateTimerDisplay, 1000);
-}
+    var allPredictors = [];
 
-function updateTimerDisplay() {
-  if (!currentPrediction || !currentPrediction.endsAt) {
-    predTimer.textContent = '—';
-    return;
-  }
+    for (var i = 0; i < currentPrediction.outcomes.length; i++) {
+      var outcome = currentPrediction.outcomes[i];
+      var outcomeColor = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
 
-  var isLocked = currentPrediction.status === 'LOCKED';
-  var isEnded = currentPrediction.status === 'RESOLVED' || currentPrediction.status === 'CANCELED';
+      if (outcome.top_predictors && outcome.top_predictors.length > 0) {
+        for (var j = 0; j < outcome.top_predictors.length; j++) {
+          var pred = outcome.top_predictors[j];
 
-  if (isLocked || isEnded) {
-    predTimer.textContent = isEnded ? 'Done' : 'Locked';
-    predTimer.classList.remove('urgent');
-    return;
-  }
-
-  var now = new Date().getTime();
-  var ends = new Date(currentPrediction.endsAt).getTime();
-  var remaining = Math.max(0, Math.floor((ends - now) / 1000));
-
-  var min = Math.floor(remaining / 60);
-  var sec = remaining % 60;
-  predTimer.textContent = (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
-
-  // Urgent in last 30s
-  predTimer.classList.toggle('urgent', remaining <= 30 && remaining > 0);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// TEST PREDICTION — simulates a full prediction lifecycle
-// ═══════════════════════════════════════════════════════════════
-var testTimers = [];
-var testActive = false;
-
-function clearTestTimers() {
-  for (var i = 0; i < testTimers.length; i++) clearTimeout(testTimers[i]);
-  testTimers = [];
-}
-
-function runTestPrediction() {
-  if (testActive) return;
-  testActive = true;
-  clearTestTimers();
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-
-  // Hide connect screen if visible
-  connectScreen.classList.add('hidden');
-
-  // Fake prediction with 4 outcomes
-  var outcomes = [
-    { id: 'test-a', title: 'Pobot', channel_points: 0, top_predictors: [], color: '#5b8def' },
-    { id: 'test-b', title: 'Prestler', channel_points: 0, top_predictors: [], color: '#e85b9b' },
-    { id: 'test-c', title: 'Cultural Pic', channel_points: 0, top_predictors: [], color: '#88b576' },
-    { id: 'test-d', title: 'Pisc', channel_points: 0, top_predictors: [], color: '#d4a853' }
-  ];
-
-  var fakeNames = ['FizzyCait', 'BreadSanta', 'HarryHardy', 'grgrsmth', 'Albrot', 'JosieRustle', 'AngelInterceptor', 'AliDooLalli'];
-  var fakeColors = ['#5b8def', '#e85b9b', '#88b576', '#d4a853', '#b894d9', '#d49274', '#5bcdef', '#ef8b5b'];
-
-  // Assign random top predictors to each outcome
-  for (var i = 0; i < outcomes.length; i++) {
-    var numPredictors = 2 + Math.floor(Math.random() * 3);
-    for (var j = 0; j < numPredictors; j++) {
-      var pts = 500 + Math.floor(Math.random() * 5000);
-      outcomes[i].top_predictors.push({
-        user_id: 'test-' + i + '-' + j,
-        user_name: fakeNames[Math.floor(Math.random() * fakeNames.length)],
-        channel_points_used: pts,
-        channel_points_won: 0,
-        color: fakeColors[Math.floor(Math.random() * fakeColors.length)]
-      });
-    }
-  }
-
-  // 1. BEGIN — prediction starts
-  var beginPayload = {
-    id: 'test-prediction-001',
-    title: 'What will Pete draw first tonight?',
-    outcomes: outcomes,
-    status: 'ACTIVE',
-    ends_at: new Date(Date.now() + 30000).toISOString() // 30s timer
-  };
-  onPredictionBegin(beginPayload);
-  showToast('Test prediction started');
-
-  // 2. PROGRESS — votes trickle in over 15 seconds
-  var progressSteps = 8;
-  for (var step = 1; step <= progressSteps; step++) {
-    (function(stepNum) {
-      testTimers.push(setTimeout(function() {
-        // Add random points to each outcome
-        for (var i = 0; i < outcomes.length; i++) {
-          var addPts = 200 + Math.floor(Math.random() * 3000);
-          outcomes[i].channel_points += addPts;
-          // Update top predictor points
-          if (outcomes[i].top_predictors.length > 0) {
-            outcomes[i].top_predictors[0].channel_points_used += Math.floor(addPts * 0.4);
-          }
+          allPredictors.push({
+            name: pred.user_name || 'Unknown',
+            won: parseInt(pred.channel_points_won) || 0,
+            used: parseInt(pred.channel_points_used) || 0,
+            color: outcomeColor,
+            isWinner: outcome.isWinner === true
+          });
         }
-        var progressPayload = {
-          id: 'test-prediction-001',
-          title: beginPayload.title,
-          outcomes: outcomes,
-          status: 'ACTIVE',
-          ends_at: beginPayload.ends_at
-        };
-        onPredictionProgress(progressPayload);
-      }, stepNum * 1800));
-    })(step);
+      }
+    }
+
+    if (allPredictors.length === 0) {
+      for (var k = 0; k < currentPrediction.outcomes.length; k++) {
+        var outcome2 = currentPrediction.outcomes[k];
+        var outcomeColor2 = OUTCOME_COLORS[k % OUTCOME_COLORS.length];
+
+        allPredictors.push({
+          name: outcome2.title || 'Unknown',
+          won: parseInt(outcome2.channel_points) || 0,
+          used: parseInt(outcome2.channel_points) || 0,
+          color: outcomeColor2,
+          isWinner: outcome2.isWinner === true
+        });
+      }
+    }
+
+    allPredictors.sort(function (a, b) {
+      if (a.isWinner && !b.isWinner) return -1;
+      if (!a.isWinner && b.isWinner) return 1;
+      return b.won - a.won;
+    });
+
+    var showCount = Math.min(6, allPredictors.length);
+
+    compactResults.textContent = '';
+
+    for (var m = 0; m < showCount; m++) {
+      var p = allPredictors[m];
+
+      var item = document.createElement('div');
+      item.className = 'compact-result-item';
+
+      var dot = document.createElement('div');
+      dot.className = 'compact-result-dot';
+      dot.style.background = p.color;
+
+      var name = document.createElement('span');
+      name.className = 'compact-result-name';
+      name.textContent = p.name;
+
+      var amount = document.createElement('span');
+      amount.className = 'compact-result-amount ' + (p.isWinner ? 'won' : 'lost');
+
+      if (p.isWinner) {
+        amount.textContent = '+' + p.won.toLocaleString();
+      } else {
+        amount.textContent = '\u2212' + p.used.toLocaleString();
+      }
+
+      item.appendChild(dot);
+      item.appendChild(name);
+      item.appendChild(amount);
+
+      compactResults.appendChild(item);
+
+      (function (el, delay) {
+        setTimeout(function () {
+          el.classList.add('show');
+        }, delay * 100 + 50);
+      })(item, m);
+    }
+
+    compactResults.classList.add('visible');
   }
 
-  // 3. LOCK — at 16 seconds
-  testTimers.push(setTimeout(function() {
-    var lockPayload = {
-      id: 'test-prediction-001',
-      title: beginPayload.title,
-      outcomes: outcomes,
-      status: 'LOCKED',
-      locked_at: new Date().toISOString(),
-      ends_at: beginPayload.ends_at
-    };
-    onPredictionLock(lockPayload);
-    showToast('Prediction locked');
-  }, 16000));
+  // ═══════════════════════════════════════════════════════════════
+  // CELEBRATION PARTICLES
+  // ═══════════════════════════════════════════════════════════════
 
-  // 4. END — resolve at 20 seconds
-  testTimers.push(setTimeout(function() {
-    // Pick a winner (weighted toward the one with most points)
+  function spawnCelebration() {
+    if (prefersReducedMotion()) return;
+
+    var winnerEl = predictionOverlay.querySelector('.pred-option.winner');
+    if (!winnerEl) return;
+
+    var rect = winnerEl.getBoundingClientRect();
+    var centerX = rect.left + rect.width / 2;
+    var centerY = rect.top + rect.height / 2;
+
+    var colors = ['#d4a853', '#e8c87a', '#9bbf9b', '#d49274', '#d9a3b8'];
+    var particleCount = displayMode === 'full' ? 30 : 18;
+
+    for (var i = 0; i < particleCount; i++) {
+      var p = document.createElement('div');
+      p.className = 'celebration-particle';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.left = centerX + 'px';
+      p.style.top = centerY + 'px';
+      p.style.boxShadow = '0 0 6px ' + p.style.background;
+
+      document.body.appendChild(p);
+
+      var angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
+      var velocity = 80 + Math.random() * 120;
+      var vx = Math.cos(angle) * velocity;
+      var vy = Math.sin(angle) * velocity - 40;
+      var rotation = Math.random() * 720;
+      var duration = 800 + Math.random() * 600;
+      var startTime = Date.now();
+
+      (function (particle, vx, vy, rotation, duration, startTime) {
+        function animate() {
+          var elapsed = Date.now() - startTime;
+          var progress = elapsed / duration;
+
+          if (progress >= 1) {
+            particle.remove();
+            return;
+          }
+
+          var x = vx * progress;
+          var y = vy * progress + 0.5 * 200 * progress * progress;
+          var r = rotation * progress;
+          var opacity = 1 - progress;
+
+          particle.style.transform =
+            'translate(' + x + 'px, ' + y + 'px) rotate(' + r + 'deg)';
+          particle.style.opacity = opacity;
+
+          requestAnimationFrame(animate);
+        }
+
+        animate();
+      })(p, vx, vy, rotation, duration, startTime);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // TEST PREDICTION
+  // ═══════════════════════════════════════════════════════════════
+
+  function makeTestOutcomes() {
+    var outcomes = [
+      { id: 'test-a', title: 'Pobot', channel_points: 0, top_predictors: [] },
+      { id: 'test-b', title: 'Prestler', channel_points: 0, top_predictors: [] },
+      { id: 'test-c', title: 'Cultural Pic', channel_points: 0, top_predictors: [] },
+      { id: 'test-d', title: 'Pisc', channel_points: 0, top_predictors: [] }
+    ];
+
+    var fakeNames = [
+      'FizzyCait',
+      'BreadSanta',
+      'HarryHardy',
+      'grgrsmth',
+      'Albrot',
+      'JosieRustle',
+      'AngelInterceptor',
+      'AliDooLalli'
+    ];
+
+    for (var i = 0; i < outcomes.length; i++) {
+      var numPredictors = 2 + Math.floor(Math.random() * 3);
+
+      for (var j = 0; j < numPredictors; j++) {
+        var pts = 500 + Math.floor(Math.random() * 5000);
+
+        outcomes[i].top_predictors.push({
+          user_id: 'test-' + i + '-' + j,
+          user_name: fakeNames[Math.floor(Math.random() * fakeNames.length)],
+          channel_points_used: pts,
+          channel_points_won: 0
+        });
+      }
+    }
+
+    return outcomes;
+  }
+
+  function seedTestPoints(outcomes, base) {
+    for (var i = 0; i < outcomes.length; i++) {
+      var addPts = base + Math.floor(Math.random() * base);
+      outcomes[i].channel_points += addPts;
+
+      if (outcomes[i].top_predictors.length > 0) {
+        outcomes[i].top_predictors[0].channel_points_used += Math.floor(addPts * 0.4);
+      }
+    }
+  }
+
+  function resolveTestOutcomes(outcomes) {
     var winnerIdx = 0;
     var maxPts = -1;
+
     for (var i = 0; i < outcomes.length; i++) {
       if (outcomes[i].channel_points > maxPts) {
         maxPts = outcomes[i].channel_points;
@@ -1876,172 +3096,469 @@ function runTestPrediction() {
       }
     }
 
-    // Calculate won amounts for winners
     var totalLosingPoints = 0;
-    for (var i = 0; i < outcomes.length; i++) {
-      if (i !== winnerIdx) totalLosingPoints += outcomes[i].channel_points;
+
+    for (var k = 0; k < outcomes.length; k++) {
+      if (k !== winnerIdx) totalLosingPoints += outcomes[k].channel_points;
     }
 
-    for (var i = 0; i < outcomes.length; i++) {
-      outcomes[i].isWinner = (i === winnerIdx);
-      if (i === winnerIdx) {
-        // Winners get their bet back + share of losing pool
-        for (var j = 0; j < outcomes[i].top_predictors.length; j++) {
-          var used = outcomes[i].top_predictors[j].channel_points_used;
-          var share = totalLosingPoints > 0 ? Math.round(used / outcomes[i].channel_points * totalLosingPoints) : 0;
-          outcomes[i].top_predictors[j].channel_points_won = used + share;
-        }
-      } else {
-        // Losers get 0
-        for (var j = 0; j < outcomes[i].top_predictors.length; j++) {
-          outcomes[i].top_predictors[j].channel_points_won = 0;
+    for (var m = 0; m < outcomes.length; m++) {
+      outcomes[m].isWinner = m === winnerIdx;
+
+      for (var n = 0; n < outcomes[m].top_predictors.length; n++) {
+        var used = outcomes[m].top_predictors[n].channel_points_used;
+
+        if (m === winnerIdx) {
+          var share =
+            totalLosingPoints > 0
+              ? Math.round((used / outcomes[m].channel_points) * totalLosingPoints)
+              : 0;
+
+          outcomes[m].top_predictors[n].channel_points_won = used + share;
+        } else {
+          outcomes[m].top_predictors[n].channel_points_won = 0;
         }
       }
     }
 
-    var endPayload = {
-      id: 'test-prediction-001',
-      title: beginPayload.title,
-      outcomes: outcomes,
-      status: 'RESOLVED',
-      winning_outcome_id: outcomes[winnerIdx].id,
-      ended_at: new Date().toISOString()
-    };
-    onPredictionEnd(endPayload);
-    showToast('Prediction resolved: ' + outcomes[winnerIdx].title);
-    testActive = false;
-  }, 20000));
-}
-
-// Wire up test button
-document.getElementById('testBtn').addEventListener('click', function(e) {
-  e.preventDefault();
-  runTestPrediction();
-});
-
-// ═══════════════════════════════════════════════════════════════
-// KEYBOARD
-// ═══════════════════════════════════════════════════════════════
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'h' || e.key === 'H') {
-    predictionOverlay.classList.toggle('hidden');
+    return outcomes[winnerIdx];
   }
-  if (e.key === 'c' || e.key === 'C') {
-    predictionOverlay.classList.remove('visible');
-    currentPrediction = null;
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+  function hideTestOverlay(delay) {
+    var id = currentPrediction ? currentPrediction.id : null;
+
+    testTimers.push(
+      setTimeout(function () {
+        if (currentPrediction && currentPrediction.id === id) {
+          clearCompactResults();
+
+          predictionOverlay.classList.add('slide-out');
+
+          setTimeout(function () {
+            predictionOverlay.classList.remove('visible', 'slide-out');
+            currentPrediction = null;
+            lastPercents = {};
+            updateDebug({ prediction: 'none' });
+          }, 500);
+        }
+
+        testActive = false;
+      }, delay)
+    );
+  }
+
+  function runTestPrediction(mode) {
+    mode = mode || 'active';
+
+    if (testActive) return;
+
+    testActive = true;
+
     clearTestTimers();
-    testActive = false;
-    showToast('Cleared');
-  }
-  if (e.key === 'd' || e.key === 'D') {
-    disconnect();
-  }
-  if (e.key === 't' || e.key === 'T') {
-    e.preventDefault();
-    runTestPrediction();
-  }
-  if (e.key === 'k' || e.key === 'K') {
-    e.preventDefault();
-    cycleDisplayMode();
-  }
-  if (e.key === 'l' || e.key === 'L') {
-    e.preventDefault();
-    toggleLayout();
-  }
-});
+    clearHideTimer();
+    clearCompactResults();
 
-// ═══════════════════════════════════════════════════════════════
-// DRAG — move the overlay by dragging the header
-// ═══════════════════════════════════════════════════════════════
-var POS_KEY = 'stream-predictions-position';
-var isDragging = false;
-var dragStartX = 0, dragStartY = 0;
-var overlayStartX = 0, overlayStartY = 0;
+    lastPercents = {};
 
-function setOverlayPosition(x, y) {
-  // Clamp to viewport
-  x = Math.max(0, Math.min(window.innerWidth - 100, x));
-  y = Math.max(0, Math.min(window.innerHeight - 50, y));
-  predictionOverlay.style.left = x + 'px';
-  predictionOverlay.style.top = y + 'px';
-  try { localStorage.setItem(POS_KEY, JSON.stringify({ x: x, y: y })); } catch(e) {}
-}
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
 
-function restoreOverlayPosition() {
-  // In vertical mode, always anchor to top-left (compact bar)
-  if (displayMode === 'vertical') {
-    predictionOverlay.style.left = '0px';
-    predictionOverlay.style.top = '0px';
-    return;
-  }
-  try {
-    var saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
-    if (saved) {
-      setOverlayPosition(saved.x, saved.y);
+    connectScreen.classList.add('hidden');
+
+    var outcomes = makeTestOutcomes();
+    var id = 'test-prediction-' + Date.now();
+
+    var beginPayload = {
+      id: id,
+      title: 'What will Pete draw first tonight?',
+      outcomes: outcomes,
+      status: 'ACTIVE',
+      created_at: new Date().toISOString(),
+      ends_at: new Date(Date.now() + (mode === 'active' ? 30000 : 12000)).toISOString()
+    };
+
+    onPredictionBegin(beginPayload);
+
+    if (mode === 'canceled') {
+      testTimers.push(
+        setTimeout(function () {
+          onPredictionEnd({
+            id: id,
+            title: beginPayload.title,
+            outcomes: outcomes,
+            status: 'CANCELED'
+          });
+
+          showToast('Test prediction canceled');
+          testActive = false;
+        }, 1500)
+      );
+
       return;
     }
-  } catch(e) {}
-  // Default: centered horizontally, 80px from bottom
-  var defaultX = (window.innerWidth - 560) / 2;
-  var defaultY = window.innerHeight - 400;
-  setOverlayPosition(defaultX, defaultY);
-}
 
-// Make header draggable
-var predHeader = document.querySelector('.pred-header');
-if (predHeader) {
-  predHeader.addEventListener('mousedown', function(e) {
-    // Don't drag if clicking on a button inside the header
-    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-    // Don't drag in vertical mode (fills the bar, no repositioning needed)
-    if (displayMode === 'vertical') return;
+    if (mode === 'resolved') {
+      seedTestPoints(outcomes, 2500);
 
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    var rect = predictionOverlay.getBoundingClientRect();
-    overlayStartX = rect.left;
-    overlayStartY = rect.top;
-    document.body.style.cursor = 'grabbing';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
+      onPredictionProgress({
+        id: id,
+        title: beginPayload.title,
+        outcomes: outcomes,
+        status: 'ACTIVE',
+        ends_at: beginPayload.ends_at
+      });
+
+      testTimers.push(
+        setTimeout(function () {
+          onPredictionLock({
+            id: id,
+            title: beginPayload.title,
+            outcomes: outcomes,
+            status: 'LOCKED',
+            locked_at: new Date().toISOString(),
+            ends_at: beginPayload.ends_at
+          });
+        }, 500)
+      );
+
+      testTimers.push(
+        setTimeout(function () {
+          var winner = resolveTestOutcomes(outcomes);
+
+          onPredictionEnd({
+            id: id,
+            title: beginPayload.title,
+            outcomes: outcomes,
+            status: 'RESOLVED',
+            winning_outcome_id: winner.id
+          });
+
+          showToast('Test prediction resolved: ' + winner.title, 'success');
+          testActive = false;
+        }, 1400)
+      );
+
+      return;
+    }
+
+    if (mode === 'locked') {
+      seedTestPoints(outcomes, 1200);
+
+      onPredictionProgress({
+        id: id,
+        title: beginPayload.title,
+        outcomes: outcomes,
+        status: 'ACTIVE',
+        ends_at: beginPayload.ends_at
+      });
+
+      testTimers.push(
+        setTimeout(function () {
+          seedTestPoints(outcomes, 1200);
+
+          onPredictionProgress({
+            id: id,
+            title: beginPayload.title,
+            outcomes: outcomes,
+            status: 'ACTIVE',
+            ends_at: beginPayload.ends_at
+          });
+        }, 1500)
+      );
+
+      testTimers.push(
+        setTimeout(function () {
+          onPredictionLock({
+            id: id,
+            title: beginPayload.title,
+            outcomes: outcomes,
+            status: 'LOCKED',
+            locked_at: new Date().toISOString(),
+            ends_at: beginPayload.ends_at
+          });
+
+          showToast('Test prediction locked');
+        }, 4000)
+      );
+
+      hideTestOverlay(20000);
+      return;
+    }
+
+    // Default: active full lifecycle
+    showToast('Test prediction started', 'success');
+    updateDebug({ prediction: 'test active' });
+
+    var progressSteps = 8;
+
+    for (var step = 1; step <= progressSteps; step++) {
+      (function (stepNum) {
+        testTimers.push(
+          setTimeout(function () {
+            seedTestPoints(outcomes, 700);
+
+            onPredictionProgress({
+              id: id,
+              title: beginPayload.title,
+              outcomes: outcomes,
+              status: 'ACTIVE',
+              ends_at: beginPayload.ends_at
+            });
+          }, stepNum * 1800)
+        );
+      })(step);
+    }
+
+    testTimers.push(
+      setTimeout(function () {
+        onPredictionLock({
+          id: id,
+          title: beginPayload.title,
+          outcomes: outcomes,
+          status: 'LOCKED',
+          locked_at: new Date().toISOString(),
+          ends_at: beginPayload.ends_at
+        });
+
+        showToast('Prediction locked');
+        updateDebug({ prediction: 'test locked' });
+      }, 16000)
+    );
+
+    testTimers.push(
+      setTimeout(function () {
+        var winner = resolveTestOutcomes(outcomes);
+
+        onPredictionEnd({
+          id: id,
+          title: beginPayload.title,
+          outcomes: outcomes,
+          status: 'RESOLVED',
+          winning_outcome_id: winner.id
+        });
+
+        showToast('Prediction resolved: ' + winner.title, 'success');
+        updateDebug({ prediction: 'test resolved' });
+
+        testActive = false;
+      }, 20000)
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // BUTTONS
+  // ═══════════════════════════════════════════════════════════════
+
+  if (testBtn) {
+    testBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      runTestPrediction('active');
+    });
+  }
+
+  if (floatTestBtn) {
+    floatTestBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      runTestPrediction('active');
+    });
+  }
+
+  if (layoutToggleBtn) {
+    layoutToggleBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      toggleLayout();
+    });
+  }
+
+  if (compactToggleBtn) {
+    compactToggleBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      cycleDisplayMode();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // KEYBOARD
+  // ═══════════════════════════════════════════════════════════════
+
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.target.isContentEditable) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    if (e.key === 'h' || e.key === 'H') {
+      predictionOverlay.classList.toggle('hidden');
+    }
+
+    if (e.key === 'c' || e.key === 'C') {
+      clearHideTimer();
+      clearTestTimers();
+      clearCompactResults();
+
+      predictionOverlay.classList.remove('visible', 'slide-out');
+
+      currentPrediction = null;
+      lastPercents = {};
+      testActive = false;
+
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+
+      updateDebug({ prediction: 'none' });
+
+      showToast('Cleared');
+    }
+
+    if (e.key === 'd' || e.key === 'D') {
+      disconnect();
+    }
+
+    if (e.key === 't' || e.key === 'T') {
+      e.preventDefault();
+      runTestPrediction('active');
+    }
+
+    if (e.key === 'k' || e.key === 'K') {
+      e.preventDefault();
+      cycleDisplayMode();
+    }
+
+    if (e.key === 'l' || e.key === 'L') {
+      e.preventDefault();
+      toggleLayout();
+    }
   });
 
-  document.addEventListener('mousemove', function(e) {
+  // ═══════════════════════════════════════════════════════════════
+  // DRAG
+  // ═══════════════════════════════════════════════════════════════
+
+  var isDragging = false;
+  var dragStartX = 0;
+  var dragStartY = 0;
+  var overlayStartX = 0;
+  var overlayStartY = 0;
+
+  var predHeader = document.querySelector('.pred-header');
+
+  if (predHeader) {
+    predHeader.addEventListener('mousedown', function (e) {
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+      if (displayMode !== 'full') return;
+      if (ui.clickthrough) return;
+
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+
+      var rect = predictionOverlay.getBoundingClientRect();
+
+      overlayStartX = rect.left;
+      overlayStartY = rect.top;
+
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+
+      e.preventDefault();
+    });
+  }
+
+  document.addEventListener('mousemove', function (e) {
     if (!isDragging) return;
+
     var dx = e.clientX - dragStartX;
     var dy = e.clientY - dragStartY;
+
     setOverlayPosition(overlayStartX + dx, overlayStartY + dy);
   });
 
-  document.addEventListener('mouseup', function() {
+  document.addEventListener('mouseup', function () {
     if (!isDragging) return;
+
     isDragging = false;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
   });
-}
 
-// Reposition on window resize (keep on screen)
-window.addEventListener('resize', function() {
-  if (displayMode === 'vertical') {
-    // Keep pinned to top-left in vertical mode
-    predictionOverlay.style.left = '0px';
-    predictionOverlay.style.top = '0px';
-    return;
+  window.addEventListener('resize', function () {
+    restoreOverlayPosition();
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // PUBLIC API + POSTMESSAGE
+  // ═══════════════════════════════════════════════════════════════
+
+  window.StreamPredictions = {
+    build: BUILD,
+    test: runTestPrediction,
+    disconnect: disconnect,
+    debug: enableDebug,
+    setMode: applyDisplayMode,
+    setLayout: applyLayout,
+    hide: function () {
+      clearHideTimer();
+      clearCompactResults();
+      predictionOverlay.classList.remove('visible', 'slide-out');
+      currentPrediction = null;
+      lastPercents = {};
+      updateDebug({ prediction: 'none' });
+    }
+  };
+
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+
+    if (!data || data.source !== 'stream-predictions-overlay') return;
+
+    var type = data.type;
+
+    if (type === 'test') {
+      runTestPrediction(data.mode || 'active');
+    } else if (type === 'hide' || type === 'clear') {
+      window.StreamPredictions.hide();
+    } else if (type === 'disconnect') {
+      disconnect();
+    } else if (type === 'mode') {
+      if (data.mode === 'full' || data.mode === 'vertical' || data.mode === 'compact') {
+        applyDisplayMode(data.mode);
+      }
+    } else if (type === 'layout') {
+      if (data.layout === 'bottom' || data.layout === 'right') {
+        applyLayout(data.layout);
+      }
+    } else if (type === 'debug') {
+      enableDebug();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════════════════════
+
+  applyDisplayMode(displayMode);
+  applyLayout(resultsLayout);
+  restoreOverlayPosition();
+  updateDebug();
+  initAuth();
+
+  if (P.has('test')) {
+    var tv = P.get('test');
+
+    if (tv !== '0' && tv !== 'false') {
+      var testMode = (tv === '' || tv === '1' || tv === 'active') ? 'active' : tv;
+
+      setTimeout(function () {
+        runTestPrediction(testMode);
+      }, 500);
+    }
   }
-  var rect = predictionOverlay.getBoundingClientRect();
-  setOverlayPosition(rect.left, rect.top);
-});
-
-// ═══════════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════════
-applyDisplayMode(displayMode);
-applyLayout(resultsLayout);
-restoreOverlayPosition();
-initAuth();
+})();
 </script>
 </body>
 </html>
