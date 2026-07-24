@@ -20,6 +20,17 @@ var ROOMS = [
   { id: 'nacky',       name: 'Nacky Nook',    tagline: 'A secret corner reserved for the most delightfully unhinged Peet content.', color: 'nacky', hex: '#ff5fa2' },
 ];
 
+var MEMORIAL_TRACKS = {
+  'bZmYG8SC': {
+    youtubeId: 'QCxZJ_g46sw',
+    title: 'Because I Got High',
+    artist: 'Afroman — Tribute to Eggheads Chris',
+    youtubeUrl: 'https://www.youtube.com/watch?v=QCxZJ_g46sw',
+    label: 'RIP Eggheads Chris Order of Service'
+  }
+};
+var currentMemorialCleanup = null;
+
 var FALLBACK_TAGS = {
   pobots: ['robot','peet','mech','pobot'], prestlers: ['wrestling','peet','ring','prestler'],
   cultural: ['art','culture','peet','artifact'], pisc: ['misc','abstract','peet','pisc'],
@@ -150,6 +161,7 @@ function parseRoute() {
 function render() {
   clearMerchCarousel();
   clearLiveOverlay();
+  if (typeof currentMemorialCleanup === 'function') { try { currentMemorialCleanup(); } catch(e) {} currentMemorialCleanup = null; }
   if (!GALLERY_DATA) {
     routeEl.innerHTML = '<div class="loading-screen"><div class="loading-spinner"></div><div class="loading-text">Loading the vault…</div></div>';
     return;
@@ -805,6 +817,28 @@ function renderArtwork(id) {
     creditHtml = '<div class="artwork-credit"><span class="artwork-credit-label">Kindly donated by</span>' + creditInner + '</div>';
   }
 
+
+  // === TRIBUTE AUDIO FOR bZmYG8SC ===
+  var isPeteHighTribute = (w.id === 'bZmYG8SC');
+  var tributePlayerHtml = '';
+  if (isPeteHighTribute) {
+    tributePlayerHtml = '<div id="tribute-player-wrap" style="margin:14px 0 18px 0;padding:14px 16px;border:1px solid rgba(212,168,83,0.25);border-radius:14px;background:linear-gradient(135deg, rgba(212,168,83,0.12), rgba(255,255,255,0.03));backdrop-filter:blur(6px);">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+        '<span style="display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;background:var(--amber);color:#000;font-size:12px;">♫</span>' +
+        '<span style="font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--amber);font-weight:600;">Tribute Audio — Auto-playing</span>' +
+        '<span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t3);">bZmYG8SC</span>' +
+      '</div>' +
+      '<div id="yt-tribute-player" style="border-radius:10px;overflow:hidden;background:#000;aspect-ratio:16/9;width:100%;"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button id="tribute-play-pause" style="font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:6px 12px;border-radius:100px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--t1);cursor:pointer;">Pause</button>' +
+        '<button id="tribute-mute" style="font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:6px 12px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--t2);cursor:pointer;">Mute</button>' +
+        '<a href="https://www.youtube.com/watch?v=QCxZJ_g46sw" target="_blank" rel="noopener" style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t3);text-decoration:underline;text-underline-offset:3px;">YouTube: QCxZJ_g46sw</a>' +
+      '</div>' +
+      '<div style="font-size:11px;line-height:1.5;color:var(--t3);margin-top:8px;font-family:var(--body);">Playing <b style="color:var(--t2);">Afroman — Because I Got High</b> in memory of Eggheads Chris. If your browser blocks autoplay, click Play. Audio stops when you leave this artwork.</div>' +
+    '</div>';
+  }
+
+
   var html = '<div class="artwork-view screen"><div class="artwork-detail">' +
     '<div class="artwork-image-wrap" id="artworkImageWrap" style="aspect-ratio:' + aspect.toFixed(3) + ';' + (nsfw&&!revealed?'cursor:pointer;':'') + '"' + (nsfw&&!revealed?' data-nsfw-reveal="' + escapeHtml(w.id) + '"':'') + '>' +
       '<img src="' + escapeHtml(w.imageUrl) + '" alt="' + escapeHtml(w.title) + '" decoding="async" referrerpolicy="no-referrer" loading="eager" style="width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 0.4s ease;' + nsfwBlurStyle + '" onload="this.style.opacity=1" onerror="this.style.opacity=0.15;this.alt=\'unavailable\'">' +
@@ -821,7 +855,7 @@ function renderArtwork(id) {
         (w.addedAt ? '<div class="artwork-meta-row"><span class="k">Added</span><span class="v mono">' + escapeHtml(w.addedAt) + '</span></div>' : '') +
         '<div class="artwork-meta-row"><span class="k">Catalogue ID</span><span class="v mono">#' + escapeHtml(w.id) + '</span></div>' +
         '<div class="artwork-meta-row"><span class="k">Hosted on</span><span class="v mono">postimg.cc</span></div></div>' +
-      '<p class="artwork-description">A piece from the ' + escapeHtml(w.galleryName) + ' collection. Originally submitted to the AGoodPete community archive and preserved here for posterity.</p>' +
+      '<p class="artwork-description">A piece from the ' + escapeHtml(w.galleryName) + ' collection. Originally submitted to the AGoodPete community archive and preserved here for posterity.</p>' + tributePlayerHtml +
       '<div class="artwork-tags">' + (w.tags||[]).map(function (t) { return '<span class="artwork-tag">#' + escapeHtml(t) + '</span>'; }).join('') + '</div>' +
       '<div class="artwork-actions">' +
         '<button class="btn-fav' + (isFavourite(w.id)?' active':'') + '" data-fav-id="' + escapeHtml(w.id) + '">' + (isFavourite(w.id)?'♥ In your favourites':'♡ Add to favourites') + '</button>' +
@@ -837,6 +871,65 @@ function renderArtwork(id) {
     '</div></div></div>';
 
   routeEl.innerHTML = html;
+  // --- Tribute player init ---
+  (function initTribute(){
+    if (!isPeteHighTribute) return;
+    var player, isPlaying = true, isMuted = false;
+    function loadYTAPI(cb){
+      if (window.YT && window.YT.Player) { cb(); return; }
+      var tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      var first = document.getElementsByTagName('script')[0];
+      first.parentNode.insertBefore(tag, first);
+      window.onYouTubeIframeAPIReady = function(){ cb(); };
+      // fallback timeout
+      var tries = 0;
+      var iv = setInterval(function(){
+        tries++;
+        if (window.YT && window.YT.Player) { clearInterval(iv); cb(); }
+        if (tries > 100) clearInterval(iv);
+      }, 200);
+    }
+    loadYTAPI(function(){
+      try {
+        player = new YT.Player('yt-tribute-player', {
+          videoId: 'QCxZJ_g46sw',
+          playerVars: { autoplay: 1, loop: 1, playlist: 'QCxZJ_g46sw', controls: 1, modestbranding: 1, rel: 0, playsinline: 1, origin: window.location.origin },
+          events: {
+            onReady: function(e){
+              try { e.target.unMute(); e.target.setVolume(70); e.target.playVideo(); } catch(err){}
+            },
+            onStateChange: function(e){
+              var btn = document.getElementById('tribute-play-pause');
+              if (!btn) return;
+              if (e.data === 1) { btn.textContent = 'Pause'; isPlaying = true; }
+              else if (e.data === 2) { btn.textContent = 'Play'; isPlaying = false; }
+            }
+          }
+        });
+        window.__tributePlayer = player;
+        var playBtn = document.getElementById('tribute-play-pause');
+        var muteBtn = document.getElementById('tribute-mute');
+        if (playBtn) playBtn.addEventListener('click', function(){
+          if (!player || !player.getPlayerState) return;
+          var state = player.getPlayerState();
+          if (state === 1) { player.pauseVideo(); }
+          else { player.playVideo(); }
+        });
+        if (muteBtn) muteBtn.addEventListener('click', function(){
+          if (!player) return;
+          if (isMuted) { player.unMute(); muteBtn.textContent = 'Mute'; isMuted = false; }
+          else { player.mute(); muteBtn.textContent = 'Unmute'; isMuted = true; }
+        });
+      } catch(err){ console.error('tribute player failed', err); }
+    });
+    // Stop when navigating away
+    var stopOnHash = function(){
+      try { if (window.__tributePlayer && window.__tributePlayer.stopVideo) window.__tributePlayer.stopVideo(); } catch(e){}
+      window.removeEventListener('hashchange', stopOnHash);
+    };
+    window.addEventListener('hashchange', stopOnHash);
+  })();
   if (w.imageUrl && w.imageUrl !== w.thumbUrl) {
     var preloader = new Image();
     preloader.decoding = 'async'; preloader.referrerPolicy = 'no-referrer'; preloader.src = w.imageUrl;
