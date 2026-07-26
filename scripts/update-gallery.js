@@ -4,37 +4,48 @@
  * Fetches images from postimg.cc albums, updates gallery-data.js,
  * and emits artwork-index.json (lightweight, powers OG previews).
  *
- * Usage:  node scripts/update-gallery.js [--dry-run]
- * Exit:   0 = success · 2 = error / safety guard
+ * Usage: node scripts/update-gallery.js [--dry-run]
+ * Exit:  0 = success · 2 = error / safety guard
+ *
+ * 2026-07-26 HARDENING (after the 1560 -> 240 wipe):
+ *  - Pagination now tries multiple URL shapes per page and treats an
+ *    unreachable page-2 on a full page-1 as an ERROR, not "end of album".
+ *  - The "big drop" check is now a HARD ABORT, not a console.warn.
+ *  - Any guard trip anywhere means gallery-data.js is never written.
  */
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
 const GALLERIES = [
-  { id: 'pobots',      name: 'Pobots',        tagline: 'Robots. Peets. The intersection thereof.',          albumHex: 'VML2tRn', wallClass: 'room-wall-1' },
-  { id: 'prestlers',   name: 'Prestlers',     tagline: 'Peet meets the squared circle and beyond.',          albumHex: 'RFbFrht', wallClass: 'room-wall-2' },
-  { id: 'cultural',    name: 'Cultural Pics', tagline: 'Art, culture, and things that are Peet.',            albumHex: 'HVYDkG8', wallClass: 'room-wall-3' },
-  { id: 'pisc',        name: 'Pisc',          tagline: 'A miscellany. A cornucopia. A Pisc.',                albumHex: 'Yt9J3Xt', wallClass: 'room-wall-4' },
-  { id: 'submissions', name: 'Submissions',   tagline: 'Community contributions from the spreadsheet.',       albumHex: 'nMN0w6j', wallClass: 'room-wall-submissions' },
+  { id: 'pobots',      name: 'Pobots',        tagline: 'Robots. Peets. The intersection thereof.',   albumHex: 'VML2tRn', wallClass: 'room-wall-1' },
+  { id: 'prestlers',   name: 'Prestlers',     tagline: 'Peet meets the squared circle and beyond.',  albumHex: 'RFbFrht', wallClass: 'room-wall-2' },
+  { id: 'cultural',    name: 'Cultural Pics', tagline: 'Art, culture, and things that are Peet.',    albumHex: 'HVYDkG8', wallClass: 'room-wall-3' },
+  { id: 'pisc',        name: 'Pisc',          tagline: 'A miscellany. A cornucopia. A Pisc.',        albumHex: 'Yt9J3Xt', wallClass: 'room-wall-4' },
+  { id: 'submissions', name: 'Submissions',   tagline: 'Community contributions from the spreadsheet.', albumHex: 'nMN0w6j', wallClass: 'room-wall-submissions' },
 ];
 
 const GALLERY_DATA_PATH = path.join(__dirname, '..', 'gallery-data.js');
-const INDEX_PATH        = path.join(__dirname, '..', 'artwork-index.json');
-const SUBMITTERS_PATH   = path.join(__dirname, '..', 'submitters.json');
+const INDEX_PATH = path.join(__dirname, '..', 'artwork-index.json');
+const SUBMITTERS_PATH = path.join(__dirname, '..', 'submitters.json');
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const DRY_RUN = process.argv.includes('--dry-run');
 const DELAY_MS = 500;
-const MAX_PAGES = 20;
+const MAX_PAGES = 40;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
 const MAX_REDIRECTS = 5;
+
+// A page this size means postimg almost certainly has another page.
+const FULL_PAGE_SIZE = 48;
+// Abort the whole run if a gallery shrinks by more than this fraction.
+const MAX_SHRINK = 0.20;
 
 function fetch(url, attempt = 1, redirects = 0) {
   return new Promise((resolve, reject) => {
     const retryOrReject = (err) => {
       if (attempt <= MAX_RETRIES) {
-        console.log(`\n  ⚠ ${err.message} — retrying (${attempt}/${MAX_RETRIES})...`);
+        console.log(`\n    ⚠ ${err.message} — retrying (${attempt}/${MAX_RETRIES})...`);
         sleep(RETRY_DELAY_MS).then(() => resolve(fetch(url, attempt + 1, redirects)));
       } else reject(err);
     };
@@ -84,33 +95,77 @@ function parseAlbumPage(html) {
   return images;
 }
 
-async function scrapeAlbum(albumHex, galleryId, existingCount) {
-  const allImages = [];
-  let page = 1, hasMore = true, hadError = false;
-  while (hasMore && page <= MAX_PAGES) {
-    const url = page === 1 ? `https://postimg.cc/gallery/${albumHex}` : `https://postimg.cc/gallery/${albumHex}/${page}`;
-    process.stdout.write(`  Fetching ${galleryId} page ${page}...`);
+// postimg has moved this around before. Try every shape we know before
+// concluding the album has ended.
+function pageUrls(albumHex, page) {
+  if (page === 1) return [`https://postimg.cc/gallery/${albumHex}`];
+  return [
+    `https://postimg.cc/gallery/${albumHex}/${page}`,
+    `https://postimg.cc/gallery/${albumHex}?page=${page}`,
+    `https://postimg.cc/gallery/${albumHex}/page/${page}`,
+  ];
+}
+
+// Returns { images, ok }. ok=false means every URL shape failed to load.
+async function fetchPage(albumHex, page) {
+  const urls = pageUrls(albumHex, page);
+  let lastErr = null;
+  for (const url of urls) {
     try {
       const html = await fetch(url);
-      const images = parseAlbumPage(html);
-      if (images.length === 0) { console.log(` 0 images, done.`); hasMore = false; }
-      else {
-        allImages.push(...images);
-        console.log(` ${images.length} images found.`);
-        if (page > 1) {
-          const pageSize = images.length;
-          const prevBatch = allImages.slice(allImages.length - pageSize * 2, allImages.length - pageSize);
-          const currentIds = new Set(images.map(i => i.id));
-          if (prevBatch.length > 0 && prevBatch.every(i => currentIds.has(i.id))) {
-            console.log(`  Duplicate page detected — reached the end.`);
-            allImages.splice(allImages.length - images.length, images.length);
-            hasMore = false;
-          }
-        }
-        if (hasMore) { page++; await sleep(DELAY_MS); }
-      }
-    } catch (err) { console.error(` ERROR: ${err.message}`); hadError = true; hasMore = false; }
+      return { images: parseAlbumPage(html), ok: true, url };
+    } catch (err) { lastErr = err; }
   }
+  return { images: [], ok: false, err: lastErr };
+}
+
+async function scrapeAlbum(albumHex, galleryId, existingCount) {
+  const allImages = [];
+  const seen = new Set();
+  let page = 1, hasMore = true, hadError = false;
+
+  while (hasMore && page <= MAX_PAGES) {
+    process.stdout.write(`  Fetching ${galleryId} page ${page}...`);
+    const res = await fetchPage(albumHex, page);
+
+    if (!res.ok) {
+      // Could not load the page at all. If the PREVIOUS page was full,
+      // there is almost certainly more content we just cannot reach —
+      // that is a failure, NOT the end of the album.
+      const prevWasFull = page > 1 && allImages.length > 0 && (allImages.length % FULL_PAGE_SIZE === 0);
+      if (prevWasFull) {
+        console.error(`  UNREACHABLE after a full page of ${FULL_PAGE_SIZE} — treating as ERROR (${res.err && res.err.message}).`);
+        hadError = true;
+      } else {
+        console.log(` unreachable, assuming end of album.`);
+      }
+      hasMore = false;
+      break;
+    }
+
+    const images = res.images;
+    if (images.length === 0) { console.log(` 0 images, done.`); hasMore = false; break; }
+
+    const fresh = images.filter(i => !seen.has(i.id));
+    if (fresh.length === 0) {
+      console.log(` all ${images.length} already seen — reached the end.`);
+      hasMore = false;
+      break;
+    }
+
+    fresh.forEach(i => seen.add(i.id));
+    allImages.push(...fresh);
+    console.log(` ${images.length} images (${fresh.length} new to this scrape).`);
+
+    if (images.length < FULL_PAGE_SIZE) { console.log(`  Short page — end of album.`); hasMore = false; break; }
+
+    page++;
+    await sleep(DELAY_MS);
+  }
+
+  if (page > MAX_PAGES) { console.error(`  ⚠ Hit MAX_PAGES (${MAX_PAGES}) — album may be truncated.`); hadError = true; }
+
+  // ---- Safety guards. Any of these returns null and aborts the run. ----
   if (allImages.length === 0 && existingCount > 0) {
     console.error(`  ⚠ SAFETY GUARD: scraped 0 images but gallery had ${existingCount}.`);
     return null;
@@ -119,8 +174,10 @@ async function scrapeAlbum(albumHex, galleryId, existingCount) {
     console.error(`  ⚠ SAFETY GUARD: scrape aborted early (${allImages.length}/${existingCount}).`);
     return null;
   }
-  if (existingCount > 10 && allImages.length < existingCount * 0.5) {
-    console.warn(`  ⚠ WARNING: scraped ${allImages.length} vs existing ${existingCount} — big drop, verify.`);
+  if (existingCount > 10 && allImages.length < existingCount * (1 - MAX_SHRINK)) {
+    const pct = (100 * (1 - allImages.length / existingCount)).toFixed(1);
+    console.error(`  ⚠ SAFETY GUARD: scraped ${allImages.length} vs existing ${existingCount} (−${pct}%). Refusing to shrink the vault.`);
+    return null;
   }
   return allImages;
 }
@@ -197,7 +254,7 @@ async function main() {
       continue;
     }
     const works = images.map(img => {
-      const base = { ...img, gallery: gallery.id, galleryName: gallery.name };
+      const base = Object.assign({}, img, { gallery: gallery.id, galleryName: gallery.name });
       if (!existingIds.has(img.id)) base.addedAt = today;
       return base;
     });
@@ -208,26 +265,32 @@ async function main() {
     newData.totalWorks += works.length;
   }
 
-  console.log(`\n=== Summary ===\nExisting: ${existingIds.size}\nScraped:  ${newData.totalWorks}\nNew:      ${totalNew}`);
+  console.log(`\n=== Summary ===\nExisting: ${existingIds.size}\nScraped: ${newData.totalWorks}\nNew: ${totalNew}`);
 
   if (guardTriggered) {
     console.error('\n⚠ Safety guard triggered — gallery-data.js NOT updated.');
     process.exit(2);
   }
+
+  // Belt and braces: never let the grand total collapse either.
+  if (existingIds.size > 50 && newData.totalWorks < existingIds.size * (1 - MAX_SHRINK)) {
+    console.error(`\n⚠ SAFETY GUARD: total would drop ${existingIds.size} -> ${newData.totalWorks}. NOT writing.`);
+    process.exit(2);
+  }
+
   if (totalNew === 0) {
     console.log('\nGallery is up to date. No changes needed.');
-    // Still refresh the index (cheap, keeps OG data + submitters current)
-    if (!DRY_RUN) saveIndex(mergeAll(newData, existing), submitters);
+    if (!DRY_RUN) saveIndex(newData, submitters);
     process.exit(0);
   }
 
   for (const gallery of GALLERIES) {
     const newGallery = newData.galleries[gallery.id];
     const oldGallery = existing.galleries[gallery.id];
-    if (oldGallery && oldGallery.works) {
+    if (newGallery && oldGallery && oldGallery.works) {
       const oldById = {};
       oldGallery.works.forEach(w => { oldById[w.id] = w; });
-      newGallery.works = newGallery.works.map(w => oldById[w.id] ? { ...w, ...oldById[w.id] } : w);
+      newGallery.works = newGallery.works.map(w => oldById[w.id] ? Object.assign({}, w, oldById[w.id]) : w);
     }
   }
   Object.keys(existing.galleries).forEach(gid => {
@@ -248,7 +311,5 @@ async function main() {
   }
   process.exit(0);
 }
-
-function mergeAll(newData, existing) { return newData; }
 
 main().catch(err => { console.error('Fatal error:', err); process.exit(2); });
