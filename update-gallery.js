@@ -8,10 +8,29 @@
  * Exit:  0 = success · 2 = error / safety guard
  *
  * 2026-07-26 HARDENING (after the 1560 -> 240 wipe):
- *  - Pagination now tries multiple URL shapes per page and treats an
- *    unreachable page-2 on a full page-1 as an ERROR, not "end of album".
- *  - The "big drop" check is now a HARD ABORT, not a console.warn.
+ *  - The "big drop" check is a HARD ABORT, not a console.warn.
  *  - Any guard trip anywhere means gallery-data.js is never written.
+ *
+ * 2026-08-05 FIX (root cause of the 240-image ceiling):
+ *  - postimg.cc does NOT paginate galleries with URLs like
+ *    /gallery/{hex}/2, ?page=2, or /page/2 — those all silently
+ *    re-serve page 1's HTML instead of erroring. The old pageUrls()
+ *    guesses hit exactly that: page 2 "succeeded", parsed the same
+ *    48 images as page 1, every id was already seen, and the loop
+ *    concluded "reached the end" with zero error output. That's why
+ *    every gallery capped at exactly one page (48) and the total sat
+ *    at 5 x 48 = 240 with the safety guards never tripping.
+ *  - Real pagination happens via the JSON endpoint the gallery page
+ *    itself calls on scroll: https://postimg.cc/json?action=list&page=N&album={hex}
+ *    which returns { images: [...], has_page_next: bool }. We now
+ *    use that endpoint for every page (including page 1) and trust
+ *    has_page_next as the authoritative "is there more" signal
+ *    instead of inferring it from page size.
+ *  - Row shape per image: [imageHash, pageSlug, filename, ext, width,
+ *    height, fullImageUrl, "", 0, "", ""]. pageSlug (index 1) is what
+ *    the old HTML scrape extracted as `id` from the anchor href
+ *    (postimg.cc/{pageSlug}) — submitters.json is keyed on this, so
+ *    we map it the same way to keep existing submitter credits intact.
  */
 const fs = require('fs');
 const path = require('path');
@@ -36,8 +55,6 @@ const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
 const MAX_REDIRECTS = 5;
 
-// A page this size means postimg almost certainly has another page.
-const FULL_PAGE_SIZE = 48;
 // Abort the whole run if a gallery shrinks by more than this fraction.
 const MAX_SHRINK = 0.20;
 
@@ -49,7 +66,7 @@ function fetch(url, attempt = 1, redirects = 0) {
         sleep(RETRY_DELAY_MS).then(() => resolve(fetch(url, attempt + 1, redirects)));
       } else reject(err);
     };
-    https.get(url, { headers: { 'User-Agent': USER_AGENT, 'Accept': 'text/html' } }, (res) => {
+    https.get(url, { headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json, text/html' } }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         if (redirects >= MAX_REDIRECTS) return reject(new Error(`Too many redirects for ${url}`));
         return resolve(fetch(res.headers.location, attempt, redirects + 1));
@@ -65,58 +82,41 @@ function fetch(url, attempt = 1, redirects = 0) {
 
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-function attr(tagHtml, name) {
-  const m = tagHtml.match(new RegExp(name + '="([^"]*)"'));
-  return m ? m[1] : '';
+// postimg's real pagination source — the same endpoint the gallery page
+// itself calls on infinite-scroll. Works for page 1 too, so we use it
+// uniformly instead of scraping HTML for page 1 and guessing URLs after.
+function jsonPageUrl(albumHex, page) {
+  return `https://postimg.cc/json?action=list&page=${page}&album=${albumHex}`;
 }
 
-function parseAlbumPage(html) {
-  const images = [];
-  const anchorRe = /<a\b[^>]*data-pswp-src="[^"]*"[^>]*>/g;
-  let m;
-  while ((m = anchorRe.exec(html)) !== null) {
-    const tag = m[0];
-    const imageUrl = attr(tag, 'data-pswp-src');
-    const href = attr(tag, 'href');
-    const width = parseInt(attr(tag, 'data-pswp-width'), 10) || 0;
-    const height = parseInt(attr(tag, 'data-pswp-height'), 10) || 0;
-    const idMatch = href.match(/postimg\.cc\/([^"/?#]+)/);
-    if (!idMatch) continue;
-    const id = idMatch[1];
-    const after = html.slice(m.index + tag.length, m.index + tag.length + 800);
-    const imgTag = after.match(/<img\b[^>]*>/);
-    if (!imgTag) continue;
-    const thumbUrl = attr(imgTag[0], 'src');
-    const altText = attr(imgTag[0], 'alt');
-    if (!imageUrl || !thumbUrl) continue;
-    const title = altText.replace(/-/g, ' ').replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
-    images.push({ id, title, imageUrl, thumbUrl, width, height });
+// Parses one JSON page. Throws on anything that isn't the shape we expect —
+// callers treat a throw as a real error, never as "end of album".
+function parseJsonPage(raw) {
+  let data;
+  try { data = JSON.parse(raw); }
+  catch (e) { throw new Error(`Not valid JSON: ${e.message}`); }
+  if (!data || !Array.isArray(data.images)) {
+    throw new Error('Unexpected response shape (no "images" array)');
   }
-  return images;
+  const images = data.images.map(row => {
+    const [, pageSlug, filename, , width, height, imageUrl] = row;
+    if (!pageSlug || !imageUrl) return null;
+    return {
+      id: pageSlug, // matches the old HTML scrape's id (postimg.cc/{pageSlug} from the anchor href)
+      title: (filename || '').replace(/-/g, ' '),
+      imageUrl,
+      thumbUrl: imageUrl, // postimg serves the same URL for both grid + lightbox — confirmed against a live gallery
+      width: width || 0,
+      height: height || 0,
+    };
+  }).filter(Boolean);
+  return { images, hasNext: !!data.has_page_next };
 }
 
-// postimg has moved this around before. Try every shape we know before
-// concluding the album has ended.
-function pageUrls(albumHex, page) {
-  if (page === 1) return [`https://postimg.cc/gallery/${albumHex}`];
-  return [
-    `https://postimg.cc/gallery/${albumHex}/${page}`,
-    `https://postimg.cc/gallery/${albumHex}?page=${page}`,
-    `https://postimg.cc/gallery/${albumHex}/page/${page}`,
-  ];
-}
-
-// Returns { images, ok }. ok=false means every URL shape failed to load.
 async function fetchPage(albumHex, page) {
-  const urls = pageUrls(albumHex, page);
-  let lastErr = null;
-  for (const url of urls) {
-    try {
-      const html = await fetch(url);
-      return { images: parseAlbumPage(html), ok: true, url };
-    } catch (err) { lastErr = err; }
-  }
-  return { images: [], ok: false, err: lastErr };
+  const url = jsonPageUrl(albumHex, page);
+  const raw = await fetch(url); // fetch() already retries transient failures
+  return parseJsonPage(raw);
 }
 
 async function scrapeAlbum(albumHex, galleryId, existingCount) {
@@ -126,38 +126,35 @@ async function scrapeAlbum(albumHex, galleryId, existingCount) {
 
   while (hasMore && page <= MAX_PAGES) {
     process.stdout.write(`  Fetching ${galleryId} page ${page}...`);
-    const res = await fetchPage(albumHex, page);
 
-    if (!res.ok) {
-      // Could not load the page at all. If the PREVIOUS page was full,
-      // there is almost certainly more content we just cannot reach —
-      // that is a failure, NOT the end of the album.
-      const prevWasFull = page > 1 && allImages.length > 0 && (allImages.length % FULL_PAGE_SIZE === 0);
-      if (prevWasFull) {
-        console.error(`  UNREACHABLE after a full page of ${FULL_PAGE_SIZE} — treating as ERROR (${res.err && res.err.message}).`);
-        hadError = true;
-      } else {
-        console.log(` unreachable, assuming end of album.`);
-      }
+    let res;
+    try {
+      res = await fetchPage(albumHex, page);
+    } catch (err) {
+      // A page that fails to load or fails to parse is an ERROR, never
+      // "end of album" — that ambiguity is exactly what caused the
+      // silent 240-image ceiling before.
+      console.error(` ERROR: ${err.message}`);
+      hadError = true;
       hasMore = false;
       break;
     }
 
-    const images = res.images;
-    if (images.length === 0) { console.log(` 0 images, done.`); hasMore = false; break; }
-
-    const fresh = images.filter(i => !seen.has(i.id));
-    if (fresh.length === 0) {
-      console.log(` all ${images.length} already seen — reached the end.`);
-      hasMore = false;
-      break;
-    }
-
+    const fresh = res.images.filter(i => !seen.has(i.id));
     fresh.forEach(i => seen.add(i.id));
     allImages.push(...fresh);
-    console.log(` ${images.length} images (${fresh.length} new to this scrape).`);
+    console.log(` ${res.images.length} images (${fresh.length} new to this scrape), more=${res.hasNext}`);
 
-    if (images.length < FULL_PAGE_SIZE) { console.log(`  Short page — end of album.`); hasMore = false; break; }
+    if (res.images.length === 0 && res.hasNext) {
+      // Shouldn't be possible, but if the API ever says "more" with an
+      // empty page, don't spin — treat it as an error, not the end.
+      console.error(`  ⚠ API reports more pages but returned 0 images — treating as ERROR.`);
+      hadError = true;
+      hasMore = false;
+      break;
+    }
+
+    if (!res.hasNext) { console.log(`  has_page_next=false — end of album.`); hasMore = false; break; }
 
     page++;
     await sleep(DELAY_MS);
