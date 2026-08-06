@@ -1,25 +1,484 @@
-<!doctype html>
-<html lang="en">
-<head>
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>Pete Wrestling Overlay - FAST</title>
 <style>
-@media print {
-  * {
-    transition: none !important;
-    animation: none !important;
-    box-shadow: none !important;
-  }
-  body {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
+:root{
+  --panel:rgba(4,5,7,.96);
+  --panel2:rgba(9,10,13,.98);
+  --ink:rgba(245,242,231,.94);
+  --muted:rgba(210,204,188,.64);
+  --quiet:rgba(210,204,188,.34);
+  --line:rgba(226,208,166,.2);
+  --amber:#d4a853;
+  --amber2:#ead18b;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --serif:Georgia,'Times New Roman',serif;
+  --r:8px;
 }
-
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;color:var(--ink);font-family:var(--mono)}
+.stack{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  width:329px;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  filter:drop-shadow(0 12px 26px rgba(0,0,0,.55));
+}
+.episode{
+  order:1;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-bottom:0;
+  border-radius:var(--r) var(--r) 0 0;
+  padding:10px 11px 8px;
+}
+.kicker{display:flex;align-items:center;gap:7px;color:var(--amber);font:600 7px var(--mono);letter-spacing:.22em;text-transform:uppercase}
+.kicker:before{content:'';width:11px;height:1px;background:var(--amber)}
+.date{font:500 19px/.98 var(--serif);letter-spacing:.01em;text-transform:uppercase;margin:8px 0 3px;color:var(--ink)}
+.title{font:700 8.5px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--amber2)}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;color:var(--muted);font:500 6.8px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.merch{
+  order:2;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-top:0;
+  border-bottom:0;
+  padding:8px 10px 8px;
+}
+.merch .kicker{margin-bottom:6px}
+.merch-inner{
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(226,208,166,.12);
+  border-radius:5px;
+  padding:6px;
+  min-height:64px;
+}
+.merch-thumb{
+  width:42px;
+  height:52px;
+  flex:none;
+  border-radius:3px;
+  object-fit:cover;
+  background:#111;
+  border:1px solid rgba(255,255,255,.08);
+}
+.merch-thumb.empty{background:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 6px,transparent 6px 12px)}
+.merch-meta{flex:1;min-width:0}
+.merch-name{font:800 9px/1.1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.merch-price{font:700 8.5px/1 var(--mono);color:var(--amber2);margin-top:5px}
+.merch-desc{font:400 6.5px/1.3 var(--mono);color:var(--quiet);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-height:20px}
+.ticker{
+  order:3;
+  display:flex;align-items:stretch;
+  min-height:24px;
+  border:1px solid var(--line);
+  border-top:0;
+  border-bottom:0;
+  overflow:hidden;
+  background:var(--panel2);
+}
+.ticker-tag{display:flex;align-items:center;padding:0 8px;flex:none;border-right:1px solid var(--line);color:var(--amber);font:700 6.5px var(--mono);letter-spacing:.18em;text-transform:uppercase}
+.ticker-window{display:flex;align-items:center;min-width:0;overflow:hidden}
+.ticker-track{white-space:nowrap;padding-left:10px;color:var(--ink);font:600 8px/1 var(--mono);letter-spacing:.035em;text-transform:uppercase;animation:scroll 34s linear infinite;will-change:transform}
+.ticker.paused .ticker-track{animation-play-state:paused}
+@keyframes scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-48%,0,0)}}
+.webcam-wrap{
+  order:4;
+  position:relative;
+  width:329px;
+  height:278px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-top:0;
+  border-radius:0 0 var(--r) var(--r);
+  overflow:hidden;
+  pointer-events:none;
+}
+.left-btn{
+  position:fixed;
+  left:0;top:50%;transform:translateY(-50%);
+  z-index:21;
+  writing-mode:vertical-rl;
+  padding:10px 6px;
+  border:1px solid #2a2a2a;
+  border-left:0;
+  border-radius:0 6px 6px 0;
+  background:#141414;
+  color:#aaa;
+  font:600 10px/1 sans-serif;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+.controls{
+  position:fixed;
+  left:12px;bottom:12px;
+  z-index:20;
+  width:320px;
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+  padding:0;
+  border:1px solid #2a2a2a;
+  border-radius:10px;
+  background:#111;
+  box-shadow:0 16px 40px rgba(0,0,0,.6);
+  transform:translateX(calc(-100% - 24px));
+  transition:transform .25s ease;
+  font-family:system-ui,-apple-system,sans-serif;
+}
+.controls.open{transform:translateX(0)}
+.controls-head{ display:flex;align-items:center;justify-content:space-between; padding:14px 14px 12px; border-bottom:1px solid #222; }
+.controls-head h2{margin:0;font:600 13px/1 sans-serif;color:#fff}
+.close{width:26px;height:26px;border:1px solid #2a2a2a;border-radius:6px;background:#1a1a1a;color:#666;font-size:14px;cursor:pointer}
+.controls-body{padding:12px 14px 14px}
+.group{margin-bottom:16px}
+.label{font:600 10px/1 sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#777;margin:0 0 6px}
+.input{width:100%;height:32px;padding:0 10px;border:1px solid #2a2a2a;border-radius:6px;background:#0a0a0a;color:#e5e5e5;font:400 13px/1 sans-serif}
+.textarea{height:60px;padding:8px 10px;resize:vertical}
+.row{display:flex;gap:6px}
+.btn{height:32px;padding:0 12px;border:1px solid #2a2a2a;border-radius:6px;background:#1a1a1a;color:#aaa;font:500 12px sans-serif;cursor:pointer}
+.btn:hover{background:#222;color:#fff}
+.btn-primary{background:#e8e8e8;color:#111;border-color:#e8e8e8}
+.check{display:flex;align-items:center;gap:8px;font:400 12px sans-serif;color:#999;margin-top:8px}
+.range{width:100%;margin-top:4px}
+.status{font:400 11px sans-serif;color:#666;word-break:break-all;margin-top:10px}
+.toast{
+  position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(8px);
+  z-index:30;padding:8px 12px;border-radius:6px;
+  background:#1e1e1e;color:#fff;font:500 12px sans-serif;
+  opacity:0;transition:all .2s ease;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+html[data-overlay="1"] .left-btn, html[data-overlay="1"] .controls{display:none !important}
 </style>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Pete Wrestling Overlay, live merch</title>
-<style>
-:root{--panel:rgba(4,5,7,.97);--panel2:rgba(9,10,13,.99);--ink:rgba(245,242,231,.94);--muted:rgba(210,204,188,.64);--line:rgba(226,208,166,.2);--amber:#d4a853;--amber2:#ead18b;--green:#9ac68d;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;--serif:Georgia,'Times New Roman',serif;--ease:cubic-bezier(.16,1,.3,1)}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;color:var(--ink)}body{font-family:var(--mono)}.stack{position:fixed;left:24px;bottom:18px;width:312px;display:flex;flex-direction:column;filter:drop-shadow(0 12px 26px rgba(0,0,0,.55))}.stack.top{top:18px;bottom:auto}.stack.right{left:auto;right:24px}.stack.center{left:50%;right:auto;transform:translateX(-50%)}.episode{order:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;clip-path:polygon(0 0,calc(100% - 13px) 0,100% 13px,100% 100%,0 100%)}.kicker{display:flex;align-items:center;gap:7px;color:var(--amber);font:600 8px var(--mono);letter-spacing:.22em;text-transform:uppercase}.kicker:before{content:'';width:13px;height:1px;background:var(--amber)}.date{font:500 22px/.98 var(--serif);text-transform:uppercase;margin:10px 0 5px}.title{font:700 9px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--amber2)}.meta{margin-top:7px;color:var(--muted);font:500 7px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase}.store{order:2;display:block;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);overflow:hidden}.store.off{display:none}.store-head{display:flex;align-items:center;justify-content:space-between;padding:9px 10px 8px;border-bottom:1px solid var(--line)}.store-label{color:var(--amber);font:700 7px var(--mono);letter-spacing:.18em;text-transform:uppercase}.store-link{color:var(--muted);font:700 7px var(--mono);letter-spacing:.08em;text-transform:uppercase;text-decoration:none}.store-list{display:block;padding:8px}.product{display:none;min-height:118px;grid-template-columns:104px 1fr;gap:9px;align-items:end;padding:7px;border:1px solid rgba(226,208,166,.12);border-radius:6px;background:rgba(255,255,255,.035);text-decoration:none;color:var(--ink);opacity:0;transform:translateY(4px)}.product.active{display:grid;animation:productIn .42s var(--ease) forwards}.product img{width:104px;height:94px;object-fit:cover;border-radius:4px;background:rgba(226,208,166,.06)}.product-copy{min-width:0}.product-name{display:block;font:700 9px/1.15 var(--mono);letter-spacing:.04em;text-transform:uppercase}.product-note{display:block;margin-top:5px;color:var(--muted);font:500 8px/1.3 var(--mono)}.product-bottom{display:flex;justify-content:space-between;gap:4px;margin-top:12px}.price{color:var(--amber2);font:700 9px var(--mono)}.view{color:var(--muted);font:700 7px var(--mono);text-transform:uppercase}@keyframes productIn{to{opacity:1;transform:translateY(0)}}.qr-row{display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid rgba(226,208,166,.11);color:var(--muted);font:600 7px/1.35 var(--mono)}.qr-row.off{display:none}.qr-row img{width:52px;height:52px;padding:3px;border-radius:5px;background:#f5f2e7}.qr-row b{color:var(--amber2)}.ticker{order:3;display:flex;align-items:stretch;min-height:28px;border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;overflow:hidden;background:var(--panel2)}.ticker-tag{display:flex;align-items:center;padding:0 9px;border-right:1px solid var(--line);color:var(--amber);font:700 7px var(--mono);letter-spacing:.18em;text-transform:uppercase}.ticker-window{display:flex;align-items:center;min-width:0;overflow:hidden}.ticker-track{white-space:nowrap;font:600 9px/1 var(--mono);letter-spacing:.035em;text-transform:uppercase;animation:scroll 34s linear infinite}.ticker.paused .ticker-track{animation-play-state:paused}@keyframes scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}.controls{position:fixed;right:12px;bottom:12px;z-index:20;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:16px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(14,15,18,.99);box-shadow:0 20px 60px rgba(0,0,0,.65);transform:translateY(calc(100% + 24px));transition:transform .28s var(--ease)}.controls.open{transform:translateY(0)}.tab{position:fixed;right:0;bottom:18px;z-index:21;writing-mode:vertical-rl;min-height:86px;padding:11px 8px;border:1px solid var(--line);border-right:0;border-radius:9px 0 0 9px;background:var(--panel2);color:var(--amber);font:700 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;opacity:0}.tab:hover{opacity:1}.close{float:right;width:32px;height:32px;border:1px solid rgba(255,255,255,.13);border-radius:7px;background:rgba(255,255,255,.04);color:var(--muted);font-size:17px}.eyebrow{font:700 9px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--amber)}h1{font:500 24px/1 var(--serif);margin:8px 0 18px}.section{padding:14px 0;border-top:1px solid rgba(255,255,255,.1);margin-top:14px}.section h2{font:700 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}.field{width:100%;min-height:38px;padding:8px 10px;margin-bottom:8px;border:1px solid rgba(255,255,255,.12);border-radius:7px;background:rgba(255,255,255,.04);color:var(--ink);font:500 12px var(--mono)}textarea.field{min-height:70px;resize:vertical}.row{display:flex;gap:7px}.row>*{flex:1}.secondary,.primary{min-height:38px;padding:8px 10px;border:1px solid rgba(255,255,255,.13);border-radius:7px;background:rgba(255,255,255,.04);color:var(--muted);font:600 10px var(--mono);letter-spacing:.04em}.primary{width:100%;border-color:var(--amber);background:var(--amber);color:#181208}.secondary:hover{border-color:var(--amber);color:var(--ink)}.check{display:flex;align-items:center;gap:8px;min-height:32px;color:var(--muted);font-size:11px}.check input{accent-color:var(--amber)}.value{display:flex;justify-content:space-between;color:rgba(210,204,188,.5);font:500 10px var(--mono)}.status{font:500 10px var(--mono);color:rgba(210,204,188,.5);margin-top:8px}.status.ok{color:var(--green)}.hint{font:500 10px/1.45 var(--mono);color:rgba(210,204,188,.5);margin:10px 0}.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(8px);z-index:30;padding:10px 13px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--ink);font:600 10px var(--mono);opacity:0;transition:opacity .2s var(--ease),transform .2s var(--ease)}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}@media(max-width:520px){.stack{left:16px;right:16px;width:auto}.stack.right,.stack.center{left:16px;right:16px;transform:none}.controls{right:0;bottom:0;border-radius:12px 0 0 0}}.overlay-mode .tab,.overlay-mode .toast{display:none!important}.overlay-mode .controls{width:min(300px,calc(100vw - 20px));max-height:300px;right:10px;bottom:10px;border-radius:18px}
-</style></head>
+</head>
 <body>
-<main class="stack" id="stack"><article class="episode"><div class="kicker">Episode date</div><div class="date" id="dateOut">Monday June 1998</div><div class="title" id="titleOut">WCW Monday Nitro</div><div class="meta" id="promoOut">Pete Wrestling Federation</div></article><section class="store" id="store" aria-label="Live rotating AGoodPete merch"><div class="store-head"><span class="store-label">Official merch / live</span></div><div class="store-list" id="storeList"></div><div class="qr-row" id="qrRow"><img id="qrImage" alt="QR code for the AGoodPete shop"><span><b>Support the Vault</b><br>Scan for the full Fourthwall shop.</span></div></section><div class="ticker" id="ticker"><span class="ticker-tag">Rules</span><div class="ticker-window"><div class="ticker-track" id="rulesOut">GREAT NEWS: I HAVE FOUND THE BEST WAY TO WATCH WRESTLING, YOU'LL JUST HAVE TO TRUST ME AND HELP BY FOLLOWING THESE RULES: ~ WE ARE WATCHING EVERYTHING LIVE, PLEASE PLAY ALONG ¦ ~WATCH WITH THE INTENTION TO EXPERIENCE JOY, NOTHING MATTERS, DON'T WORRY ABOUT IT ¦ ~ KEEP IT LIGHT ¦ ~ REMEMBER NOT EVERYONE IS A WRESTLING EXPERT AND THEY ARE RIGHT NOT TO BE · GREAT NEWS: I HAVE FOUND THE BEST WAY TO WATCH WRESTLING, YOU'LL JUST HAVE TO TRUST ME AND HELP BY FOLLOWING THESE RULES: ~ WE ARE WATCHING EVERYTHING LIVE, PLEASE PLAY ALONG ¦ ~WATCH WITH THE INTENTION TO EXPERIENCE JOY, NOTHING MATTERS, DON'T WORRY ABOUT IT ¦ ~ KEEP IT LIGHT ¦ ~ REMEMBER NOT EVERYONE IS A WRESTLING EXPERT AND THEY ARE RIGHT NOT TO BE ·</div></div></div></main>
-<button class="tab" id="tab" aria-controls="controls" aria-expanded="false">Controls</button><aside class="controls" id="controls"><button class="close" id="close">×</button><div class="eyebrow">OBS operator / live safe</div><h1>Live merch, not a screenshot.</h1><p class="hint">Rotation is now on by default in OBS mode. Each product swaps with a short entrance transition, and the QR stays tied to the live Fourthwall shop.</p><div class="section"><h2>Episode</h2><input class="field" id="title" value="WCW Monday Nitro"><input class="field" id="date" value="Monday June 1998"><input class="field" id="promo" value="Pete Wrestling Federation"></div><div class="section"><h2>Live store</h2><label class="check"><input id="showStore" type="checkbox" checked> Show merch widget</label><label class="check"><input id="rotateOn" type="checkbox" checked> Rotate products automatically</label><div class="row"><select class="field" id="position"><option value="bottom-left">Bottom Left</option><option value="bottom-right">Bottom Right</option><option value="top-left">Top Left</option><option value="top-right">Top Right</option><option value="center">Center</option></select><input class="field" id="rotateSecs" type="number" min="3" value="14" aria-label="Product rotation seconds"></div><div class="row"><button class="secondary" id="prevProduct">← Prev</button><select class="field" id="pinProduct" aria-label="Pin a product"><option value="rotate">Auto rotate</option></select><button class="secondary" id="nextProduct">Next →</button></div><label class="check"><input id="showQR" type="checkbox" checked> Show QR code</label><button class="secondary" id="openShop" style="width:100%;margin-top:8px">Open Fourthwall shop ↗</button><div class="status ok" id="storeStatus">Live rotation active, next swap in 14s</div></div><div class="section"><h2>Ticker</h2><textarea class="field" id="rules">Great news: I have found the best way to watch wrestling, you'll just have to trust me and help by following these rules: ~ we are watching everything live, please play along ¦ ~Watch with the intention to experience joy, nothing matters, don't worry about it ¦ ~ Keep it light ¦ ~ Remember not everyone is a wrestling expert and they are right not to be </textarea><label class="check"><input id="pause" type="checkbox"> Pause ticker</label><div class="value"><span>Scroll speed</span><span id="speedValue">34s / pass</span></div><input type="range" min="20" max="90" value="34" id="speed"><label class="check"><input id="showTicker" type="checkbox" checked> Show ticker</label></div><div class="section"><h2>OBS check</h2><button class="secondary" id="test" style="width:100%">Run live self-test</button><div class="status" id="testStatus">Checks rotation, QR, transparent background, and storefront links.</div></div><div class="row"><button class="secondary" id="intro">Load intro</button><button class="secondary" id="live">Load live</button></div><button class="primary" id="copy">Copy OBS browser URL</button><div class="status">OBS: transparent · 312px · live rotation enabled</div></aside><div class="toast" id="toast" role="status"></div>
-<script>(function(){'use strict';const $=s=>document.querySelector(s),shop='https://agoodpete-shop.fourthwall.com/en-gbp',store=$('#store'),list=$('#storeList'),qrRow=$('#qrRow'),stack=$('#stack'),ticker=$('#ticker'),toast=$('#toast');let active=0,timer=null,products=[['Tugsboat Shirt','£20','Toot toot! Full shirt ahead!','https://imgproxy.fourthwall.dev/FgVUfU590PwO7y6VLjjxwUegCqGsVCj1l9Gle_LCEsQ/w:1200/sm:1/enc/nZ0uJCDi8xDQwGjt/vNcChaldIccowF7Z/n6hYy1R8zHMi0ofZ/7rMep9W0LECLCp9f/w91Q7udVXFSrsg_c/X4yyq-JAPOyow0lo/-nTTCXO687UhQRVP/8GfJH3m8HOsYdDEQ/_0I4DbXPTexk1Fbm/lUrgdHF652tW4jDM/E8cTnlivil8z-IAs/rRITxWptFmy3IURR/Zju4yPerLg5-FmJn/rtLNwQ-l3fP54Y2v/XtjW1wUZJ4I.png','https://agoodpete-shop.fourthwall.com/en-gbp/products/tugsboat-shirt'],['Strength Shirt','£25','Pure strength, one heart, one soul.','https://imgproxy.fourthwall.dev/vZHGuMRO3-UeguiFartAW1SX2iP2R0G113gfCekFQZc/w:1200/sm:1/enc/p2HEuVDuE8htzXJS/IQH7jzF1EJa-i2iU/PhNi11cPHCksbjh5/XL-Xc6EUHmwSKBUk/zNcOZ1U5AC5JASuf/fuyzbUJ5MCkKNGxN/uLDlKTBPLsv9CYHE/TNUis6r0JzPu8cLk/mMh567ANE6iJtLu3/LyWSQwJ50Vk1YaTA/pkH0-paKAXE5rf-S/ofySmFWNYcL64IYD/mHJo-qCD0dmKPWEP/VKac5tXJIpNuTFW-/83wGNRfHUQE.png','https://agoodpete-shop.fourthwall.com/en-gbp/products/strength-shirt'],['Strength Poster','View','Newest collection.','https://imgproxy.fourthwall.dev/Jj9EqsExTCAhi3bi2YzdCiH085QrxiaCZM_5mmPiNcA/w:1200/sm:1/enc/Gj_vzSgMbK5SVRRI/d5sar7cHD1CGJcvK/TUz2L2VFReJbFrcK/N1Bd3UH0iug-pu5F/LyTzQDsEtn-DPtq_/hz9_LO-Ggj75Jzic/JZO3qHycGe0Qj8lP/BIYrWSI0Zw_kvkDN/Oon6ngMz_NVVYRGd/Ultwrn9SLzuo8s-V/TmlG4xnbQ_LRG20d/f9LXugL5PxPEPE4b/oGIAH2IiB-iPPNFJ/oO1pq_XkhUYnARan/ajeDI3fQRgQ.png','https://agoodpete-shop.fourthwall.com/en-gbp/products/strength-poster']];const qr='https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(shop),SAVE_KEY='pete-overlay-v1';function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({title:$('#title').value,date:$('#date').value,promo:$('#promo').value,rules:$('#rules').value,position:$('#position').value,rotateSecs:$('#rotateSecs').value,speed:$('#speed').value,pin:$('#pinProduct').value,showStore:$('#showStore').checked,rotateOn:$('#rotateOn').checked,showQR:$('#showQR').checked,showTicker:$('#showTicker').checked,pause:$('#pause').checked}))}catch(e){}}function loadSaved(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!s)return;['title','date','promo','rules','position'].forEach(k=>{if(s[k])$('#'+k).value=s[k]});if(s.rotateSecs)$('#rotateSecs').value=Math.max(3,s.rotateSecs);if(s.pin)$('#pinProduct').value=s.pin;if(s.speed){$('#speed').value=Math.min(90,Math.max(20,s.speed));document.querySelector('.ticker-track').style.animationDuration=$('#speed').value+'s';$('#speedValue').textContent=$('#speed').value+'s / pass'}['showStore','rotateOn','showQR','showTicker','pause'].forEach(k=>{if(s[k]!==undefined)$('#'+k).checked=!!s[k]})}catch(e){}}function rebuildProductSelect(){const sel=$('#pinProduct'),cur=sel.value;sel.innerHTML='';const o=document.createElement('option');o.value='rotate';o.textContent='Auto rotate';sel.appendChild(o);products.forEach(p=>{const o=document.createElement('option');o.value=p[0];o.textContent=p[0];sel.appendChild(o)});if(products.some(p=>p[0]===cur))sel.value=cur}function say(t){toast.textContent=t;toast.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>toast.classList.remove('show'),1800)}function position(){const p=$('#position').value;stack.className='stack '+(p.includes('top')?'top ':'')+(p.includes('right')?'right ':p==='center'?'center':'')}function placeholder(name){const d=document.createElement('div');d.style.cssText='height:94px;border-radius:4px;background:rgba(226,208,166,.07);display:grid;place-items:center;color:var(--amber);font:700 26px var(--serif)';d.textContent=name.charAt(0);return d}function setStatus(){const on=$('#showStore').checked&&$('#rotateOn').checked,s=$('#storeStatus');s.textContent=on?'Live rotation active · '+products.length+' products · next swap in '+($('#rotateSecs').value||14)+'s':'Rotation paused — showing current product';s.className='status'+(on?' ok':'')}function draw(){list.innerHTML='';const p=products[active],a=document.createElement('div');a.className='product active';if(p[3]){const img=document.createElement('img');img.src=p[3];img.alt=p[0];img.addEventListener('error',()=>img.replaceWith(placeholder(p[0])),{once:true});a.appendChild(img)}else a.appendChild(placeholder(p[0]));const copy=document.createElement('span');copy.className='product-copy';const name=document.createElement('span');name.className='product-name';name.textContent=p[0];const note=document.createElement('span');note.className='product-note';note.textContent=p[2];const bottom=document.createElement('span');bottom.className='product-bottom';const price=document.createElement('span');price.className='price';price.textContent=p[1];bottom.appendChild(price);copy.append(name,note,bottom);a.appendChild(copy);list.appendChild(a);setStatus()}function schedule(){clearInterval(timer);const pin=$('#pinProduct')&&$('#pinProduct').value;if(pin&&pin!=='rotate'){draw();return}if(!$('#showStore').checked||!$('#rotateOn').checked){draw();return}timer=setInterval(()=>{active=(active+1)%products.length;draw()},Math.max(3,Number($('#rotateSecs').value)||14)*1000);draw()}function render(){position();$('#dateOut').textContent=$('#date').value||'Date TBC';$('#titleOut').textContent=$('#title').value||'Episode title';$('#promoOut').textContent=$('#promo').value||'Promotion';const r=$('#rules').value||'Rules ticker';$('#rulesOut').textContent=(r+' · '+r+' · ').toUpperCase();store.classList.toggle('off',!$('#showStore').checked);qrRow.classList.toggle('off',!$('#showQR').checked);qrRow.querySelector('img').src=qr;ticker.classList.toggle('paused',$('#pause').checked);ticker.style.display=$('#showTicker').checked?'flex':'none'}$('#tab').onclick=()=>{const c=$('#controls');c.classList.toggle('open');$('#tab').setAttribute('aria-expanded',c.classList.contains('open'))};$('#close').onclick=()=>{$('#controls').classList.remove('open');$('#tab').setAttribute('aria-expanded','false')};$('#openShop').onclick=()=>window.open(shop,'_blank','noopener');$('#prevProduct').onclick=()=>{active=(active-1+products.length)%products.length;schedule();save()};$('#nextProduct').onclick=()=>{active=(active+1)%products.length;schedule();save()};$('#pinProduct').addEventListener('change',()=>{const v=$('#pinProduct').value;if(v==='rotate')schedule();else{const i=products.findIndex(p=>p[0]===v);if(i>=0){clearInterval(timer);active=i;draw()}}save()});$('#copy').onclick=()=>{const u=location.href.split('?')[0]+'?overlay=1&store=1&rotate=1&qr=1&transparent=1&rotateSecs='+($('#rotateSecs').value||14)+'&position='+$('#position').value+'&rules='+encodeURIComponent($('#rules').value||'')+'&speed='+($('#speed').value||34);navigator.clipboard?.writeText(u).then(()=>say('OBS URL copied')).catch(()=>prompt('Copy OBS URL',u))};$('#test').onclick=()=>{const ok=!!shop&&!!qr&&products.length>1&&$('#rotateOn').checked;$('#testStatus').textContent=ok?'PASS: live rotation, QR, storefront, and transparent canvas are wired.':'Enable rotation and merch before adding this to OBS.';$('#testStatus').className='status '+(ok?'ok':'');say(ok?'Live self-test passed':'Live self-test needs rotation enabled')};$('#intro').onclick=()=>{$('#title').value='WCW Monday Nitro';$('#date').value='Monday June 1998';$('#promo').value='Pete Wrestling Federation';render();say('Intro loaded')};$('#live').onclick=()=>{$('#title').value='Live from the Vault';$('#date').value='Tonight';$('#promo').value='Pete Wrestling Federation';render();say('Live loaded')};$('#speed').oninput=e=>{document.querySelector('.ticker-track').style.animationDuration=e.target.value+'s';$('#speedValue').textContent=e.target.value+'s / pass';save()};['title','date','promo','rules','pause','showTicker','showQR','position'].forEach(id=>$('#'+id).addEventListener('input',()=>{render();save()}));['showStore','rotateOn','rotateSecs'].forEach(id=>$('#'+id).addEventListener('input',()=>{render();schedule();save()}));window.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#controls').classList.remove('open');$('#tab').setAttribute('aria-expanded','false')}if(e.key.toLowerCase()==='o'&&(!e.target||!e.target.closest||!e.target.closest('input,textarea,select,button'))){$('#controls').classList.toggle('open');$('#tab').setAttribute('aria-expanded',$('#controls').classList.contains('open'))}});loadSaved();const q=new URLSearchParams(location.search);if(q.get('overlay')==='1')document.body.classList.add('overlay-mode');const flags={store:'showStore',rotate:'rotateOn',qr:'showQR'};Object.keys(flags).forEach(k=>{const v=q.get(k);if(v!==null)$('#'+flags[k]).checked=v==='1'});if(['bottom-left','bottom-right','top-left','top-right','center'].includes(q.get('position')))$('#position').value=q.get('position');const rs=Number(q.get('rotateSecs'));if(rs>=3)$('#rotateSecs').value=rs;const rv=q.get('rules');if(rv!==null)$('#rules').value=rv;const sp=Number(q.get('speed'));if(sp>=20&&sp<=90){$('#speed').value=sp;document.querySelector('.ticker-track').style.animationDuration=sp+'s';$('#speedValue').textContent=sp+'s / pass'}rebuildProductSelect();render();schedule();const API='https://agoodpete-shop.fourthwall.com/api/recommendations?intent=complementary&currency=GBP';fetch(API).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(d=>{if(!d||!d.products||!d.products.length)return;const seen={},fresh=[];d.products.forEach(p=>{const name=(p.title||'').trim();if(!name||seen[name.toLowerCase()]||!p.featured_image)return;seen[name.toLowerCase()]=1;const cents=Number(p.variants&&p.variants[0]&&p.variants[0].price)||0;const price='£'+((cents%100)?(cents/100).toFixed(2):cents/100);let note=(p.description||'').replace(/<[^>]*>/g,'').trim();if(!note)note='Newest collection.';fresh.push([name,price,note,p.featured_image,'https://agoodpete-shop.fourthwall.com/en-gbp/products/'+encodeURIComponent(p.handle)])});products.forEach(p=>{if(!seen[p[0].toLowerCase()]){seen[p[0].toLowerCase()]=1;fresh.push(p)}});if(fresh.length){const cur=products[active]&&products[active][0];products=fresh;const i=fresh.findIndex(p=>p[0]===cur);active=i>=0?i:0;rebuildProductSelect();schedule()}}).catch(()=>{});const PAGES=[['Tugsboat Shirt','tugsboat-shirt'],['Strength Shirt','strength-shirt'],['Strength Poster','strength-poster']];PAGES.forEach(([name,handle])=>{fetch(shop+'/products/'+handle).then(r=>r.ok?r.text():Promise.reject(new Error('HTTP '+r.status))).then(html=>{const m=html.match(/<meta property="og:image" content="([^"]+)"/);if(!m)return;const p=products.find(x=>x[0].toLowerCase()===name.toLowerCase());if(p&&p[3]!==m[1]){p[3]=m[1];if(products[active]===p)draw()}}).catch(()=>{})});})();</script></body></html>
+<main class="stack" id="stack">
+  <article class="episode">
+    <div class="kicker">Episode date</div>
+    <div class="date" id="dateOut">5TH APRIL 1986</div>
+    <div class="title" id="titleOut">NWA WORLD WIDE WRESTLING</div>
+    <div class="meta"><span id="promoOut">DATE WITH PETE</span></div>
+  </article>
+  <div class="merch" id="merchBox">
+    <div class="kicker">Official Merch / Live</div>
+    <div class="merch-inner">
+      <img class="merch-thumb empty" id="merchImgOut" alt="">
+      <div class="merch-meta">
+        <div class="merch-name" id="merchNameOut">LOADING...</div>
+        <div class="merch-price" id="merchPriceOut"></div>
+        <div class="merch-desc" id="merchDescOut"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ticker" id="ticker">
+    <span class="ticker-tag">Rules</span>
+    <div class="ticker-window"><div class="ticker-track" id="rulesOut">GOOD VIBES ONLY · NO SPOILERS · PRESENT 1995 TERSE CHAT ·</div></div>
+  </div>
+  <div class="webcam-wrap" id="webcamWrap"></div>
+</main>
+
+<button class="left-btn" id="leftBtn">Controls</button>
+
+<aside class="controls" id="controls">
+  <div class="controls-head">
+    <h2>Controls</h2>
+    <button class="close" id="close">×</button>
+  </div>
+  <div class="controls-body">
+    <div class="group">
+      <div class="label">Episode</div>
+      <input class="input" id="date" value="5TH APRIL 1986">
+      <div style="height:6px"></div>
+      <input class="input" id="title" value="NWA WORLD WIDE WRESTLING">
+      <div style="height:6px"></div>
+      <input class="input" id="promo" value="DATE WITH PETE">
+    </div>
+    <div class="group">
+      <div class="label">Store - instant load</div>
+      <div class="row">
+        <button class="btn" id="fetchMerch" style="flex:1">Try live refresh</button>
+        <button class="btn" id="nextMerch" style="flex:1">Next</button>
+      </div>
+      <label class="check"><input id="autoRotate" type="checkbox" checked> Auto-rotate</label>
+      <div class="status" id="status">Ready - instant products</div>
+    </div>
+    <div class="group">
+      <div class="label">Ticker</div>
+      <textarea class="input textarea" id="rules">Good vibes only · no spoilers · present 1995 terse chat</textarea>
+      <label class="check"><input id="pause" type="checkbox"> Pause ticker</label>
+      <label class="check" style="align-items:flex-start;flex-direction:column;gap:2px">Speed (seconds)
+        <input id="speed" class="range" type="range" min="5" max="120" value="34">
+      </label>
+    </div>
+    <div class="group">
+      <div class="row">
+        <button class="btn" id="copy" style="flex:1">Copy OBS URL</button>
+        <button class="btn btn-primary" id="save" style="flex:1">Save</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  // HARD-CODED PRODUCTS - verified live on agoodpete-shop.fourthwall.com
+  // These load instantly; "Try live refresh" replaces them with the full
+  // catalogue pulled from the Fourthwall storefront API.
+  const HARDCODED_PRODUCTS = [
+    {name:"Strength Shirt", price:"£33.05", description:"Tarot-inspired strength design - heavyweight tee", url:"https://agoodpete-shop.fourthwall.com/en-gbp/products/strength-shirt", image:"https://imgproxy.fourthwall.dev/vZHGuMRO3-UeguiFartAW1SX2iP2R0G113gfCekFQZc/w:1200/sm:1/enc/p2HEuVDuE8htzXJS/IQH7jzF1EJa-i2iU/PhNi11cPHCksbjh5/XL-Xc6EUHmwSKBUk/zNcOZ1U5AC5JASuf/fuyzbUJ5MCkKNGxN/uLDlKTBPLsv9CYHE/TNUis6r0JzPu8cLk/mMh567ANE6iJtLu3/LyWSQwJ50Vk1YaTA/pkH0-paKAXE5rf-S/ofySmFWNYcL64IYD/mHJo-qCD0dmKPWEP/VKac5tXJIpNuTFW-/83wGNRfHUQE.png", slug:"strength-shirt"},
+    {name:"Tugsboat Shirt", price:"£26.44", description:"Classic tugsboat graphic tee", url:"https://agoodpete-shop.fourthwall.com/en-gbp/products/tugsboat-shirt", image:"https://imgproxy.fourthwall.dev/FgVUfU590PwO7y6VLjjxwUegCqGsVCj1l9Gle_LCEsQ/w:1200/sm:1/enc/nZ0uJCDi8xDQwGjt/vNcChaldIccowF7Z/n6hYy1R8zHMi0ofZ/7rMep9W0LECLCp9f/w91Q7udVXFSrsg_c/X4yyq-JAPOyow0lo/-nTTCXO687UhQRVP/8GfJH3m8HOsYdDEQ/_0I4DbXPTexk1Fbm/lUrgdHF652tW4jDM/E8cTnlivil8z-IAs/rRITxWptFmy3IURR/Zju4yPerLg5-FmJn/rtLNwQ-l3fP54Y2v/XtjW1wUZJ4I.png", slug:"tugsboat-shirt"},
+    {name:"Dr Harry Hardy's Bellend Workshop Shirt", price:"£33.05", description:"Workshop tee - bellend awareness", url:"https://agoodpete-shop.fourthwall.com/en-gbp/products/dr-harry-hardys-bellend-workshop-shirt", image:"https://imgproxy.fourthwall.dev/H9jZ2IvkKHT7tsmUWjoMH9taEY6WxCmFvYF5F0hvgpg/w:1200/sm:1/enc/ZtcGhUBFyvidE5G8/veQKaRxbec7WjKcI/k5ie0wcJQOKzHOWS/svonOZeaWnEFCqKK/YOZrcwgi7CwFKNgk/6dtNUm2AnrveAcj9/68cyIzQB1SEBfBhw/VFAdj51iUgydUbQg/u-XAg21KusmDvuin/X-kBxbWW5cWRCOXS/PXG-mAfxxZhkGwLC/FIkPHTFU6CRPUcOw/PaCdurkT7rR3faZt/0WO0nW2jtMLQITCd/e4DExWRUwGY.png", slug:"dr-harry-hardys-bellend-workshop-shirt"},
+    {name:"Harry Hardy Bellend Party Mug", price:"£13.22", description:"Ceramic mug - party edition", url:"https://agoodpete-shop.fourthwall.com/en-gbp/products/harry-hardy-bellend-party-mug", image:"https://imgproxy.fourthwall.dev/AFoSpKTuJSTYDknkYrXbvZtcS0-jXQee3l802OXwqGA/w:1200/sm:1/enc/5TNZcxXa_Fye5oWT/ObVAGcesx3Mq1jbw/zNUPonRyBRQrZo-6/tPt-1OVYhw0Q3pUf/LkUg6mMtvQPfB_0A/NJiIxwpmVkHC-qAw/zPvq3b_yeP5lNMLb/puupx9jDe6qFd1S3/NFrSqcGgQ471XttS/Hlw6I_ky_CmSM2Fw/hjpaXU3XohHIk6fv/XjnIiq0B7OYE5Ntt/WbPpzgLcGhbaN3qR/iP8zE-I39R8-Uf8Z/HCf5ysMuv9U.png", slug:"harry-hardy-bellend-party-mug"}
+  ];
+
+  // Public storefront tokens for the Fourthwall storefront API.
+  // Both verified working (200) on 2026-08-06 when called with a browser
+  // User-Agent. The old 403s were bot-blocks, not invalid tokens.
+  const TOKENS = [
+    "ptkn_411c415b-142a-4f98-9f47-7215a2e681cb",
+    "ptkn_1aae41d4-5aa6-496b-81fe-6fd2a3a3e516"
+  ];
+  const STORE_URL = "https://agoodpete-shop.fourthwall.com";
+
+  const $=s=>document.querySelector(s);
+  const params=new URLSearchParams(location.search);
+  if(params.get('overlay')==='1') document.documentElement.setAttribute('data-overlay','1');
+  const controls=$('#controls'), ticker=$('#ticker'), toast=$('#toast'), merchBox=$('#merchBox'), statusEl=$('#status');
+  let products=[...HARDCODED_PRODUCTS], currentIndex=0, rotateTimer=null;
+  const descMap=new Map(HARDCODED_PRODUCTS.map(p=>[p.slug,p.description]));
+
+  function close(){controls.classList.remove('open')}
+  function open(){controls.classList.add('open')}
+  function say(t){toast.textContent=t;toast.classList.add('show');clearTimeout(window.__t);window.__t=setTimeout(()=>toast.classList.remove('show'),2000)}
+
+  function formatPrice(price){
+    if(price==null || price==='') return '';
+    const s=String(price).trim();
+    if(s.startsWith('£')) return s;
+    if(s.startsWith('$')) return '£'+s.slice(1);
+    if(/^[\d.,]+$/.test(s)) return '£'+s;
+    return s;
+  }
+
+  function stripHtml(s){
+    if(!s) return '';
+    const tmp=document.createElement('div');
+    tmp.innerHTML=s;
+    return (tmp.textContent||'').replace(/\s+/g,' ').trim();
+  }
+
+  function renderStatic(){
+    $('#dateOut').textContent=$('#date').value||'';
+    $('#titleOut').textContent=$('#title').value||'';
+    $('#promoOut').textContent=$('#promo').value||'';
+    const r=$('#rules').value||''; $('#rulesOut').textContent=(r+' · '+r).toUpperCase();
+    ticker.classList.toggle('paused',$('#pause').checked);
+    const speedEl=$('#speed');
+    if(speedEl) $('.ticker-track').style.animationDuration=speedEl.value+'s';
+  }
+
+  function showProduct(p){
+    if(!p) return;
+    $('#merchNameOut').textContent=(p.name||'').toUpperCase();
+    $('#merchPriceOut').textContent=formatPrice(p.price);
+    const descEl=$('#merchDescOut'); if(descEl) descEl.textContent=(p.description||'').slice(0,110);
+    const img=$('#merchImgOut');
+    if(p.image){
+      img.onerror=()=>{ img.removeAttribute('src'); img.classList.add('empty'); };
+      img.src=p.image;
+      img.classList.remove('empty');
+    } else {
+      img.onerror=null;
+      img.removeAttribute('src');
+      img.classList.add('empty');
+    }
+    merchBox.onclick=()=>{ if(p.url) window.open(p.url,'_blank'); };
+    merchBox.style.cursor=p.url?'pointer':'default';
+  }
+
+  // Fetch text via direct CORS request, falling back to a public CORS proxy.
+  // Each attempt gets its own AbortController so a timeout on one never
+  // kills the fallback.
+  async function fetchTextWithProxy(url, timeoutMs=5000){
+    const proxies=[
+      u=>u,
+      u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`
+    ];
+    for(let p of proxies){
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),timeoutMs);
+      try{
+        const res=await fetch(p(url),{signal:controller.signal,mode:'cors'});
+        if(!res.ok){ clearTimeout(timer); continue; }
+        const text=await res.text();
+        clearTimeout(timer);
+        return text;
+      }catch(e){ clearTimeout(timer); continue; }
+    }
+    return null;
+  }
+
+  async function fetchJson(url, timeoutMs=5000){
+    const text=await fetchTextWithProxy(url,timeoutMs);
+    if(!text) return null;
+    try{ return JSON.parse(text); }catch(e){ return null; }
+  }
+
+  function toProduct(pr){
+    const v=(pr.variants && pr.variants[0])||{};
+    // API returns unitPrice: {value, currency}; the en-gbp storefront shows
+    // the same number in pounds, so render value as £.
+    let price='';
+    if(v.unitPrice && v.unitPrice.value!=null) price='£'+v.unitPrice.value;
+    else if(v.price && v.price.formatted) price=v.price.formatted;
+    else if(v.price && v.price.amount!=null) price=v.price.amount;
+    const img=(pr.images && pr.images[0] && pr.images[0].url)||'';
+    return {
+      name:pr.name||pr.slug,
+      price:price,
+      description:descMap.get(pr.slug)||stripHtml(pr.description),
+      image:img,
+      url:`${STORE_URL}/en-gbp/products/${pr.slug}`,
+      slug:pr.slug
+    };
+  }
+
+  function buildProducts(list){
+    products=list;
+    // Keep any Strength product first
+    products.sort((a,b)=>{
+      if(a.slug && a.slug.includes('strength')) return -1;
+      if(b.slug && b.slug.includes('strength')) return 1;
+      return 0;
+    });
+    currentIndex=0;
+    showProduct(products[0]);
+    statusEl.textContent=`${products.length} live products (API)`;
+    say(`Loaded ${products.length} live`);
+    startRotate();
+  }
+
+  async function tryLiveRefresh(){
+    statusEl.textContent='Trying live... (5s timeout)';
+    const tokenList=TOKENS.length?TOKENS:[null];
+    for(let token of tokenList){
+      try{
+        const cqs=new URLSearchParams();
+        if(token) cqs.set('storefront_token',token);
+        const c=await fetchJson(`https://storefront-api.fourthwall.com/v1/collections?${cqs}`,5000);
+        if(!c) continue;
+        const colls=c.results||c.data||[];
+        const allMap=new Map();
+        for(const col of colls){
+          const handle=col.slug||col.handle;
+          if(!handle) continue;
+          let page=0;
+          while(page<5){
+            try{
+              const pqs=new URLSearchParams();
+              if(token) pqs.set('storefront_token',token);
+              pqs.set('limit',100);
+              pqs.set('page',page);
+              const pd=await fetchJson(`https://storefront-api.fourthwall.com/v1/collections/${handle}/products?${pqs}`,5000);
+              if(!pd) break;
+              const list=pd.results||pd.data||[];
+              for(const pr of list){
+                if(pr && pr.slug && !allMap.has(pr.slug)) allMap.set(pr.slug,toProduct(pr));
+              }
+              if(list.length<100) break;
+              page++;
+            }catch(e){ break; }
+          }
+        }
+        if(allMap.size>0){
+          buildProducts(Array.from(allMap.values()));
+          return;
+        }
+      }catch(e){}
+    }
+    statusEl.textContent=`${products.length} products (cached) - live failed`;
+    say('Using cached - live blocked');
+  }
+
+  async function enrichImages(){
+    for(let i=0;i<Math.min(products.length,15);i++){
+      if(products[i].image) continue;
+      try{
+        const html=await fetchTextWithProxy(products[i].url,3000);
+        if(!html) continue;
+        const m=html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+        if(m && m[1]){
+          products[i].image=m[1];
+          if(i===currentIndex) showProduct(products[i]);
+        }
+      }catch(e){}
+    }
+  }
+
+  function startRotate(){
+    clearInterval(rotateTimer);
+    if(!$('#autoRotate').checked || products.length<=1) return;
+    rotateTimer=setInterval(()=>{
+      currentIndex=(currentIndex+1)%products.length;
+      showProduct(products[currentIndex]);
+    },25000);
+  }
+
+  $('#leftBtn').onclick=()=>controls.classList.contains('open')?close():open();
+  $('#close').onclick=close;
+  window.addEventListener('keydown',e=>{
+    if(e.key==='Escape') close();
+    if(e.key.toLowerCase()==='c' && !['INPUT','TEXTAREA'].includes(e.target.tagName)) controls.classList.contains('open')?close():open();
+  });
+  ['date','title','promo','rules'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('input',renderStatic); });
+  const pauseEl=$('#pause'); if(pauseEl) pauseEl.onchange=renderStatic;
+  const speedEl=$('#speed'); if(speedEl) speedEl.oninput=renderStatic;
+  $('#autoRotate').onchange=startRotate;
+  $('#fetchMerch').onclick=tryLiveRefresh;
+  $('#nextMerch').onclick=()=>{ if(products.length){ currentIndex=(currentIndex+1)%products.length; showProduct(products[currentIndex]); startRotate(); } };
+  $('#copy').onclick=()=>{
+    let u=location.href.split('?')[0]+'?overlay=1';
+    navigator.clipboard?.writeText(u).then(()=>say('Copied')).catch(()=>prompt('Copy URL',u));
+  };
+  $('#save').onclick=()=>{
+    try{
+      localStorage.setItem('pete-fast',JSON.stringify({
+        date:$('#date').value,title:$('#title').value,promo:$('#promo').value,
+        rules:$('#rules').value,
+        autoRotate:$('#autoRotate').checked,
+        pause:$('#pause').checked,
+        speed:$('#speed').value
+      }));
+      say('Saved');
+    }catch(e){ say('Save failed'); }
+  };
+  try{
+    const s=JSON.parse(localStorage.getItem('pete-fast')||'null');
+    if(s){
+      Object.keys(s).forEach(k=>{
+        const el=$('#'+k);
+        if(el){
+          if(el.type==='checkbox') el.checked=!!s[k];
+          else el.value=s[k];
+        }
+      });
+    }
+  }catch{}
+  renderStatic();
+  showProduct(products[0]);
+  statusEl.textContent=`${products.length} products (instant)`;
+  startRotate();
+  setTimeout(enrichImages,800);
+})();
+</script>
+</body></html>
