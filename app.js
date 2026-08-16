@@ -20,6 +20,9 @@ var ROOMS = [
   { id: 'nacky',       name: 'Nacky Nook',    tagline: 'A secret corner reserved for the most delightfully unhinged Peet content.', color: 'nacky', hex: '#ff5fa2' },
 ];
 
+// Changing this id re-shows the merch banner to everyone who dismissed the previous drop.
+var MERCH_DROP_ID = 'mean-genes-burger-revival';
+
 var MEMORIAL_TRACKS = {
   'bZmYG8SC': {
     youtubeId: 'QCxZJ_g46sw',
@@ -161,6 +164,7 @@ function parseRoute() {
 function render() {
   clearMerchCarousel();
   clearLiveOverlay();
+  if (galleryScrollHandler) { window.removeEventListener('scroll', galleryScrollHandler); galleryScrollHandler = null; }
   if (typeof currentMemorialCleanup === 'function') { try { currentMemorialCleanup(); } catch(e) {} currentMemorialCleanup = null; }
   if (!GALLERY_DATA) {
     routeEl.innerHTML = '<div class="loading-screen"><div class="loading-spinner"></div><div class="loading-text">Loading the vault…</div></div>';
@@ -403,7 +407,7 @@ function observeLazyImages(container) {
 }
 
 function imgTag(work, cls, alt) {
-  var url = work.imageUrl || work.thumbUrl;
+  var url = work.thumbUrl || work.imageUrl;
   var w = work.width || '', h = work.height || '';
   var aspect = (w && h) ? (w / h) : 1;
   var altText = alt || escapeHtml(work.title || '');
@@ -469,7 +473,7 @@ function dismissMerchBanner() {
     banner.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
     setTimeout(function() { if (banner && banner.parentNode) banner.remove(); }, 300);
   }
-  try { localStorage.setItem('petegen-merch-burger-dismissed', 'true'); } catch(e) {}
+  try { localStorage.setItem('petegen-merch-burger-dismissed', MERCH_DROP_ID); } catch(e) {}
 }
 
 function toggleShopVideoMute() {
@@ -515,7 +519,9 @@ function getPicOfDay() {
 }
 function navigateToRandom() {
   if (!ARTWORKS.length) return;
-  navigate('#/artwork/' + encodeURIComponent(ARTWORKS[Math.floor(Math.random() * ARTWORKS.length)].id));
+  var pool = ARTWORKS.filter(function (w) { return !isNsfw(w); });
+  if (!pool.length) pool = ARTWORKS;
+  navigate('#/artwork/' + encodeURIComponent(pool[Math.floor(Math.random() * pool.length)].id));
 }
 
 function renderRecentStrip() {
@@ -530,7 +536,7 @@ function renderRecentStrip() {
     var age = Math.max(0, Math.floor((Date.now() - new Date(w.addedAt).getTime()) / 86400000));
     var badge = age <= 7 ? '<span class="recent-new-badge">NEW</span>' : '';
     return '<a class="recent-card" href="#/artwork/' + encodeURIComponent(w.id) + '">' +
-      '<div class="recent-card-imgwrap">' + badge + '<img src="' + escapeHtml(w.imageUrl || w.thumbUrl) + '" alt="' + escapeHtml(w.title || '') + '" loading="lazy" referrerpolicy="no-referrer" decoding="async"></div>' +
+      '<div class="recent-card-imgwrap">' + badge + '<img src="' + escapeHtml(w.thumbUrl || w.imageUrl) + '" alt="' + escapeHtml(w.title || '') + '" loading="lazy" referrerpolicy="no-referrer" decoding="async"></div>' +
       '<div class="recent-card-title">' + escapeHtml(w.title || 'Untitled') + '</div>' +
       '<div class="recent-card-meta">' + escapeHtml(w.galleryName || '') + ' · ' + escapeHtml(w.addedAt) + '</div></a>';
   }).join('');
@@ -567,7 +573,7 @@ function renderLanding() {
   var html = '<section id="landing" class="screen">' +
     (function() {
       var dismissed = false;
-      try { dismissed = localStorage.getItem('petegen-merch-burger-dismissed') === 'true'; } catch(e) {}
+      try { dismissed = localStorage.getItem('petegen-merch-burger-dismissed') === MERCH_DROP_ID; } catch(e) {}
       if (dismissed) return '';
       return '<div class="merch-banner" id="merchBanner"><div class="merch-banner-inner">' +
         '<div class="merch-banner-carousel" id="merchCarousel">' +
@@ -1626,7 +1632,7 @@ function saveRecentlyViewed(list) { try { localStorage.setItem(RECENTLY_VIEWED_K
 function addToRecentlyViewed(work) {
   if (!work || !work.id) return;
   var list = loadRecentlyViewed().filter(function (w) { return w.id !== work.id; });
-  list.unshift({ id: work.id, title: work.title || 'Untitled', thumbUrl: work.imageUrl || work.thumbUrl, gallery: work.gallery, galleryName: work.galleryName });
+  list.unshift({ id: work.id, title: work.title || 'Untitled', thumbUrl: work.thumbUrl || work.imageUrl, gallery: work.gallery, galleryName: work.galleryName });
   if (list.length > RECENTLY_VIEWED_MAX) list = list.slice(0, RECENTLY_VIEWED_MAX);
   saveRecentlyViewed(list);
   if (typeof buildNavDropdown === 'function') buildNavDropdown();

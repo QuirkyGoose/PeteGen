@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="dark" />
-<title>Peet Pics — The Vault</title>
+<title>Peet Pics — Gallery Exhibition (Dark)</title>
 <meta name="description" content="A permanent archive dedicated to the finest Peet-adjacent artwork, Pobots, Prestlers, and Cultural Artefacts of Our Time." />
 <meta property="og:title" content="Peet Pics — The Vault" />
 <meta property="og:description" content="A permanent archive dedicated to the finest Peet-adjacent artwork, Pobots, Prestlers, and Cultural Artefacts of Our Time." />
@@ -15,7 +15,7 @@
 <meta name="twitter:title" content="Peet Pics — The Vault" />
 <meta name="twitter:description" content="A permanent archive dedicated to the finest Peet-adjacent artwork, Pobots, Prestlers, and Cultural Artefacts of Our Time." />
 <link rel="canonical" href="https://petepicsgallery.pages.dev/" />
-<meta name="theme-color" content="#020203" />
+<meta name="theme-color" content="#14110c" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>P</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -430,6 +430,244 @@
 <script type="application/ld+json">
 { "@context": "https://schema.org", "@type": "CollectionPage", "name": "Peet Pics — The Vault", "description": "A permanent archive dedicated to the finest Peet-adjacent artwork", "url": "https://petepicsgallery.pages.dev/", "isPartOf": { "@type": "WebSite", "name": "Peet Pics", "url": "https://petepicsgallery.pages.dev/" } }
 </script>
+<!-- ══════════════════════════════════════════════════════════════════
+     GALLERY EXHIBITION — DARK EDITION
+     Warm-dark ink theme: deep charcoal, cream text, mustard + tomato
+     accents, Fraunces display, handwritten Caveat captions.
+     Layout: ink sidebar nav (persistent collection links — the Browse
+     dropdown is desktop-redundant and hidden ≥981px, mobile-only below),
+     centered editorial hero, index-row collections, polaroid masonry.
+     Delete this block to return to the original skin.
+     ══════════════════════════════════════════════════════════════════ -->
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<style id="exhibition-dark-layer">
+  /* ── Tokens: warm ink dark, cream text, mustard + tomato ── */
+  :root {
+    --bg: #14110c;
+    --t1: rgba(247,241,229,0.94); --t2: rgba(247,241,229,0.60); --t3: rgba(247,241,229,0.40); --t4: rgba(247,241,229,0.24);
+    --line: rgba(247,241,229,0.13); --line-soft: rgba(247,241,229,0.08);
+    --panel: rgba(247,241,229,0.04); --panel-hover: rgba(247,241,229,0.07);
+    --amber: #d9a441; --amber-soft: rgba(217,164,65,0.5);
+    --rust: #d49274; --rose: #d9a3b8; --sage: #9bbf9b; --violet: #b894d9;
+    --ink: #0d0b07; --surface: #1c1712; --surface-2: #221c14; --tomato: #d95b40; --mustard: #d9a441;
+    --display: "Fraunces", "Instrument Serif", Georgia, serif;
+    --hand: "Caveat", "Fraunces", cursive;
+  }
+  ::selection { background: rgba(217,91,64,0.32); }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline-color: var(--tomato); }
+  body::-webkit-scrollbar-thumb { background: rgba(247,241,229,0.14); }
+  .bg-fade { background: linear-gradient(to top, var(--bg) 0%, var(--bg) 14%, rgba(20,17,12,0.55) 52%, transparent 100%); }
+  #metaballs-bg { background: var(--bg); }
+  #metaballs-svg { opacity: 0.55; }
+
+  /* ══ SIDEBAR NAVIGATION (desktop ≥ 981px) ══ */
+  @media (min-width: 981px) {
+    .top-bar { position: fixed; left: 0; top: 0; bottom: 0; width: 248px; height: 100vh; flex: 0 0 auto; flex-direction: column; align-items: stretch; padding: 24px 16px; background: var(--ink); border-bottom: 0; border-right: 1px solid rgba(247,241,229,0.07); backdrop-filter: none; -webkit-backdrop-filter: none; z-index: 40; overflow-y: auto; }
+    .top-bar::-webkit-scrollbar { width: 0; }
+    .top-bar-inner { flex-direction: column !important; align-items: stretch !important; justify-content: flex-start !important; gap: 0; width: auto !important; height: 100%; }
+    .top-bar-left { flex-direction: column; align-items: stretch; gap: 14px; }
+    .top-bar-left .back-btn { border-left: 0; border-radius: 8px; padding: 8px 12px; justify-content: center; }
+    .top-bar-left .back-btn span { display: inline; }
+    .brand { gap: 10px; }
+    .brand-name, .brand-name em { color: var(--t1); }
+    .brand-name em { color: var(--mustard); }
+    .brand-sub { color: var(--t3); display: block; margin-left: 0; border-left: 0; }
+    .search-wrap { max-width: none; }
+    /* The sidebar's persistent nav replaces the Browse dropdown on desktop. */
+    .nav-dropdown { display: none; }
+    .top-bar-right { flex-direction: column; align-items: stretch; gap: 9px; margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(247,241,229,0.08); }
+    .twitch-live-indicator, .next-stream-pill, .twitch-link { justify-content: center; background: transparent; border-color: rgba(247,241,229,0.12); color: var(--t2); }
+    .twitch-live-indicator:hover, .next-stream-pill:hover, .twitch-link:hover { color: var(--t1); border-color: rgba(247,241,229,0.32); }
+    .random-btn { border-color: rgba(247,241,229,0.12); color: var(--t2); }
+    .random-btn:hover { color: var(--mustard); border-color: var(--mustard); }
+    #app { margin-left: 248px; }
+    .scroll-progress-wrap { position: fixed; left: 248px; top: 0; right: 0; }
+    .hero-overlay { min-height: 100dvh; }
+  }
+  @media (max-width: 980px) {
+    .top-bar { background: rgba(20,17,12,0.9); }
+    .brand-name em { color: var(--mustard); }
+  }
+  /* Mobile keeps the Browse dropdown (sidebar nav is hidden there) */
+  .nav-dropdown.open { z-index: 50; }
+  .nav-dropdown-menu { z-index: 50; background: rgba(26,21,15,0.98); box-shadow: 0 18px 48px rgba(0,0,0,0.6), 0 1px 0 rgba(247,241,229,0.05) inset; }
+  .search-wrap.expanded { background: rgba(20,17,12,0.97); }
+  .random-btn:hover { border-color: var(--tomato); color: var(--tomato); }
+
+  /* ── Persistent sidebar nav (injected by this layer's script) ── */
+  .sidebar-nav { display: none; }
+  @media (min-width: 981px) {
+    .sidebar-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+    .sidebar-nav-label { font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: var(--t4); padding: 14px 10px 6px; }
+    .sidebar-nav a { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 7px; color: var(--t2); font-size: 13.5px; transition: background 0.15s ease, color 0.15s ease; }
+    .sidebar-nav a:hover { background: rgba(247,241,229,0.06); color: var(--t1); }
+    .sidebar-nav a.is-active { background: rgba(217,164,65,0.12); color: var(--mustard); }
+    .sidebar-nav .sn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sn-color, var(--t4)); flex-shrink: 0; }
+    .sidebar-nav .sn-count { margin-left: auto; font-family: var(--mono); font-size: 9.5px; color: var(--t4); }
+    .sidebar-nav a.is-active .sn-count { color: var(--mustard); }
+    .sidebar-nav .sn-rule { height: 1px; background: rgba(247,241,229,0.08); margin: 10px 4px; }
+  }
+
+  /* ══ HERO: centered editorial statement ══ */
+  .hero-content { justify-content: center; align-items: center; text-align: center; padding: 96px 48px 48px; }
+  .eyebrow { margin-left: auto; margin-right: auto; }
+  .eyebrow::before { background: var(--tomato); box-shadow: 0 0 12px rgba(217,91,64,0.45); }
+  .hero-h1 { color: var(--t1); font-weight: 600; font-size: clamp(56px, 9.5vw, 128px); line-height: 0.9; letter-spacing: -0.035em; max-width: 14ch; }
+  .hero-h1 .amber { color: var(--tomato); font-style: italic; }
+  .hero-h1 .thin { color: var(--t3); font-style: italic; }
+  .hero-row { flex-direction: column; align-items: center; gap: 26px; }
+  .hero-main { align-items: center; }
+  .hero-sub { text-align: center; margin-left: auto; margin-right: auto; }
+  .hero-stats { justify-content: center; }
+  .hero-side { align-items: center; text-align: center; }
+  .hero-foot { align-items: center; }
+  .btn-primary { background: var(--tomato); border-color: var(--tomato); color: #fff; border-radius: 10px; box-shadow: 0 4px 0 rgba(0,0,0,0.4); }
+  .btn-primary::before { background: var(--mustard); }
+  .btn-primary:hover { color: var(--ink); }
+  .btn-secondary { border-radius: 10px; }
+
+  /* ══ COLLECTIONS: index rows, not cards ══ */
+  .collections-grid { grid-template-columns: 1fr; gap: 0; border-top: 2px solid var(--t1); }
+  .room-card { display: grid; grid-template-columns: 1fr 190px; grid-template-rows: auto auto; gap: 4px 22px; align-items: center; padding: 26px 10px; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; overflow: visible; transition: background 0.2s ease; }
+  .room-card::before { display: none; }
+  .room-card-previews { grid-column: 2; grid-row: 1 / 3; height: 64px; margin-bottom: 0; }
+  .room-card-head { grid-column: 1; grid-row: 1; margin-bottom: 0; }
+  .room-card-tagline { grid-column: 1; grid-row: 2; }
+  .room-card-arrow { position: static; grid-column: 1; grid-row: 1; justify-self: end; opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease; }
+  .room-card:hover { background: rgba(247,241,229,0.03); transform: none; border-color: var(--line); }
+  .room-card:hover .room-card-arrow { opacity: 1; transform: translateX(4px); }
+  .room-card-name { font-size: clamp(30px, 4vw, 44px); letter-spacing: -0.02em; }
+  .room-card-count { font-size: 13px; }
+  .room-preview-thumb { border-radius: 3px; border-color: rgba(247,241,229,0.1); }
+  @media (max-width: 760px) {
+    /* Stack: thumbnail strip above the text so names never get squeezed */
+    .room-card { grid-template-columns: 1fr; gap: 10px; padding: 22px 4px; }
+    .room-card-previews { grid-column: 1; grid-row: 1; height: 56px; }
+    .room-card-head { grid-row: 2; }
+    .room-card-tagline { grid-row: 3; }
+  }
+
+  /* ══ ARTWORK: polaroid cards with handwritten captions ══ */
+  .artwork-grid { display: block; columns: 240px; column-gap: 16px; }
+  .artwork-grid[data-density="spacious"] { columns: 300px; column-gap: 20px; }
+  .artwork-grid[data-density="compact"] { columns: 165px; column-gap: 11px; }
+  .artwork-card { display: block; width: 100%; margin: 0 0 22px; break-inside: avoid; border: 0; background: var(--surface); border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px rgba(0,0,0,0.35); padding: 8px 8px 4px; transition: transform 0.22s ease, box-shadow 0.22s ease; }
+  .artwork-grid[data-density="spacious"] .artwork-card { margin-bottom: 26px; }
+  .artwork-grid[data-density="compact"] .artwork-card { margin-bottom: 14px; }
+  .artwork-card:hover { transform: translateY(-4px) rotate(-0.6deg); box-shadow: 0 2px 3px rgba(0,0,0,0.4), 0 18px 40px rgba(0,0,0,0.5); }
+  .artwork-card-image { aspect-ratio: var(--ar, 1); background: #0f0c09; border-radius: 1px; border: 1px solid rgba(247,241,229,0.06); }
+  .artwork-card-image img { height: 100%; }
+  .artwork-card:hover .artwork-card-img { transform: none; }
+  .artwork-card-info { padding: 8px 6px 10px; text-align: center; }
+  .artwork-card-title { font-family: var(--hand); font-style: normal; font-size: 21px; line-height: 1.15; color: var(--t1); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .artwork-card-meta { font-size: 9.5px; color: var(--t3); }
+  @media (max-width: 760px) {
+    .artwork-grid { columns: 160px; }
+    .artwork-grid[data-density="spacious"] { columns: 200px; }
+    .artwork-grid[data-density="compact"] { columns: 130px; }
+    .artwork-card-title { font-size: 17px; }
+  }
+
+  /* ══ Headings + surfaces on warm dark ══ */
+  .gallery-title { font-size: clamp(40px, 6vw, 72px); }
+  .potd-card, .schedule-day, .schedule-header, .friend-card, .submit-step,
+  .shop-cta, .shop-feature, .contributor-card { background: rgba(28,23,18,0.6); }
+  .schedule-day.is-today { background: rgba(217,164,65,0.08); border-color: rgba(217,164,65,0.4); }
+  .recent-card-imgwrap { background: #0f0c09; }
+  .recent-new-badge { color: var(--ink); background: var(--mustard); }
+  .filter-chip.active, .gc-btn.active { background: var(--t1); border-color: var(--t1); color: var(--ink); }
+  .btn-fav { border-color: var(--tomato); color: var(--tomato); }
+  .btn-fav:hover { background: rgba(217,91,64,0.12); }
+  .btn-fav.active { background: var(--tomato); color: #fff; }
+  .potd-badge { background: var(--ink); color: var(--t1); }
+  .potd-eyebrow, .potd-info-eyebrow, .potd-info-cta, .recent-sub { color: var(--mustard); }
+  .artwork-new-flag { color: var(--mustard); border-color: rgba(217,164,65,0.4); background: rgba(217,164,65,0.08); }
+  .merch-banner { background: linear-gradient(135deg, rgba(217,164,65,0.08) 0%, rgba(217,91,64,0.05) 100%); border-bottom-color: rgba(217,164,65,0.22); }
+
+  /* ══ Schedule: compact ruled list ══ */
+  .schedule-grid { grid-template-columns: 1fr; gap: 0; border-top: 2px solid var(--t1); }
+  .schedule-day { border-radius: 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 20px 6px; }
+  .schedule-day.is-today { border-radius: 8px; padding: 20px 16px; }
+  .schedule-day-header { border-bottom: 0; margin-bottom: 10px; padding-bottom: 0; }
+  .schedule-show-time { color: var(--mustard); }
+</style>
+<script>
+(function () {
+  'use strict';
+  // Layer hooks: hero voice, masonry aspect ratios, persistent sidebar nav.
+  var HERO_H1 = 'Good pics.<br><span class="thin">Good</span> <span class="amber">people.</span>';
+  var HERO_SUB = '<b>The Vault</b> — the living archive of Peet Pics, Pobots, Prestlers and the other ' +
+    'cultural artefacts that emerge from Pete\u2019s corner of Twitch. Curated by AGoodPete, catalogued by the community, preserved for the foreseeable future.';
+  var ROOM_COLORS = {
+    pobots: '#d4a853', prestlers: '#d49274', cultural: '#d9a3b8', pisc: '#9bbf9b',
+    submissions: '#b894d9', nacky: '#ff5fa2',
+    all: '#d9a441', new: '#9bbf9b', favourites: '#d9a3b8'
+  };
+  function patchHero() {
+    var h = document.querySelector('.hero-h1');
+    if (h && !h.dataset.redesigned) {
+      h.dataset.redesigned = '1';
+      h.innerHTML = HERO_H1;
+      var s = document.querySelector('.hero-sub');
+      if (s) s.innerHTML = HERO_SUB;
+    }
+  }
+  function patchAspects() {
+    document.querySelectorAll('.artwork-card-image img[data-aspect]').forEach(function (img) {
+      var box = img.closest('.artwork-card-image');
+      if (box) box.style.setProperty('--ar', img.getAttribute('data-aspect'));
+    });
+  }
+  function buildSidebarNav() {
+    if (document.querySelector('.sidebar-nav')) return;
+    var left = document.querySelector('.top-bar-left');
+    if (!left) return;
+    var nav = document.createElement('nav');
+    nav.className = 'sidebar-nav';
+    nav.setAttribute('aria-label', 'Collections');
+    var html = '<div class="sidebar-nav-label">Browse</div>' +
+      '<a href="#/" data-nav="landing"><span class="sn-dot" style="--sn-color:#f7f1e5;"></span>The Vault</a>' +
+      '<a href="#/gallery/all" data-nav="all"><span class="sn-dot" style="--sn-color:' + ROOM_COLORS.all + ';"></span>All Works</a>' +
+      '<a href="#/gallery/new" data-nav="new"><span class="sn-dot" style="--sn-color:' + ROOM_COLORS.new + ';"></span>Recently Added</a>' +
+      '<a href="#/gallery/favourites" data-nav="favourites"><span class="sn-dot" style="--sn-color:' + ROOM_COLORS.favourites + ';"></span>Favourites</a>' +
+      '<div class="sidebar-nav-label">Collections</div>';
+    var order = ['pobots', 'prestlers', 'cultural', 'pisc', 'submissions', 'nacky'];
+    var names = { pobots: 'Pobots', prestlers: 'Prestlers', cultural: 'Cultural Pics', pisc: 'Pisc', submissions: 'Submissions', nacky: 'Nacky Nook' };
+    var galleries = (window.GALLERY_DATA && window.GALLERY_DATA.galleries) || {};
+    order.forEach(function (id) {
+      var g = galleries[id];
+      var count = g && g.works ? g.works.length : null;
+      html += '<a href="#/gallery/' + id + '" data-nav="' + id + '"><span class="sn-dot" style="--sn-color:' + ROOM_COLORS[id] + ';"></span>' + names[id] +
+        (count != null ? '<span class="sn-count">' + count + '</span>' : '') + '</a>';
+    });
+    html += '<div class="sn-rule"></div><div class="sidebar-nav-label">Site</div>' +
+      '<a href="#/schedule" data-nav="schedule"><span class="sn-dot" style="--sn-color:#d9a441;"></span>Schedule</a>' +
+      '<a href="#/friends" data-nav="friends"><span class="sn-dot" style="--sn-color:#d9a3b8;"></span>Friends</a>' +
+      '<a href="#/shop" data-nav="shop"><span class="sn-dot" style="--sn-color:#9bbf9b;"></span>Shop</a>' +
+      '<a href="#/submit" data-nav="submit"><span class="sn-dot" style="--sn-color:#b894d9;"></span>Submit a Pic</a>';
+    nav.innerHTML = html;
+    var search = document.getElementById('searchWrap');
+    if (search && search.parentNode === left) left.insertBefore(nav, search.nextSibling);
+    else left.appendChild(nav);
+  }
+  function syncSidebarNav() {
+    var hash = window.location.hash || '#/';
+    document.querySelectorAll('.sidebar-nav a').forEach(function (a) {
+      var target = a.getAttribute('href');
+      var isActive = target === hash || (target === '#/' && (hash === '#/' || hash === ''));
+      a.classList.toggle('is-active', isActive);
+    });
+  }
+  function patch() { patchHero(); patchAspects(); buildSidebarNav(); syncSidebarNav(); }
+  document.addEventListener('DOMContentLoaded', function () {
+    var route = document.getElementById('route');
+    if (route) new MutationObserver(patch).observe(route, { childList: true, subtree: true });
+    window.addEventListener('hashchange', syncSidebarNav);
+    patch();
+  });
+})();
+</script>
+<!-- ═══════════════════════ end dark exhibition layer ═══════════════════════ -->
 </head>
 <body>
 <div id="metaballs-bg" aria-hidden="true">
