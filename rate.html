@@ -186,6 +186,7 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
   transition: color 0.5s ease, text-shadow 0.5s ease;
 }
 .timer.low { color: var(--danger); text-shadow: 0 0 14px rgba(255, 122, 107, 0.3); animation: pulse 1.2s ease-in-out infinite; }
+.timer.ah { font-size: 11px; letter-spacing: 1.5px; opacity: 0.7; text-shadow: none; }
 .waiting {
   font-family: var(--display); font-style: italic; font-size: 16px;
   color: var(--t2); text-align: center; padding: 10px 0 6px; opacity: 0.85;
@@ -298,6 +299,7 @@ body.clean .sidebtn { display: none; }
   color: var(--t2); min-height: 14px; padding: 2px 0;
 }
 .dr-stat b { color: var(--amber); font-weight: 500; }
+.dr-stat .ah { color: var(--t3); font-weight: 400; }
 .dr-row { display: flex; gap: 6px; }
 /* ── corner selector (2x2 grid of mini panels with a dot in the chosen corner) ── */
 .dr-pos {
@@ -414,6 +416,10 @@ body.testmode #testbar { display: block; }
       <button data-s="30">30s</button><button data-s="60">1m</button><button data-s="90">90s</button><button data-s="120" class="on">2m</button><button data-s="180">3m</button><button data-s="300">5m</button><button data-s="0">no timer</button>
     </div>
     <div class="dr-secs"><input class="dr-in" id="drsecs" type="number" min="0" max="3600" step="5" value="120"><span>seconds (0 = stay open)</span></div>
+    <div class="dr-lab" style="margin-top:10px">Auto-hide after close</div>
+    <div class="dr-presets" id="drhide">
+      <button data-h="0">off</button><button data-h="5">5s</button><button data-h="8" class="on">8s</button><button data-h="10">10s</button><button data-h="15">15s</button><button data-h="20">20s</button>
+    </div>
     <button class="dr-go" id="drgo">Lock in &amp; start listening</button>
     <button class="dr-demo" id="drdemo">&#9654; Run demo</button>
     <div class="dr-stat" id="drstat"></div>
@@ -486,6 +492,19 @@ body.testmode #testbar { display: block; }
   var TESTMODE = q.get('test') === '1';
   if (q.get('clean') === '1') document.body.classList.add('clean');   // hide side controls
   var scale = parseFloat(q.get('scale'));
+
+  /* auto-hide delay: ?autohide=8 (seconds; 0 = never). Sticky in localStorage. */
+  var AUTOHIDE_KEY = 'petegen-rate-autohide-v1';
+  var AUTOHIDE_MS = (function () {
+    var u = parseFloat(q.get('autohide'));
+    if (isFinite(u) && u >= 0) return u * 1000;       // URL takes priority
+    try {
+      var s = parseInt(localStorage.getItem(AUTOHIDE_KEY), 10);
+      if (isFinite(s) && s >= 0) return s;
+    } catch (e) {}
+    return 8000;                                       // default 8s
+  })();
+  try { localStorage.setItem(AUTOHIDE_KEY, String(AUTOHIDE_MS)); } catch (e) {}
   if (scale > 0.2 && scale <= 3) {
     var wrap = document.getElementById('wrap');
     wrap.style.transform = 'scale(' + scale + ')';
@@ -581,12 +600,14 @@ body.testmode #testbar { display: block; }
     p.status = 'closed';
     p.deadline = 0;
     p.final_avg = rateAvg(p);
+    p.autohide_at = AUTOHIDE_MS > 0 ? Date.now() + AUTOHIDE_MS : 0;
     S.results.unshift({
       question: p.question, avg: p.final_avg, votes: len(p.votes),
       ts: new Date().toISOString().slice(0, 16).replace('T', ' ')
     });
     if (S.results.length > 100) S.results.length = 100;
-    addEvent('Final score ' + p.final_avg.toFixed(1) + '/10 (' + len(p.votes) + ' votes)', true);
+    addEvent('Final score ' + p.final_avg.toFixed(1) + '/10 (' + len(p.votes) + ' votes)' +
+             (p.autohide_at ? ' - panel auto-hides in ' + Math.round(AUTOHIDE_MS / 1000) + 's' : ''), true);
   }
   function cmdRateClear() {
     S.poll = null;
@@ -652,7 +673,8 @@ body.testmode #testbar { display: block; }
     body += '<div class="stars" id="starsrow">';
     for (var i = 1; i <= 10; i++) body += '<i></i>';
     body += '</div>';
-    if (p.status === 'open' && p.deadline) body += '<div class="timer" id="timer">00:00</div>';
+    var showTimer = (p.status === 'open' && p.deadline) || (p.status === 'closed' && p.autohide_at);
+    if (showTimer) body += '<div class="timer" id="timer">00:00</div>';
     $('pollbody').innerHTML = body;
   }
   function updatePollValues(p) {
@@ -683,11 +705,19 @@ body.testmode #testbar { display: block; }
       for (var i = 0; i < sis.length; i++) sis[i].classList.toggle('on', i < on);
     }
     var timerEl = $('timer');
-    if (timerEl && p.status === 'open' && p.deadline) {
-      var left = Math.max(0, Math.ceil((p.deadline - Date.now()) / 1000));
-      var tm = ('0' + Math.floor(left / 60)).slice(-2), ts = ('0' + (left % 60)).slice(-2);
-      timerEl.textContent = tm + ':' + ts;
-      timerEl.classList.toggle('low', left <= 10);
+    if (timerEl) {
+      if (p.status === 'open' && p.deadline) {
+        var left = Math.max(0, Math.ceil((p.deadline - Date.now()) / 1000));
+        var tm = ('0' + Math.floor(left / 60)).slice(-2), ts = ('0' + (left % 60)).slice(-2);
+        timerEl.textContent = tm + ':' + ts;
+        timerEl.classList.toggle('low', left <= 10);
+        timerEl.classList.remove('ah');
+      } else if (p.status === 'closed' && p.autohide_at) {
+        var al = Math.max(0, Math.ceil((p.autohide_at - Date.now()) / 1000));
+        timerEl.textContent = 'hiding in ' + al + 's';
+        timerEl.classList.add('ah');
+        timerEl.classList.toggle('low', al <= 3);
+      }
     }
   }
   function renderPoll() {
@@ -805,6 +835,8 @@ body.testmode #testbar { display: block; }
     var p = S.poll;
     if (p && p.status === 'open' && p.deadline && Date.now() > p.deadline) {
       closePoll(); saveState();
+    } else if (p && p.status === 'closed' && p.autohide_at && Date.now() > p.autohide_at) {
+      cmdRateClear(); saveState();
     }
   }
   function tickRender() { if (!demoActive) expirePoll(); render(); }
@@ -881,6 +913,30 @@ body.testmode #testbar { display: block; }
   }
   $('drsecs').addEventListener('input', markPreset);
 
+  /* auto-hide pills — change the delay live, persisted to localStorage.
+     If a poll is already closed, re-arm its autohide_at immediately. */
+  var hidePills = $('drhide').querySelectorAll('button');
+  function markHide() {
+    var cur = String(Math.round(AUTOHIDE_MS / 1000));
+    for (var i = 0; i < hidePills.length; i++)
+      hidePills[i].classList.toggle('on', hidePills[i].getAttribute('data-h') === cur);
+  }
+  $('drhide').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var secs = parseInt(b.getAttribute('data-h'), 10);
+    AUTOHIDE_MS = secs * 1000;
+    try { localStorage.setItem(AUTOHIDE_KEY, String(AUTOHIDE_MS)); } catch (e) {}
+    var p = S.poll;
+    if (p && p.status === 'closed') {
+      p.autohide_at = AUTOHIDE_MS > 0 ? Date.now() + AUTOHIDE_MS : 0;
+      saveState();
+    }
+    markHide();
+    render();
+  });
+  markHide();
+
   $('drgo').addEventListener('click', function () {
     var p = S.poll;
     if (p && p.status === 'open') return;                 // already listening
@@ -917,7 +973,12 @@ body.testmode #testbar { display: block; }
       go.disabled = false; go.textContent = 'Lock in & start listening';
       cl.disabled = true;
       demo.disabled = false; demo.textContent = '\u25B6 Run demo';
-      stat.innerHTML = 'Final: <b>' + p.final_avg.toFixed(1) + '/10</b> from ' + len(p.votes) + ' votes';
+      var h = 'Final: <b>' + p.final_avg.toFixed(1) + '/10</b> from ' + len(p.votes) + ' votes';
+      if (p.autohide_at) {
+        var al = Math.max(0, Math.ceil((p.autohide_at - Date.now()) / 1000));
+        h += ' \u00b7 <span class="ah">auto-hide ' + al + 's</span>';
+      }
+      stat.innerHTML = h;
     } else {
       go.disabled = false; go.textContent = 'Lock in & start listening';
       cl.disabled = true;
