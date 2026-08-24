@@ -556,6 +556,10 @@ body.testmode #testbar { display: block; }
     <div class="dr-presets" id="drhide">
       <button data-h="0">off</button><button data-h="5">5s</button><button data-h="8" class="on">8s</button><button data-h="10">10s</button><button data-h="15">15s</button><button data-h="20">20s</button>
     </div>
+    <div class="dr-lab" style="margin-top:10px">Vote callouts</div>
+    <div class="dr-presets" id="drcallouts">
+      <button data-co="1">on</button><button data-co="0">off</button>
+    </div>
     <button class="dr-go" id="drgo">Lock in &amp; start listening</button>
     <button class="dr-demo" id="drdemo">&#9654; Run demo</button>
     <div class="dr-stat" id="drstat"></div>
@@ -632,7 +636,18 @@ body.testmode #testbar { display: block; }
     .concat(CONFIG.extraMods.map(function (s) { return s.toLowerCase(); }));
   var SHOWFEED = q.get('feed') !== '0';
   var SHOWPOPS = q.get('pops') !== '0';   // compact-bar recent-voters strip
-  var SHOWCO = q.get('callouts') !== '0'; // floating vote callouts
+  /* vote callouts: ?callouts=0/1 (URL takes priority, sticky) or the
+     drawer's on/off pills — petegen-rate-callouts-v1 */
+  var CO_KEY = 'petegen-rate-callouts-v1';
+  var SHOWCO = (function () {
+    var u = q.get('callouts');
+    if (u !== null) {
+      var on = !(u === '0' || u === 'false');
+      try { localStorage.setItem(CO_KEY, on ? '1' : '0'); } catch (e) {}
+      return on;
+    }
+    try { return localStorage.getItem(CO_KEY) !== '0'; } catch (e) { return true; }
+  })();
   var TESTMODE = q.get('test') === '1';
   if (q.get('clean') === '1') document.body.classList.add('clean');   // hide side controls
   var scale = parseFloat(q.get('scale'));
@@ -1295,6 +1310,21 @@ body.testmode #testbar { display: block; }
     render();
   });
   markHide();
+
+  /* vote callouts toggle — on/off pills in the drawer, sticky in localStorage */
+  var coPills = $('drcallouts').querySelectorAll('button');
+  function markCallouts() {
+    for (var i = 0; i < coPills.length; i++)
+      coPills[i].classList.toggle('on', (coPills[i].getAttribute('data-co') === '1') === SHOWCO);
+  }
+  $('drcallouts').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    SHOWCO = b.getAttribute('data-co') === '1';
+    try { localStorage.setItem(CO_KEY, SHOWCO ? '1' : '0'); } catch (e) {}
+    markCallouts();
+  });
+  markCallouts();
 
   $('drgo').addEventListener('click', function () {
     var p = S.poll;
