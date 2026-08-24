@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=460, initial-scale=1">
+<meta name="color-scheme" content="dark" />
+<title>PeteGen — Crowd Rating Overlay</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   PETEGEN — CROWD RATING OVERLAY  (GitHub Pages edition)
+   Hosted at quirkygoose.github.io/PeteGen/rate/
+   One job only: the streamer asks chat to rate something,
+   chat answers !vote 1-10, this panel shows the result.
+   No predictions, no points, no leaderboard — the existing
+   prediction overlay keeps that job. Zero overlap, zero
+   collision, no token, nothing installed anywhere.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #08080a;
+  --t1: rgba(255, 255, 255, 0.92);
+  --t2: rgba(255, 255, 255, 0.55);
+  --t3: rgba(255, 255, 255, 0.32);
+  --t4: rgba(255, 255, 255, 0.20);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-hover: rgba(255, 255, 255, 0.06);
+  --ok: #64ffa0; --warn: #ffcd6b; --danger: #ff7a6b;
+  --amber: #d4a853;
+  --rust: #d49274;
+  --rose: #d9a3b8;
+  --sage: #9bbf9b;
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --body: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: transparent; }
+body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antialiased; }
+
+#wrap {
+  position: relative; width: 1280px; height: 720px;
+  overflow: hidden; transform-origin: top left;
+}
+#panel {
+  /* Pinned to the viewport so each corner = actual screen corner.
+     Position is driven entirely by transform (translate is smoothly
+     animatable, unlike top/left/right/bottom which can't interpolate
+     to/from `auto`). --x and --y are set per corner; --idle-y is the
+     extra drop applied by .idle; --s is the optional URL-scale. */
+  --inset: 28px;
+  --x: var(--inset);
+  --y: var(--inset);
+  --idle-y: 0px;
+  --s: 1;
+  position: fixed; top: 0; left: 0; width: 420px;
+  max-height: 664px; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  transform: translate(var(--x), var(--y)) translateY(var(--idle-y)) scale(var(--s));
+  transform-origin: top left;
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0s linear 0.55s;
+}
+#panel[data-corner="tl"] {
+  --x: var(--inset);
+  --y: var(--inset);
+  transform-origin: top left;
+}
+#panel[data-corner="tr"] {
+  --x: calc(100vw - 100% - var(--inset));
+  --y: var(--inset);
+  transform-origin: top right;
+}
+#panel[data-corner="bl"] {
+  --x: var(--inset);
+  --y: calc(100vh - 100% - var(--inset));
+  transform-origin: bottom left;
+}
+#panel[data-corner="br"] {
+  --x: calc(100vw - 100% - var(--inset));
+  --y: calc(100vh - 100% - var(--inset));
+  transform-origin: bottom right;
+}
+#panel.idle {
+  --idle-y: 14px;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease,
+              visibility 0s linear 0.4s;
+}
+@keyframes pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@keyframes rowIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes avgPop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes chipGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 83, 0); } 50% { box-shadow: 0 0 14px 0 rgba(212, 168, 83, 0.22); } }
+@keyframes tabBreathe { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.75; } }
+
+/* ── header ── */
+.hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; border-bottom: 1px solid var(--line-soft);
+}
+.hd .logo {
+  font-family: var(--display); font-size: 19px; font-weight: 400;
+  letter-spacing: -0.005em; line-height: 1; color: var(--t1);
+}
+.hd .logo em { font-style: italic; color: var(--amber); }
+.tagpill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 100px;
+  color: var(--t3); border: 1px solid var(--line); background: var(--panel);
+  white-space: nowrap;
+}
+.tagpill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--t3); flex-shrink: 0; }
+.tagpill.on { color: var(--sage); border-color: rgba(155, 191, 155, 0.35); background: rgba(155, 191, 155, 0.08); }
+.tagpill.on .dot { background: var(--sage); box-shadow: 0 0 6px var(--sage); }
+.tagpill.off { color: var(--danger); border-color: rgba(255, 122, 107, 0.35); background: rgba(255, 122, 107, 0.08); }
+.tagpill.off .dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+/* ── show row ── */
+.showrow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px 9px; border-bottom: 1px solid var(--line-soft);
+}
+.showname { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.showname .nm { font-family: var(--display); font-size: 17px; line-height: 1.15; color: var(--t1); }
+.showname .sub {
+  display: block; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--t4); margin-top: 3px;
+}
+.voters {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--t2); padding: 4px 9px; border: 1px solid var(--line);
+  border-radius: 100px; background: var(--panel); white-space: nowrap;
+}
+
+/* ── poll section ── */
+.poll { padding: 12px 16px 14px; border-bottom: 1px solid var(--line-soft); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 100px; margin-bottom: 10px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--t3);
+  transition: color 0.35s ease, border-color 0.35s ease, background 0.35s ease;
+}
+.chip::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0; transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+.chip.open { color: var(--amber); border-color: rgba(212, 168, 83, 0.35); background: rgba(212, 168, 83, 0.08); animation: pulse 1.8s ease-in-out infinite, chipGlow 2.4s ease-in-out infinite; }
+.chip.open::before { box-shadow: 0 0 6px var(--amber); }
+.chip.closed { color: var(--rust); border-color: rgba(212, 146, 116, 0.4); background: rgba(212, 146, 116, 0.08); }
+.pollq {
+  font-family: var(--display); font-size: 20px; line-height: 1.28; color: var(--t1);
+  margin: 2px 0 12px; overflow-wrap: anywhere;
+  animation: qFade 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes qFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.crowd { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.crowd .big {
+  font-family: var(--display); font-size: 34px; line-height: 1; color: var(--amber);
+  text-shadow: 0 0 24px rgba(212, 168, 83, 0.2);
+  display: inline-block; transform-origin: center;
+  transition: color 0.45s ease;
+}
+.crowd .big.pop { animation: avgPop 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
+.crowd .of { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--t3); }
+.crowd .cnt { margin-left: auto; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--t4); }
+.stars { display: flex; gap: 3px; margin-top: 9px; }
+.stars i { flex: 1 1 0; height: 5px; border-radius: 100px; background: rgba(255, 255, 255, 0.09);
+          transition: background 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.55s ease; }
+.stars i.on { background: var(--amber); box-shadow: 0 0 8px rgba(212, 168, 83, 0.35); }
+.timer {
+  text-align: center; font-family: var(--mono); font-size: 17px; letter-spacing: 3px;
+  color: var(--amber); margin-top: 10px; text-shadow: 0 0 14px rgba(212, 168, 83, 0.25);
+  transition: color 0.5s ease, text-shadow 0.5s ease;
+}
+.timer.low { color: var(--danger); text-shadow: 0 0 14px rgba(255, 122, 107, 0.3); animation: pulse 1.2s ease-in-out infinite; }
+.waiting {
+  font-family: var(--display); font-style: italic; font-size: 16px;
+  color: var(--t2); text-align: center; padding: 10px 0 6px; opacity: 0.85;
+}
+.waiting .hint {
+  display: block; font-family: var(--mono); font-style: normal; font-size: 9px;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--t4); margin-top: 6px;
+}
+
+/* ── vote histogram ── */
+.dist-cap {
+  font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--t3); padding: 10px 8px 7px;
+}
+.dist { display: flex; align-items: stretch; gap: 4px; height: 170px; padding: 0 8px 4px; }
+.dc { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.dn { font-family: var(--mono); font-size: 9.5px; color: var(--t2); height: 15px; }
+.db { width: 100%; flex: 1 1 auto; display: flex; align-items: flex-end;
+      background: rgba(255, 255, 255, 0.04); border-radius: 4px 4px 0 0; overflow: hidden; }
+.db i { display: block; width: 100%; background: var(--amber);
+        border-radius: 4px 4px 0 0; transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease; }
+.dc.hot .db i { box-shadow: 0 0 10px rgba(212, 168, 83, 0.45); }
+.dl { font-family: var(--mono); font-size: 9px; color: var(--t3); margin-top: 5px; }
+
+/* ── pop-out controls (pinned to the right edge of the viewport, fully detached from the rating panel) ── */
+.sidebtn {
+  position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+  writing-mode: vertical-rl; text-orientation: mixed;
+  font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--t2);
+  background: var(--bg); border: 1px solid var(--line); border-right: none;
+  border-radius: 10px 0 0 10px; padding: 16px 6px; cursor: pointer;
+  opacity: 0.5; animation: tabBreathe 3.4s ease-in-out infinite;
+  transition: opacity 0.35s ease, color 0.35s ease, padding 0.35s ease;
+  z-index: 40;
+}
+.sidebtn:hover { opacity: 1; color: var(--amber); padding: 18px 8px; animation: none; }
+body.clean .sidebtn { display: none; }
+
+.drawer {
+  position: fixed; right: 0; top: 50%; width: 260px;
+  padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 9px;
+  background: var(--bg); border: 1px solid var(--line); border-right: none;
+  border-radius: 14px 0 0 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75);
+  transform: translateY(-50%) translateX(115%);
+  opacity: 0; visibility: hidden;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease, visibility 0s linear 0.55s;
+  z-index: 50;
+}
+.drawer.open {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1; visibility: visible;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s ease 0.06s, visibility 0s;
+}
+.drawer.open > * { animation: fadeRise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.drawer.open > *:nth-child(2) { animation-delay: 0.05s; }
+.drawer.open > *:nth-child(3) { animation-delay: 0.10s; }
+.drawer.open > *:nth-child(4) { animation-delay: 0.15s; }
+.drawer.open > *:nth-child(5) { animation-delay: 0.20s; }
+.drawer.open > *:nth-child(6) { animation-delay: 0.25s; }
+.drawer.open > *:nth-child(7) { animation-delay: 0.30s; }
+.drawer.open > *:nth-child(8) { animation-delay: 0.35s; }
+.drawer.open > *:nth-child(9) { animation-delay: 0.40s; }
+.drawer.open > *:nth-child(10) { animation-delay: 0.45s; }
+.drawer.open > *:nth-child(11) { animation-delay: 0.50s; }
+.drawer.open > *:nth-child(12) { animation-delay: 0.55s; }
+.dr-hd { display: flex; align-items: center; justify-content: space-between;
+         padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+.dr-t { font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 0.2em;
+        text-transform: uppercase; color: var(--amber); }
+.dr-x { font-family: var(--mono); font-size: 11px; color: var(--t3); background: none;
+        border: none; cursor: pointer; padding: 2px 6px; }
+.dr-x:hover { color: var(--t1); }
+.dr-lab { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.18em;
+          text-transform: uppercase; color: var(--t3); margin-top: 2px; }
+.dr-in {
+  width: 100%; font-family: var(--body); font-size: 14px; color: var(--t1);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  outline: none; padding: 9px 11px;
+}
+.dr-in:focus { border-color: rgba(212, 168, 83, 0.45); }
+.dr-in:disabled { opacity: 0.45; }
+.dr-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.dr-presets button {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+  color: var(--t2); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 100px; padding: 4px 10px; cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.dr-presets button:hover { color: var(--t1); border-color: rgba(255, 255, 255, 0.25); }
+.dr-presets button.on { color: var(--amber); border-color: rgba(212, 168, 83, 0.4);
+                        background: rgba(212, 168, 83, 0.08); }
+.dr-secs { display: flex; align-items: center; gap: 8px; }
+.dr-secs .dr-in { width: 86px; font-family: var(--mono); font-size: 12px; }
+.dr-secs span { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em;
+                text-transform: uppercase; color: var(--t3); }
+.dr-go {
+  font-family: var(--body); font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+  color: #08080a; background: var(--amber); border: none; border-radius: 8px;
+  padding: 10px 12px; cursor: pointer; margin-top: 2px;
+  transition: filter 0.2s ease;
+}
+.dr-go:hover { filter: brightness(1.1); }
+.dr-go:disabled { opacity: 0.45; cursor: default; }
+.dr-stat {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em;
+  color: var(--t2); min-height: 14px; padding: 2px 0;
+}
+.dr-stat b { color: var(--amber); font-weight: 500; }
+.dr-row { display: flex; gap: 6px; }
+/* ── corner selector (2x2 grid of mini panels with a dot in the chosen corner) ── */
+.dr-pos {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 0 7px; border-top: 1px solid var(--line-soft); margin-top: 2px;
+}
+.dr-pos .dr-lab { margin-top: 0; }
+.corner-grid {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  gap: 4px; width: 64px;
+}
+.corner-btn {
+  width: 28px; height: 22px; border: 1px solid var(--line); background: var(--panel);
+  border-radius: 4px; cursor: pointer; position: relative; padding: 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+.corner-btn::after {
+  content: ""; position: absolute; width: 5px; height: 5px;
+  background: var(--t3); border-radius: 50%;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.corner-btn.tl::after { top: 3px;    left: 3px; }
+.corner-btn.tr::after { top: 3px;    right: 3px; }
+.corner-btn.bl::after { bottom: 3px; left: 3px; }
+.corner-btn.br::after { bottom: 3px; right: 3px; }
+.corner-btn:hover { border-color: rgba(255, 255, 255, 0.22); }
+.corner-btn.on {
+  border-color: rgba(212, 168, 83, 0.45);
+  background: rgba(212, 168, 83, 0.08);
+}
+.corner-btn.on::after { background: var(--amber); box-shadow: 0 0 6px rgba(212, 168, 83, 0.55); }
+.dr-ghost {
+  flex: 1 1 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--t2); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 100px; padding: 7px 10px; cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.dr-ghost:hover { color: var(--t1); border-color: rgba(255, 255, 255, 0.25); }
+.dr-ghost:disabled { opacity: 0.4; cursor: default; }
+.dr-demo {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--amber); text-align: left;
+  background: rgba(212, 168, 83, 0.08); border: 1px solid rgba(212, 168, 83, 0.3);
+  border-radius: 100px; padding: 7px 10px; cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.dr-demo:hover { background: rgba(212, 168, 83, 0.16); border-color: rgba(212, 168, 83, 0.5); }
+.dr-demo:disabled { opacity: 0.45; cursor: default; }
+.dr-hint {
+  font-family: var(--mono); font-size: 8.5px; color: var(--t4); line-height: 1.6;
+  margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line-soft);
+}
+.dr-hint b { color: var(--t2); font-weight: 500; }
+
+/* ── feed (system events + live voters with their bets) ── */
+.feed { padding: 9px 16px 11px; border-top: 1px solid var(--line-soft); }
+.feed .e {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.02em; color: var(--t3);
+  padding: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: rowIn 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.feed .e b { color: var(--t2); font-weight: 500; }
+.feed .e.flash { color: var(--t1); }
+.feed .e.vote { display: flex; align-items: baseline; gap: 9px; padding: 3.5px 0; }
+.feed .e.vote .t { color: var(--t4); flex-shrink: 0; font-size: 9px; }
+.feed .e.vote .u { color: var(--amber); flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis;
+                  font-weight: 500; max-width: 180px; }
+.feed .e.vote .v {
+  color: var(--t1); font-weight: 600; font-size: 13px; flex-shrink: 0;
+  font-family: var(--display); line-height: 1;
+}
+.feed .e.vote .v::after { content: "/10"; font-size: 9px; color: var(--t3); font-weight: 400; margin-left: 1px; }
+.feed .e.vote.rev { opacity: 0.62; }
+.feed .e.vote.rev .v { color: var(--t2); }
+
+/* ── test console (?test=1) ── */
+#testbar {
+  display: none; position: fixed; top: 14px; right: 14px; width: 212px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 12px 10px; z-index: 99;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+body.testmode #testbar { display: block; }
+#testbar .tt {
+  font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 9px;
+}
+#testbar button {
+  display: block; width: 100%; margin-bottom: 5px; padding: 6px 10px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--t2); text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 100px;
+  cursor: pointer; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+#testbar button:hover { color: var(--t1); border-color: rgba(255, 255, 255, 0.3); background: var(--panel-hover); }
+#testbar button.live { color: var(--sage); border-color: rgba(155, 191, 155, 0.35); background: rgba(155, 191, 155, 0.08); }
+#testbar input {
+  width: 100%; font-family: var(--mono); color: var(--t1);
+  background: var(--panel); border: 1px solid var(--line); outline: none; border-radius: 8px;
+  margin-bottom: 6px; padding: 7px 9px; font-size: 10.5px;
+}
+#testbar .note { font-family: var(--mono); font-size: 8.5px; color: var(--t4); line-height: 1.6; margin-top: 6px; letter-spacing: 0.04em; }
+#testbar .note b { color: var(--t2); font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="drawer" id="drawer">
+    <div class="dr-hd"><span class="dr-t">Controls</span><button class="dr-x" id="drx" title="Close">&#10005;</button></div>
+    <div class="dr-lab">Card / topic</div>
+    <input class="dr-in" id="drtopic" maxlength="80" placeholder="Rate the season 8 trailer" spellcheck="false">
+    <div class="dr-lab">Time limit</div>
+    <div class="dr-presets" id="drpresets">
+      <button data-s="30">30s</button><button data-s="60">1m</button><button data-s="90">90s</button><button data-s="120" class="on">2m</button><button data-s="180">3m</button><button data-s="300">5m</button><button data-s="0">no timer</button>
+    </div>
+    <div class="dr-secs"><input class="dr-in" id="drsecs" type="number" min="0" max="3600" step="5" value="120"><span>seconds (0 = stay open)</span></div>
+    <button class="dr-go" id="drgo">Lock in &amp; start listening</button>
+    <button class="dr-demo" id="drdemo">&#9654; Run demo</button>
+    <div class="dr-stat" id="drstat"></div>
+    <div class="dr-pos">
+      <span class="dr-lab">Panel position</span>
+      <div class="corner-grid" id="corners">
+        <button class="corner-btn tl" data-c="tl"  title="Top left"     aria-label="Top left"></button>
+        <button class="corner-btn tr" data-c="tr"  title="Top right"    aria-label="Top right"></button>
+        <button class="corner-btn bl" data-c="bl"  title="Bottom left"  aria-label="Bottom left"></button>
+        <button class="corner-btn br" data-c="br"  title="Bottom right" aria-label="Bottom right"></button>
+      </div>
+    </div>
+    <div class="dr-row">
+      <button class="dr-ghost" id="drclose">Close rating</button>
+      <button class="dr-ghost" id="drclear">Clear panel</button>
+    </div>
+    <div class="dr-hint">Chat votes with <b>!vote 1-10</b> while listening.
+      Mods can also type <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> in chat.</div>
+  </div>
+  <div id="panel">
+    <div class="hd">
+      <div class="logo">Crowd <em>Rating</em></div>
+      <div class="tagpill" id="cstag"><span class="dot" id="csdot"></span><span id="cslabel">chat</span></div>
+    </div>
+
+    <div class="showrow">
+      <div class="showname"><span class="nm" id="show">Live</span><span class="sub">Crowd Rating &middot; PeteGen</span></div>
+      <div class="voters" id="voters">0 votes</div>
+    </div>
+
+    <div class="poll" id="pollbox">
+      <span class="chip idle" id="chip">WAITING</span>
+      <div id="pollbody"></div>
+    </div>
+
+    <div id="distbox"></div>
+
+    <div class="feed" id="feedbox"></div>
+  </div>
+  <button class="sidebtn" id="sidebtn">Controls</button>
+</div>
+
+<div id="testbar">
+  <div class="tt">Test console</div>
+  <button data-t="open">Open poll (animated)</button>
+  <button data-t="closed">Closed + final</button>
+  <button data-t="empty">Empty panel</button>
+  <button data-t="live" class="live">Back to live data</button>
+  <input id="cmdin" type="text" placeholder="!rateopen 120 Rate the trailer" spellcheck="false">
+  <div class="note">Manual commands run as the broadcaster. OBS never sees
+    this console - use the plain URL.</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════ CONFIG (edit me) ═══════════ */
+  var CONFIG = {
+    channel: 'agoodpete',        // default channel (?channel= overrides)
+    extraMods: []                // usernames allowed to open/close ratings
+  };
+  /* ═══════════════════════════════════════ */
+
+  var q = new URLSearchParams(location.search);
+  var CHANNEL = (q.get('channel') || CONFIG.channel).toLowerCase().replace(/[^a-z0-9_]/g, '') || 'agoodpete';
+  var EXTRA_MODS = (q.get('mods') || '').toLowerCase().split(',').map(function (s) { return s.trim(); }).filter(Boolean)
+    .concat(CONFIG.extraMods.map(function (s) { return s.toLowerCase(); }));
+  var SHOWFEED = q.get('feed') !== '0';
+  var TESTMODE = q.get('test') === '1';
+  if (q.get('clean') === '1') document.body.classList.add('clean');   // hide side controls
+  var scale = parseFloat(q.get('scale'));
+  if (scale > 0.2 && scale <= 3) {
+    var wrap = document.getElementById('wrap');
+    wrap.style.transform = 'scale(' + scale + ')';
+    wrap.style.marginBottom = ((scale - 1) * 720) + 'px';
+    wrap.style.marginRight = ((scale - 1) * 1280) + 'px';
+    /* #panel is position:fixed so #wrap's transform no longer scales it;
+       apply the same scale via the --s custom property so the panel
+       scales around whichever corner it's anchored to. */
+    document.getElementById('panel').style.setProperty('--s', scale);
+  }
+  if (TESTMODE) document.body.classList.add('testmode');
+  if (!SHOWFEED) document.getElementById('feedbox').style.display = 'none';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var STORE_KEY = 'petegen-rate-v1:' + CHANNEL;
+  var demoActive = false;
+
+  /* ---------- state (localStorage) ---------- */
+
+  function blankState() {
+    return { rev: 0, show_name: 'Live', poll: null, results: [], events: [], seen: [] };
+  }
+  var S = blankState();
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        S = blankState();
+        for (var k in parsed) if (parsed.hasOwnProperty(k)) S[k] = parsed[k];
+      }
+    } catch (e) { /* corrupted -> keep blank */ }
+  }
+  function saveState() {
+    S.rev = (S.rev || 0) + 1;
+    /* demos write to a separate key so rehearsals never touch the real overlay */
+    try { localStorage.setItem(demoActive ? STORE_KEY + ':demo' : STORE_KEY, JSON.stringify(S)); } catch (e) {}
+  }
+  loadState();
+  if (q.get('reset') === '1') { S = blankState(); saveState(); }
+
+  function len(o) { var n = 0; for (var k in o) if (o.hasOwnProperty(k)) n++; return n; }
+  function addEvent(text, flash) {
+    S.events.unshift({ ts: Math.floor(Date.now() / 1000), text: text, flash: !!flash });
+    if (S.events.length > 16) S.events.length = 16;
+  }
+  function addVote(user, vote, isRevote) {
+    // one row per user so the feed reads as a live "who bet what" list
+    for (var i = S.events.length - 1; i >= 0; i--) {
+      if (S.events[i].kind === 'vote' && S.events[i].user === user) { S.events.splice(i, 1); break; }
+    }
+    S.events.unshift({ ts: Math.floor(Date.now() / 1000), kind: 'vote',
+                       user: user, vote: vote, revote: !!isRevote });
+    if (S.events.length > 16) S.events.length = 16;
+  }
+  function isMod(user, badges) {
+    if (user === CHANNEL || EXTRA_MODS.indexOf(user) !== -1) return true;
+    return /broadcaster\/1|moderator\/1|founder\/1/.test(badges || '');
+  }
+
+  /* ---------- commands ---------- */
+
+  function rateAvg(p) {
+    var n = 0, s = 0;
+    for (var u in p.votes) if (p.votes.hasOwnProperty(u)) { s += p.votes[u]; n++; }
+    return n ? Math.round(s / n * 10) / 10 : 0;
+  }
+  function cmdRateOpen(args) {
+    var s = String(args || '').trim();
+    var secs = 0, mt = s.match(/^(\d+)\s+/);          // optional leading seconds
+    if (mt) { secs = parseInt(mt[1], 10); s = s.slice(mt[0].length); }
+    var label = s.slice(0, 80) || 'Rate this';
+    S.poll = {
+      question: label, votes: {}, status: 'open',
+      opened: Date.now(), deadline: secs > 0 ? Date.now() + secs * 1000 : 0,
+      final_avg: null
+    };
+    addEvent('RATE IT: ' + label + ' - !vote 1-10' + (secs ? ' (' + secs + 's)' : ''), true);
+  }
+  function cmdVote(user, args) {
+    var p = S.poll;
+    if (!p || p.status !== 'open') return;
+    var v = parseInt(args, 10);
+    if (!(v >= 1 && v <= 10)) return;                 // ignore 0, 11, text...
+    var isRevote = p.votes.hasOwnProperty(user);
+    p.votes[user] = v;
+    addVote(user, v, isRevote);
+  }
+  function closePoll() {
+    var p = S.poll;
+    if (!p || p.status !== 'open') return;
+    p.status = 'closed';
+    p.deadline = 0;
+    p.final_avg = rateAvg(p);
+    S.results.unshift({
+      question: p.question, avg: p.final_avg, votes: len(p.votes),
+      ts: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    });
+    if (S.results.length > 100) S.results.length = 100;
+    addEvent('Final score ' + p.final_avg.toFixed(1) + '/10 (' + len(p.votes) + ' votes)', true);
+  }
+  function cmdRateClear() {
+    S.poll = null;
+    addEvent('Panel cleared', true);
+  }
+  function cmdShowName(args) {
+    S.show_name = String(args || '').trim().slice(0, 20) || 'Live';
+    addEvent('Now watching: ' + S.show_name, true);
+  }
+
+  function handleChat(user, badges, msgid, message) {
+    if (msgid) {
+      if (S.seen.indexOf(msgid) !== -1) return;       // multi-instance dedupe
+      S.seen.push(msgid);
+      if (S.seen.length > 400) S.seen.splice(0, S.seen.length - 400);
+    }
+    if (!message || message.charAt(0) !== '!') return;
+    var parts = message.split(/\s+/, 2);
+    var cmd = parts[0].toLowerCase();
+    var args = message.length > parts[0].length ? message.slice(parts[0].length).trim() : '';
+
+    if (cmd === '!vote' || cmd === '!rate') {
+      if (/^\d+$/.test(args)) cmdVote(user, args);
+    } else if (isMod(user, badges)) {
+      if (cmd === '!rateopen' || cmd === '!poll') cmdRateOpen(args);
+      else if (cmd === '!rateend' || cmd === '!pollend') closePoll();
+      else if (cmd === '!rateclear') cmdRateClear();
+      else if (cmd === '!showname') cmdShowName(args);
+    }
+    saveState();
+  }
+
+  /* test hook: window.__petegenInject(user, badges, msgid, message) */
+  window.__petegenInject = function (user, badges, msgid, message) {
+    handleChat(String(user).toLowerCase(), badges || '', msgid || '', String(message));
+  };
+
+  /* ---------- rendering (targeted DOM updates, no innerHTML thrash) ---------- */
+
+  var lastPollSig = '', lastAvgText = '', distBuilt = false, avgPopTimer = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function rebuildPollStructure(p) {
+    var chip = $('chip');
+    lastAvgText = '';                       // reset so first update after rebuild doesn't pop
+    if (!p) {
+      chip.className = 'chip idle'; chip.textContent = 'WAITING';
+      $('pollbody').innerHTML = '<div class="waiting">waiting for the next rating&hellip;' +
+        '<span class="hint">!rateopen [secs] topic to start one</span></div>';
+      $('distbox').innerHTML = '';
+      distBuilt = false;
+      return;
+    }
+    chip.className = 'chip ' + p.status;
+    chip.textContent = p.status === 'open' ? 'OPEN · VOTE 1-10' : 'CLOSED · FINAL';
+    var body = '<div class="pollq">' + esc(p.question) + '</div>';
+    body += '<div class="crowd"><div class="big" id="avgnum">0.0</div>' +
+            '<div class="of">/ 10 crowd score</div><div class="cnt" id="cnt">0 votes</div></div>';
+    body += '<div class="stars" id="starsrow">';
+    for (var i = 1; i <= 10; i++) body += '<i></i>';
+    body += '</div>';
+    if (p.status === 'open' && p.deadline) body += '<div class="timer" id="timer">00:00</div>';
+    $('pollbody').innerHTML = body;
+  }
+  function updatePollValues(p) {
+    if (!p) { $('voters').textContent = '0 votes'; return; }
+    var avg = p.final_avg !== null ? p.final_avg : rateAvg(p);
+    var n = len(p.votes);
+    var avgEl = $('avgnum');
+    if (avgEl) {
+      var newText = avg.toFixed(1);
+      var changed = newText !== lastAvgText;
+      avgEl.textContent = newText;
+      if (changed && p.status === 'open' && lastAvgText !== '') {
+        avgEl.classList.remove('pop');
+        void avgEl.offsetWidth;
+        avgEl.classList.add('pop');
+        if (avgPopTimer) clearTimeout(avgPopTimer);
+        avgPopTimer = setTimeout(function () { avgEl.classList.remove('pop'); avgPopTimer = null; }, 450);
+      }
+      lastAvgText = newText;
+    }
+    var cntEl = $('cnt');
+    if (cntEl) cntEl.textContent = n + (n === 1 ? ' vote' : ' votes');
+    $('voters').textContent = n + (n === 1 ? ' vote' : ' votes');
+    var starsEl = $('starsrow');
+    if (starsEl) {
+      var on = Math.round(avg);
+      var sis = starsEl.children;
+      for (var i = 0; i < sis.length; i++) sis[i].classList.toggle('on', i < on);
+    }
+    var timerEl = $('timer');
+    if (timerEl && p.status === 'open' && p.deadline) {
+      var left = Math.max(0, Math.ceil((p.deadline - Date.now()) / 1000));
+      var tm = ('0' + Math.floor(left / 60)).slice(-2), ts = ('0' + (left % 60)).slice(-2);
+      timerEl.textContent = tm + ':' + ts;
+      timerEl.classList.toggle('low', left <= 10);
+    }
+  }
+  function renderPoll() {
+    var p = S.poll;
+    $('panel').classList.toggle('idle', !p);
+    var sig = p ? (p.status + '|' + p.question + '|' + (p.deadline && p.status === 'open' ? 't' : 'n')) : 'null';
+    if (sig !== lastPollSig) {
+      lastPollSig = sig;
+      rebuildPollStructure(p);
+    }
+    updatePollValues(p);
+    if (p) renderDist(p);
+  }
+  function renderDist(p) {
+    if (!distBuilt) {
+      var html = '<div class="dist-cap" id="dcap">Votes \u00b7 0 cast</div><div class="dist">';
+      for (var i = 1; i <= 10; i++) {
+        html += '<div class="dc" data-n="' + i + '"><div class="dn"></div>' +
+                '<div class="db"><i style="height:0%"></i></div>' +
+                '<div class="dl">' + i + '</div></div>';
+      }
+      html += '</div>';
+      $('distbox').innerHTML = html;
+      distBuilt = true;
+    }
+    var counts = [], i;
+    for (i = 1; i <= 10; i++) counts[i] = 0;
+    for (var u in p.votes) if (p.votes.hasOwnProperty(u)) counts[p.votes[u]]++;
+    var max = 1, mode = 1;
+    for (i = 1; i <= 10; i++) if (counts[i] > max) { max = counts[i]; mode = i; }
+    var dcs = $('distbox').querySelectorAll('.dc');
+    for (i = 0; i < dcs.length; i++) {
+      var dc = dcs[i];
+      var nn = parseInt(dc.getAttribute('data-n'), 10);
+      var countTxt = counts[nn] ? String(counts[nn]) : '';
+      if (dc.querySelector('.dn').textContent !== countTxt)
+        dc.querySelector('.dn').textContent = countTxt;
+      var h = counts[nn] ? Math.max(10, Math.round(100 * counts[nn] / max)) : 0;
+      dc.querySelector('.db i').style.height = h + '%';
+      dc.classList.toggle('hot', counts[nn] === max && max > 1 && nn === mode);
+    }
+    var dcap = $('dcap');
+    if (dcap) {
+      var capTxt = 'Votes \u00b7 ' + len(p.votes) + ' cast';
+      if (dcap.textContent !== capTxt) dcap.textContent = capTxt;
+    }
+  }
+  function feedRowHtml(e, sig) {
+    var d = new Date(e.ts * 1000);
+    var hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
+    if (e.kind === 'vote') {
+      return '<div class="e vote' + (e.revote ? ' rev' : '') + '" data-sig="' + esc(sig) + '">' +
+             '<span class="t">' + hh + ':' + mm + '</span>' +
+             '<span class="u">' + esc(e.user) + '</span>' +
+             '<span class="v">' + e.vote + '</span></div>';
+    }
+    return '<div class="e' + (e.flash ? ' flash' : '') + '" data-sig="' + esc(sig) + '">' +
+           '<b>' + hh + ':' + mm + '</b> \u00b7 ' + esc(e.text) + '</div>';
+  }
+  function renderFeed() {
+    if (!SHOWFEED) return;
+    var box = $('feedbox');
+    var toShow = S.events.slice(0, 6);
+    var i;
+    // Build new sigs
+    var newSigs = [];
+    for (i = 0; i < toShow.length; i++) {
+      var e = toShow[i];
+      newSigs.push(e.kind === 'vote'
+        ? 'v:' + e.user + ':' + e.vote + ':' + (e.revote ? 1 : 0)
+        : 't:' + e.ts + ':' + e.text);
+    }
+    // Build map of existing rows by sig
+    var existingRows = box ? Array.prototype.slice.call(box.children) : [];
+    var existingMap = {};
+    var existingSigs = [];
+    for (i = 0; i < existingRows.length; i++) {
+      var s = existingRows[i].getAttribute('data-sig') || '';
+      existingSigs.push(s);
+      if (s) existingMap[s] = existingRows[i];
+    }
+    // Quick exit if order + content unchanged
+    if (newSigs.join('|') === existingSigs.join('|')) return;
+    // Remove rows no longer in toShow
+    var newSigsSet = {};
+    for (i = 0; i < newSigs.length; i++) newSigsSet[newSigs[i]] = true;
+    for (i = existingRows.length - 1; i >= 0; i--) {
+      if (!newSigsSet[existingSigs[i]]) box.removeChild(existingRows[i]);
+    }
+    // Add new rows + reorder existing in place (existing rows are NOT recreated -> no re-animation)
+    for (i = 0; i < toShow.length; i++) {
+      var sig = newSigs[i];
+      var existing = existingMap[sig];
+      var refNode = box.children[i] || null;
+      if (existing) {
+        if (refNode !== existing) box.insertBefore(existing, refNode);
+      } else {
+        var temp = document.createElement('div');
+        temp.innerHTML = feedRowHtml(toShow[i], sig);
+        var newEl = temp.firstChild;
+        if (refNode) box.insertBefore(newEl, refNode);
+        else box.appendChild(newEl);
+      }
+    }
+    // Trim any rows past 6
+    while (box.children.length > 6) box.removeChild(box.lastChild);
+  }
+  function render() {
+    $('show').textContent = S.show_name || 'Live';
+    renderPoll();
+    renderFeed();
+  }
+
+  function expirePoll() {
+    var p = S.poll;
+    if (p && p.status === 'open' && p.deadline && Date.now() > p.deadline) {
+      closePoll(); saveState();
+    }
+  }
+  function tickRender() { if (!demoActive) expirePoll(); render(); }
+  render();
+  setInterval(tickRender, 1000);
+
+  /* ---------- on-panel controls (OBS Interact) ---------- */
+
+  var CFG_KEY = 'petegen-rate-cfg-v1';
+  var CORNER_KEY = 'petegen-rate-corner-v1';
+  var CORNERS = ['tl', 'tr', 'bl', 'br'];
+  var drawer = $('drawer');
+  try {
+    var cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (cfg.topic) $('drtopic').value = cfg.topic;
+    if (cfg.secs !== undefined) $('drsecs').value = cfg.secs;
+  } catch (e) {}
+
+  /* Apply one of the four corner positions to #panel and highlight the
+     matching button in the drawer. Persists to localStorage so the choice
+     survives reloads. URL ?corner=X takes priority and is also persisted. */
+  function applyCorner(c) {
+    if (CORNERS.indexOf(c) === -1) c = 'bl';
+    $('panel').setAttribute('data-corner', c);
+    var btns = document.querySelectorAll('#corners .corner-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('on', btns[i].getAttribute('data-c') === c);
+    }
+    try { localStorage.setItem(CORNER_KEY, c); } catch (e) {}
+  }
+  (function initCorner() {
+    var urlC = (q.get('corner') || '').toLowerCase();
+    var c = '';
+    if (CORNERS.indexOf(urlC) !== -1) {
+      c = urlC;                                   // URL wins; also persist
+      try { localStorage.setItem(CORNER_KEY, c); } catch (e) {}
+    } else {
+      try { c = localStorage.getItem(CORNER_KEY) || ''; } catch (e) {}
+      if (CORNERS.indexOf(c) === -1) c = 'bl';
+    }
+    applyCorner(c);
+  })();
+  $('corners').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    applyCorner(b.getAttribute('data-c'));
+  });
+
+  function drawerOpen() { return drawer.classList.contains('open'); }
+  function toggleDrawer(force) {
+    if (force === undefined) force = !drawerOpen();
+    drawer.classList.toggle('open', force);
+    if (force) renderDrawer();
+  }
+  $('sidebtn').addEventListener('click', function () { toggleDrawer(); });
+  $('drx').addEventListener('click', function () { toggleDrawer(false); });
+
+  function secsVal() {
+    return Math.max(0, Math.min(3600, parseInt($('drsecs').value || '0', 10) || 0));
+  }
+  $('drpresets').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var s = b.getAttribute('data-s');
+    $('drsecs').value = s;
+    var pills = this.querySelectorAll('button');
+    for (var i = 0; i < pills.length; i++) pills[i].classList.toggle('on', pills[i] === b);
+    markPreset();
+  });
+  function markPreset() {
+    var pills = $('drpresets').querySelectorAll('button');
+    for (var i = 0; i < pills.length; i++)
+      pills[i].classList.toggle('on', pills[i].getAttribute('data-s') === String($('drsecs').value));
+  }
+  $('drsecs').addEventListener('input', markPreset);
+
+  $('drgo').addEventListener('click', function () {
+    var p = S.poll;
+    if (p && p.status === 'open') return;                 // already listening
+    var topic = $('drtopic').value.trim() || 'Rate this';
+    var s = secsVal();
+    try { localStorage.setItem(CFG_KEY, JSON.stringify({ topic: topic, secs: s })); } catch (e) {}
+    window.__petegenInject(CHANNEL, 'broadcaster/1', 'panel-' + Date.now(),
+                           '!rateopen' + (s ? ' ' + s : '') + ' ' + topic);
+    toggleDrawer(false);
+    render();
+  });
+  $('drclose').addEventListener('click', function () {
+    window.__petegenInject(CHANNEL, 'broadcaster/1', 'panel-' + Date.now(), '!rateend');
+    render(); renderDrawer();
+  });
+  $('drclear').addEventListener('click', function () {
+    window.__petegenInject(CHANNEL, 'broadcaster/1', 'panel-' + Date.now(), '!rateclear');
+    render(); renderDrawer();
+  });
+
+  function renderDrawer() {
+    var p = S.poll, go = $('drgo'), stat = $('drstat'), cl = $('drclose'), demo = $('drdemo');
+    $('drtopic').disabled = !!(p && p.status === 'open');
+    $('drsecs').disabled = !!(p && p.status === 'open');
+    if (p && p.status === 'open') {
+      go.disabled = true; go.textContent = 'Listening \u00b7 card locked';
+      cl.disabled = false;
+      demo.disabled = true; demo.textContent = 'Demo running\u2026';
+      var left = p.deadline ? Math.max(0, Math.ceil((p.deadline - Date.now()) / 1000)) : null;
+      var mm = left === null ? '' : ('0' + Math.floor(left / 60)).slice(-2) + ':' + ('0' + (left % 60)).slice(-2) + ' left \u00b7 ';
+      stat.innerHTML = 'Listening \u00b7 ' + mm + '<b>' + len(p.votes) + '</b> votes \u00b7 avg <b>' +
+                       rateAvg(p).toFixed(1) + '</b>';
+    } else if (p && p.status === 'closed') {
+      go.disabled = false; go.textContent = 'Lock in & start listening';
+      cl.disabled = true;
+      demo.disabled = false; demo.textContent = '\u25B6 Run demo';
+      stat.innerHTML = 'Final: <b>' + p.final_avg.toFixed(1) + '/10</b> from ' + len(p.votes) + ' votes';
+    } else {
+      go.disabled = false; go.textContent = 'Lock in & start listening';
+      cl.disabled = true;
+      demo.disabled = false; demo.textContent = '\u25B6 Run demo';
+      stat.textContent = '';
+    }
+  }
+  var origRender = render;
+  render = function () { origRender(); if (drawerOpen()) renderDrawer(); };
+
+  /* ---------- demo (shows the overlay working end-to-end) ---------- */
+
+  function runDemo() {
+    var p = S.poll;
+    if (p && p.status === 'open') return;                 // don't demo over a live poll
+    window.__petegenInject(CHANNEL, 'broadcaster/1', 'demo-open-' + Date.now(),
+                           '!rateopen 8 Rate the season 8 trailer');
+    var names = ['rivetedfan', 'hammer_time', 'botwhisperer', 'aggro_main', 'wedgeenjoyer',
+      'gearhead99', 'clockblocker', 'greg_42', 'drumbreaker', 'spinner_supremacy',
+      'box_bot_ben', 'vex_nation', 'killjoy_77', 'snacktivist', 'bolter_42', 'toaster_bot'];
+    var i = 0, target = 8.3;
+    var t = setInterval(function () {
+      if (i >= 16) { clearInterval(t); return; }
+      var nm = names[i % names.length];
+      var v = Math.max(1, Math.min(10, Math.round(target + (Math.random() - 0.5) * 3)));
+      window.__petegenInject(nm, '', 'demo-v-' + Date.now() + '-' + i, '!vote ' + v);
+      i++;
+      render();
+    }, 180);
+  }
+  $('drdemo').addEventListener('click', runDemo);
+  if (q.get('demo') === '1') setTimeout(runDemo, 1500);   // showcase URL
+
+  /* cross-tab sync (same browser, e.g. OBS Interact window) */
+  var lastRev = S.rev;
+  setInterval(function () {
+    if (demoActive) return;
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (parsed.rev !== lastRev) { S = parsed; lastRev = S.rev; render(); }
+    } catch (e) {}
+  }, 1000);
+
+  /* ---------- Twitch chat (anonymous, read-only) ---------- */
+
+  var ws = null, wsRetry = null, wsDelay = 5000;
+
+  function setConn(state) {
+    var pill = $('cstag'), dot = $('csdot'), label = $('cslabel');
+    pill.className = 'tagpill' + (state ? ' ' + state : '');
+    dot.className = 'dot ' + (state || '');
+    label.textContent = state === 'on' ? 'live' : (state === 'off' ? 'offline' : 'chat');
+  }
+
+  function connect() {
+    if (TESTMODE) { setConn(''); return; }            // test mode stays offline
+    try {
+      if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+      ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+      ws.onopen = function () {
+        wsDelay = 5000;
+        ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands\r\n');
+        ws.send('NICK justinfan' + Math.floor(Math.random() * 99999) + '\r\n');
+        ws.send('JOIN #' + CHANNEL + '\r\n');
+        setConn('on');
+      };
+      ws.onmessage = function (ev) {
+        var lines = String(ev.data).split('\r\n');
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+          if (!line) continue;
+          if (line.indexOf('PING') === 0) { ws.send('PONG :tmi.twitch.tv\r\n'); continue; }
+          if (line.indexOf('RECONNECT') === 0) { try { ws.close(); } catch (e) {} continue; }
+          if (line.indexOf('PRIVMSG') === -1) continue;
+
+          var tags = {}, rest = line;
+          if (line.charAt(0) === '@') {
+            var blob = line.split(' ', 1)[0].slice(1);
+            rest = line.slice(line.indexOf(' ') + 1);
+            var pairs = blob.split(';');
+            for (var p2 = 0; p2 < pairs.length; p2++) {
+              var kv = pairs[p2].split('=', 2);
+              tags[kv[0]] = kv[1] || '';
+            }
+          }
+          var m = rest.match(/:(\w+)!\S+ PRIVMSG #\S+ :(.+)/);
+          if (!m) continue;
+          var user = (tags['login'] || m[1] || '').toLowerCase();
+          handleChat(user, tags['badges'] || '', tags['id'] || '', m[2].trim());
+          render();
+        }
+      };
+      ws.onerror = function () { /* handled by onclose */ };
+      ws.onclose = function () {
+        setConn('off');
+        if (wsRetry) clearTimeout(wsRetry);
+        wsRetry = setTimeout(function () { wsRetry = null; connect(); }, wsDelay);
+        wsDelay = Math.min(60000, wsDelay * 1.5);
+      };
+    } catch (e) {
+      setConn('off');
+      if (window.console && console.warn) console.warn('Twitch IRC failed:', e);
+    }
+  }
+  connect();
+
+  /* ---------- test console (?test=1) ---------- */
+
+  var demoTimers = [];
+  function ri(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function stopAnims() { demoTimers.forEach(clearInterval); demoTimers = []; }
+
+  function applyDemo(demo) { S = demo; saveState(); render(); }
+  function demoBase(poll) {
+    return { rev: 0, show_name: 'BattleBots', poll: poll || null, results: [],
+             events: [{ ts: Math.floor(Date.now() / 1000), text: 'TEST DATA - not live', flash: true }], seen: [] };
+  }
+  function demoOpen() {
+    var p = { question: 'Rate the season 8 trailer', votes: {}, status: 'open',
+              opened: Date.now(), deadline: Date.now() + 90 * 1000, final_avg: null };
+    applyDemo(demoBase(p));
+    var target = 6.2 + Math.random() * 3.2, n = 0;
+    var timer = setInterval(function () {
+      n++;
+      p.votes['demo' + n] = Math.max(1, Math.min(10, Math.round(target + (Math.random() - 0.5) * 2.4)));
+      render();
+      if (n >= 18) clearInterval(timer);
+    }, 90);
+    demoTimers.push(timer);
+  }
+  function demoClosed() {
+    var votes = {}, i;
+    for (i = 0; i < 42; i++) votes['v' + i] = Math.max(1, Math.min(10, Math.round(8.4 + (Math.random() - 0.5) * 3)));
+    var p = { question: 'Hypershock vs Sawblaze - how good was this fight?',
+              votes: votes, status: 'closed', opened: Date.now(), deadline: 0, final_avg: null };
+    var n = 0, s = 0;
+    for (var k in votes) { s += votes[k]; n++; }
+    p.final_avg = Math.round(s / n * 10) / 10;
+    applyDemo(demoBase(p));
+  }
+  function demoEmpty() { applyDemo(demoBase(null)); }
+
+  if (TESTMODE) {
+    $('testbar').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      stopAnims();
+      var t = b.getAttribute('data-t');
+      if (t === 'live') { demoActive = false; loadState(); lastRev = S.rev; render(); return; }
+      demoActive = true;
+      if (t === 'open') demoOpen();
+      else if (t === 'closed') demoClosed();
+      else if (t === 'empty') demoEmpty();
+    });
+    $('cmdin').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var v = $('cmdin').value.trim();
+      if (!v) return;
+      // manual command runs as the broadcaster
+      window.__petegenInject(CHANNEL, 'broadcaster/1', 'manual-' + Date.now(), v);
+      $('cmdin').value = '';
+      render();
+    });
+  }
+})();
+</script>
+</body>
+</html>
