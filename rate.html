@@ -199,7 +199,6 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
 @keyframes fadeRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes avgPop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
 @keyframes chipGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 83, 0); } 50% { box-shadow: 0 0 14px 0 rgba(212, 168, 83, 0.22); } }
-@keyframes tabBreathe { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.75; } }
 
 /* ── header ── */
 .hd {
@@ -358,11 +357,11 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
   text-transform: uppercase; color: var(--t2);
   background: var(--bg); border: 1px solid var(--line); border-right: none;
   border-radius: 10px 0 0 10px; padding: 16px 6px; cursor: pointer;
-  opacity: 0.5; animation: tabBreathe 3.4s ease-in-out infinite;
+  opacity: 0.5;                                    /* static — no breathing */
   transition: opacity 0.35s ease, color 0.35s ease, padding 0.35s ease;
   z-index: 40;
 }
-.sidebtn:hover { opacity: 1; color: var(--amber); padding: 18px 8px; animation: none; }
+.sidebtn:hover { opacity: 1; color: var(--amber); padding: 18px 8px; }
 body.clean .sidebtn { display: none; }
 
 .drawer {
@@ -856,10 +855,15 @@ body.testmode #testbar { display: block; }
     for (i = 0; i < rows.length; i++) {
       if (!want[rows[i].getAttribute('data-user')]) fadeRow(rows[i]);
     }
-    // sync oldest -> newest so the newest voter ends up nearest the bar
-    var ordered = rec.slice().reverse();
-    for (i = 0; i < ordered.length; i++) {
-      var e = ordered[i];
+    // Sync each voter's row WITHOUT moving DOM nodes. Repositioning via
+    // appendChild/insertBefore removes + re-inserts the element, which
+    // RESTARTS its entrance animation — the whole strip would visibly
+    // re-rise on every 1s render tick (the flicker bug). Flex `order`
+    // relayouts without touching the DOM, so rows animate exactly once,
+    // when they're created. Highest order = nearest the bar in both
+    // stack directions (.above column: bottom; .below column-reverse: top).
+    for (i = 0; i < rec.length; i++) {
+      var e = rec[i];                            // rec[0] = newest voter
       var row = c.querySelector('[data-user="' + e.user + '"]');
       if (!row) {
         row = document.createElement('div');
@@ -874,6 +878,7 @@ body.testmode #testbar { display: block; }
         vEl.className = 'v ' + bandClass(e.vote);
         var rc = readableColor(e.c);
         if (rc) uEl.style.color = rc;
+        c.appendChild(row);                      // appended once — animates in
       } else {
         var v2 = row.querySelector('.v');
         if (v2.textContent !== String(e.vote)) {          // re-vote: update + bump
@@ -883,7 +888,7 @@ body.testmode #testbar { display: block; }
         }
         row.classList.toggle('rev', !!e.revote);
       }
-      c.appendChild(row);                                // (re)orders; no re-animation
+      row.style.order = String(rec.length - i);  // newest = highest = nearest bar
     }
   }
   function fadeRow(row) {
