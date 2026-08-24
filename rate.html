@@ -128,9 +128,15 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
 #panel.compact .crowd .of { display: none; }
 #panel.compact .crowd .cnt { margin-left: 0; font-size: 8.5px; }
 #panel.compact .timer { margin: 0; font-size: 11px; letter-spacing: 1px; flex: 0 0 auto; }
-/* ── slim density (?mode=slim, the default) — same full card, ~40% smaller
-   footprint: tighter paddings, shorter histogram (100px), 4 feed rows,
-   350px wide. Everything still readable at 720p. ── */
+/* compact: no pulsating or blinking — chip, timer and average stay static.
+   Motion is limited to the one-shot vote entrances in the strip and the
+   callouts; values still update, they just don't flash. */
+#panel.compact .chip.open { animation: none; }
+#panel.compact .timer.low { animation: none; }
+#panel.compact .crowd .big.pop { animation: none; }
+/* ── slim density (?mode=slim) — the full card at reduced size: tighter
+   paddings, shorter histogram (100px), 4 feed rows, 350px wide. Everything
+   still readable at 720p. ── */
 #panel.slim { width: 350px; }
 #panel.slim .hd { padding: 8px 13px 7px; }
 #panel.slim .hd .logo { font-size: 16px; }
@@ -574,7 +580,7 @@ body.testmode #testbar { display: block; }
     </div>
     <div class="dr-lab" style="margin-top:10px">Panel layout</div>
     <div class="dr-presets" id="drlayout">
-      <button data-m="full">Full</button><button data-m="slim" class="on">Slim</button><button data-m="compact">Bar</button>
+      <button data-m="full">Full</button><button data-m="slim">Slim</button><button data-m="compact" class="on">Bar</button>
     </div>
     <div class="dr-row">
       <button class="dr-ghost" id="drclose">Close rating</button>
@@ -1231,7 +1237,7 @@ body.testmode #testbar { display: block; }
      sticky (petegen-rate-mode-v1); the drawer pills toggle it live. */
   var MODE_KEY = 'petegen-rate-mode-v1';
   function applyMode(m) {
-    if (m !== 'compact' && m !== 'full' && m !== 'slim') m = 'slim';
+    if (m !== 'compact' && m !== 'full' && m !== 'slim') m = 'compact';
     var panel = $('panel');
     panel.classList.toggle('compact', m === 'compact');
     panel.classList.toggle('slim', m === 'slim');
@@ -1247,7 +1253,7 @@ body.testmode #testbar { display: block; }
     if (m === 'compact' || m === 'full' || m === 'slim') {
       try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
     } else {
-      try { m = localStorage.getItem(MODE_KEY) || 'slim'; } catch (e) { m = 'slim'; }
+      try { m = localStorage.getItem(MODE_KEY) || 'compact'; } catch (e) { m = 'compact'; }
     }
     applyMode(m);
   })();
