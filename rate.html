@@ -95,6 +95,99 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
   transition: opacity 0.4s ease, transform 0.4s ease,
               visibility 0s linear 0.4s;
 }
+/* ── compact bar (?mode=compact or the drawer toggle) — slim one-row pill:
+   [chip] question…  8.4/10 · 16 votes  01:24 — hides the header, show row,
+   histogram, stars and feed. Everything else (corner docking, idle hide,
+   auto-hide, scale) works identically. ── */
+#panel.compact {
+  width: auto; max-width: 640px; max-height: none;
+  border-radius: 100px;
+}
+#panel.compact .hd,
+#panel.compact .showrow,
+#panel.compact #distbox,
+#panel.compact .feed,
+#panel.compact .stars { display: none; }
+#panel.compact .poll {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 20px; border-bottom: none;
+}
+#panel.compact .chip { margin-bottom: 0; flex: 0 0 auto; }
+#panel.compact #pollbody { display: flex; align-items: center; gap: 11px; min-width: 0; }
+#panel.compact .pollq {
+  flex: 0 1 auto; min-width: 0; max-width: 340px;
+  font-size: 15px; line-height: 1.2; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#panel.compact .crowd { flex: 0 0 auto; margin-left: auto; margin-top: 0; gap: 5px; }
+#panel.compact .crowd .big { font-size: 22px; }
+#panel.compact .crowd .big::after {
+  content: "/10"; font-family: var(--mono); font-size: 11px; font-weight: 400;
+  color: var(--t3); margin-left: 2px; letter-spacing: 0.05em; text-shadow: none;
+}
+#panel.compact .crowd .of { display: none; }
+#panel.compact .crowd .cnt { margin-left: 0; font-size: 8.5px; }
+#panel.compact .timer { margin: 0; font-size: 11px; letter-spacing: 1px; flex: 0 0 auto; }
+/* ── slim density (?mode=slim, the default) — same full card, ~40% smaller
+   footprint: tighter paddings, shorter histogram (100px), 4 feed rows,
+   350px wide. Everything still readable at 720p. ── */
+#panel.slim { width: 350px; }
+#panel.slim .hd { padding: 8px 13px 7px; }
+#panel.slim .hd .logo { font-size: 16px; }
+#panel.slim .showrow { padding: 7px 13px 6px; }
+#panel.slim .showname .nm { font-size: 14px; }
+#panel.slim .showname .sub { margin-top: 2px; font-size: 8px; }
+#panel.slim .poll { padding: 9px 13px 10px; }
+#panel.slim .chip { padding: 3px 9px; margin-bottom: 7px; font-size: 9px; }
+#panel.slim .pollq { font-size: 16.5px; margin: 1px 0 8px; line-height: 1.25; }
+#panel.slim .crowd .big { font-size: 27px; }
+#panel.slim .stars { margin-top: 6px; }
+#panel.slim .stars i { height: 4px; }
+#panel.slim .timer { font-size: 14px; margin-top: 6px; letter-spacing: 2px; }
+#panel.slim .timer.ah { font-size: 10px; }
+#panel.slim .waiting { padding: 6px 0 4px; font-size: 14px; }
+#panel.slim .dist-cap { padding: 7px 8px 5px; }
+#panel.slim .dist { height: 100px; }
+#panel.slim .db { background: rgba(255, 255, 255, 0.06); }
+#panel.slim .dl { margin-top: 4px; font-size: 8.5px; }
+#panel.slim .feed { padding: 6px 13px 8px; }
+#panel.slim .feed .e.vote { padding: 2px 0; }
+#panel.slim .feed .e.vote .v { font-size: 12px; }
+/* ── vote pop-ups (compact bar only) — transient toasts that spawn next to
+   the bar each time a chat member votes, mirroring the voters feed the full
+   card shows. Stacks up to 4, each self-expires after ~2.6s. ── */
+#votepops {
+  --s: 1;
+  position: fixed; z-index: 30;                 /* below the drawer (50) */
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; max-width: 340px;
+  transform: scale(var(--s));
+}
+#votepops.above { flex-direction: column; }      /* bottom corners: newest near bar */
+#votepops.below { flex-direction: column-reverse; } /* top corners: newest near bar */
+.vpop {
+  display: flex; align-items: center; gap: 11px;
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 11px; padding: 7px 15px 7px 13px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+  animation: vpopIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vpop .u {
+  font-family: var(--mono); font-size: 11px; color: var(--t2);
+  max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vpop .v { font-family: var(--display); font-size: 21px; line-height: 1; color: var(--t1); }
+.vpop .v.hi { color: var(--amber); }
+.vpop .v.lo { color: var(--rust); }
+.vpop .v::after { content: "/10"; font-family: var(--mono); font-size: 9px; font-weight: 400;
+                  color: var(--t3); margin-left: 2px; }
+.vpop.rev { opacity: 0.72; }
+.vpop.rev .v { color: var(--t2); }
+.vpop.out { animation: vpopOut 0.5s ease forwards; }
+.vpop.bump { animation: vpopBump 0.45s cubic-bezier(0.32, 0.72, 0, 1); }
+@keyframes vpopIn { from { opacity: 0; transform: translateY(10px) scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes vpopOut { to { opacity: 0; transform: translateY(-10px) scale(0.94); } }
+@keyframes vpopBump { 0% { transform: scale(1); } 40% { transform: scale(1.07); } 100% { transform: scale(1); } }
 @keyframes pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 @keyframes rowIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes fadeRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -210,6 +303,46 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
         border-radius: 4px 4px 0 0; transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease; }
 .dc.hot .db i { box-shadow: 0 0 10px rgba(212, 168, 83, 0.45); }
 .dl { font-family: var(--mono); font-size: 9px; color: var(--t3); margin-top: 5px; }
+
+/* badge identity dots — broadcaster / mod / vip / sub+founder (highest wins) */
+.bd { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+.bd.bc { background: #ff5c5c; box-shadow: 0 0 5px rgba(255, 92, 92, 0.45); }
+.bd.md { background: var(--sage); box-shadow: 0 0 5px rgba(155, 191, 155, 0.45); }
+.bd.vp { background: #e07ad0; box-shadow: 0 0 5px rgba(224, 122, 208, 0.4); }
+.bd.sub { background: var(--amber); box-shadow: 0 0 5px rgba(212, 168, 83, 0.4); }
+
+/* ── vote callouts — floating "username gave this a 8/10" pills that spawn
+   at a RANDOM spot on the canvas (never on the panel or another callout)
+   each time someone votes. Separate from the widget entirely; up to 3
+   concurrent, each fading after ~3s. ?callouts=0 disables. ── */
+#callouts {
+  position: fixed; inset: 0; pointer-events: none; z-index: 20;
+  --s: 1;
+}
+.callout {
+  position: absolute; display: flex; align-items: baseline; gap: 10px;
+  background: rgba(8, 8, 10, 0.74); border: 1px solid var(--line);
+  border-radius: 100px; padding: 9px 20px 9px 18px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  white-space: nowrap;
+  transform: translate(-50%, -50%) scale(var(--s));
+  animation: coIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.callout.out { animation: coOut 0.45s ease forwards; }
+.co-u { font-family: var(--mono); font-size: 11.5px; color: var(--t2); }
+.co-t { font-family: var(--display); font-style: italic; font-size: 15px; color: var(--t2); }
+.co-v { font-family: var(--display); font-size: 25px; line-height: 1; color: var(--t1); }
+.co-v.hi { color: var(--amber); }
+.co-v.lo { color: var(--rust); }
+.co-v::after { content: "/10"; font-family: var(--mono); font-size: 9.5px; color: var(--t3); margin-left: 2px; }
+@keyframes coIn {
+  from { opacity: 0; transform: translate(-50%, -44%) scale(calc(var(--s) * 0.9)); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(var(--s)); }
+}
+@keyframes coOut {
+  to   { opacity: 0; transform: translate(-50%, -56%) scale(calc(var(--s) * 0.95)); }
+}
 
 /* ── pop-out controls (pinned to the right edge of the viewport, fully detached from the rating panel) ── */
 .sidebtn {
@@ -372,6 +505,9 @@ body.clean .sidebtn { display: none; }
   font-family: var(--display); line-height: 1;
 }
 .feed .e.vote .v::after { content: "/10"; font-size: 9px; color: var(--t3); font-weight: 400; margin-left: 1px; }
+/* score-band coloring: 1-3 rust, 4-7 neutral, 8-10 amber */
+.feed .e.vote .v.lo { color: var(--rust); }
+.feed .e.vote .v.hi { color: var(--amber); }
 .feed .e.vote.rev { opacity: 0.62; }
 .feed .e.vote.rev .v { color: var(--t2); }
 
@@ -432,6 +568,10 @@ body.testmode #testbar { display: block; }
         <button class="corner-btn br" data-c="br"  title="Bottom right" aria-label="Bottom right"></button>
       </div>
     </div>
+    <div class="dr-lab" style="margin-top:10px">Panel layout</div>
+    <div class="dr-presets" id="drlayout">
+      <button data-m="full">Full</button><button data-m="slim" class="on">Slim</button><button data-m="compact">Bar</button>
+    </div>
     <div class="dr-row">
       <button class="dr-ghost" id="drclose">Close rating</button>
       <button class="dr-ghost" id="drclear">Clear panel</button>
@@ -460,6 +600,8 @@ body.testmode #testbar { display: block; }
     <div class="feed" id="feedbox"></div>
   </div>
   <button class="sidebtn" id="sidebtn">Controls</button>
+  <div id="votepops"></div>
+  <div id="callouts"></div>
 </div>
 
 <div id="testbar">
@@ -489,6 +631,8 @@ body.testmode #testbar { display: block; }
   var EXTRA_MODS = (q.get('mods') || '').toLowerCase().split(',').map(function (s) { return s.trim(); }).filter(Boolean)
     .concat(CONFIG.extraMods.map(function (s) { return s.toLowerCase(); }));
   var SHOWFEED = q.get('feed') !== '0';
+  var SHOWPOPS = q.get('pops') !== '0';   // compact-bar recent-voters strip
+  var SHOWCO = q.get('callouts') !== '0'; // floating vote callouts
   var TESTMODE = q.get('test') === '1';
   if (q.get('clean') === '1') document.body.classList.add('clean');   // hide side controls
   var scale = parseFloat(q.get('scale'));
@@ -506,14 +650,13 @@ body.testmode #testbar { display: block; }
   })();
   try { localStorage.setItem(AUTOHIDE_KEY, String(AUTOHIDE_MS)); } catch (e) {}
   if (scale > 0.2 && scale <= 3) {
-    var wrap = document.getElementById('wrap');
-    wrap.style.transform = 'scale(' + scale + ')';
-    wrap.style.marginBottom = ((scale - 1) * 720) + 'px';
-    wrap.style.marginRight = ((scale - 1) * 1280) + 'px';
-    /* #panel is position:fixed so #wrap's transform no longer scales it;
-       apply the same scale via the --s custom property so the panel
-       scales around whichever corner it's anchored to. */
+    /* #panel is position:fixed — scaling #wrap would make it the containing
+       block for fixed descendants and double-scale/misplace the panel. Scale
+       the panel itself around its anchored corner via --s, and mirror the
+       same scale on the vote-pops stack so both shrink together. */
     document.getElementById('panel').style.setProperty('--s', scale);
+    document.getElementById('votepops').style.setProperty('--s', scale);
+    document.getElementById('callouts').style.setProperty('--s', scale);
   }
   if (TESTMODE) document.body.classList.add('testmode');
   if (!SHOWFEED) document.getElementById('feedbox').style.display = 'none';
@@ -552,13 +695,14 @@ body.testmode #testbar { display: block; }
     S.events.unshift({ ts: Math.floor(Date.now() / 1000), text: text, flash: !!flash });
     if (S.events.length > 16) S.events.length = 16;
   }
-  function addVote(user, vote, isRevote) {
+  function addVote(user, vote, isRevote, color, badges) {
     // one row per user so the feed reads as a live "who bet what" list
     for (var i = S.events.length - 1; i >= 0; i--) {
       if (S.events[i].kind === 'vote' && S.events[i].user === user) { S.events.splice(i, 1); break; }
     }
     S.events.unshift({ ts: Math.floor(Date.now() / 1000), kind: 'vote',
-                       user: user, vote: vote, revote: !!isRevote });
+                       user: user, vote: vote, revote: !!isRevote,
+                       c: color || '', b: badges || '' });
     if (S.events.length > 16) S.events.length = 16;
   }
   function isMod(user, badges) {
@@ -579,20 +723,174 @@ body.testmode #testbar { display: block; }
     if (mt) { secs = parseInt(mt[1], 10); s = s.slice(mt[0].length); }
     var label = s.slice(0, 80) || 'Rate this';
     S.poll = {
-      question: label, votes: {}, status: 'open',
+      question: label, votes: {}, voters: {}, status: 'open',
       opened: Date.now(), deadline: secs > 0 ? Date.now() + secs * 1000 : 0,
       final_avg: null
     };
     addEvent('RATE IT: ' + label + ' - !vote 1-10' + (secs ? ' (' + secs + 's)' : ''), true);
   }
-  function cmdVote(user, args) {
+  function cmdVote(user, args, color, badges) {
     var p = S.poll;
     if (!p || p.status !== 'open') return;
     var v = parseInt(args, 10);
     if (!(v >= 1 && v <= 10)) return;                 // ignore 0, 11, text...
     var isRevote = p.votes.hasOwnProperty(user);
     p.votes[user] = v;
-    addVote(user, v, isRevote);
+    if (!p.voters) p.voters = {};                     // identity meta (chat color + badges)
+    p.voters[user] = { c: color || '', b: badges || '' };
+    addVote(user, v, isRevote, color, badges);
+    callOut(user, v, isRevote, color);
+  }
+
+  /* ---------- vote callouts (floating, away from the widget) ----------
+     "username gave this a 8/10" pills that appear at a random spot on the
+     canvas each time someone votes — never on top of the panel (or its voter
+     strip) or another live callout. Up to 3 concurrent; each fades after
+     ~2.9s. Re-votes say "changed it to a 6/10" instead. ?callouts=0 kills. */
+
+  var CO_MAX = 3, CO_LIFE = 2900;
+  function callOut(user, vote, isRevote, color) {
+    if (!SHOWCO) return;
+    var box = $('callouts');
+    if (!box) return;
+    var el = document.createElement('div');
+    el.className = 'callout';
+    var u = document.createElement('span'); u.className = 'co-u';
+    u.textContent = user;
+    var rc = readableColor(color);
+    if (rc) u.style.color = rc;
+    var t = document.createElement('span'); t.className = 'co-t';
+    t.textContent = isRevote ? 'changed it to a' : 'gave this a';
+    var v = document.createElement('span'); v.className = 'co-v ' + bandClass(vote);
+    v.textContent = vote;
+    el.appendChild(u); el.appendChild(t); el.appendChild(v);
+    box.appendChild(el);
+    placeCallout(el);
+    for (var i = 0; box.children.length > CO_MAX && i < 10; i++) {
+      var f = box.firstChild;
+      if (!f) break;
+      if (f.dataset.out) box.removeChild(f); else coOut(f);
+    }
+    (function (node) {
+      setTimeout(function () { coOut(node); }, CO_LIFE);
+    })(el);
+  }
+  function coOut(el) {
+    if (!el || el.dataset.out || el.parentNode !== $('callouts')) return;
+    el.dataset.out = '1';
+    el.classList.add('out');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 470);
+  }
+  /* pick a random center point that clears the panel rect (with margin for
+     the voter strip), other live callouts, and the CONTROLS tab zone */
+  function placeCallout(el) {
+    var pad = 34, rightPad = 110, clearance = 48, gap = 12;
+    var w = el.offsetWidth || 200, h = el.offsetHeight || 44;
+    var minX = w / 2 + pad, maxX = window.innerWidth - w / 2 - rightPad;
+    var minY = h / 2 + pad, maxY = window.innerHeight - h / 2 - pad;
+    var pr = $('panel').getBoundingClientRect();
+    var cx = minX, cy = minY;
+    for (var tries = 0; tries < 14; tries++) {
+      cx = minX + Math.random() * Math.max(1, maxX - minX);
+      cy = minY + Math.random() * Math.max(1, maxY - minY);
+      var l = cx - w / 2, t2 = cy - h / 2, r = cx + w / 2, b = cy + h / 2;
+      var hitsPanel = !(r < pr.left - clearance || l > pr.right + clearance ||
+                        b < pr.top - clearance || t2 > pr.bottom + clearance);
+      var hitsOther = false;
+      var kids = $('callouts').children;
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i] === el || kids[i].dataset.out) continue;
+        var kr = kids[i].getBoundingClientRect();
+        if (!(r < kr.left - gap || l > kr.right + gap || b < kr.top - gap || t2 > kr.bottom + gap)) {
+          hitsOther = true; break;
+        }
+      }
+      if (!hitsPanel && !hitsOther) break;
+    }
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+  }
+
+  /* ---------- recent-voters strip (compact bar) ----------
+     Persistent mini-cards docked next to the bar showing the LAST 3 voters
+     (who + what score, chat colors, badge dots). New votes animate in at the
+     front, re-votes bump, voters falling out of the top-3 fade away. Stays
+     up while the poll is open AND through the final read until auto-hide.
+     Full card mode never shows it (the feed + histogram chips do the job). */
+
+  var REC_MAX = 3;
+  function renderRecent() {
+    var c = $('votepops'), panel = $('panel'), p = S.poll;
+    var active = SHOWPOPS && panel.classList.contains('compact') && p &&
+                 (p.status === 'open' || p.status === 'closed');
+    if (!active) { if (c.children.length) c.innerHTML = ''; return; }
+    positionPops();
+    var rec = [];
+    for (var i = 0; i < S.events.length && rec.length < REC_MAX; i++)
+      if (S.events[i] && S.events[i].kind === 'vote') rec.push(S.events[i]);
+    var want = {};
+    for (i = 0; i < rec.length; i++) want[rec[i].user] = rec[i];
+    // drop rows that fell out of the top 3
+    var rows = Array.prototype.slice.call(c.children);
+    for (i = 0; i < rows.length; i++) {
+      if (!want[rows[i].getAttribute('data-user')]) fadeRow(rows[i]);
+    }
+    // sync oldest -> newest so the newest voter ends up nearest the bar
+    var ordered = rec.slice().reverse();
+    for (i = 0; i < ordered.length; i++) {
+      var e = ordered[i];
+      var row = c.querySelector('[data-user="' + e.user + '"]');
+      if (!row) {
+        row = document.createElement('div');
+        row.setAttribute('data-user', e.user);
+        row.className = 'vpop' + (e.revote ? ' rev' : '');
+        var bc = badgeClass(e.b);
+        row.innerHTML = (bc ? '<span class="' + bc + '"></span>' : '') +
+                        '<span class="u"></span><span class="v"></span>';
+        var uEl = row.querySelector('.u'), vEl = row.querySelector('.v');
+        uEl.textContent = e.user;
+        vEl.textContent = e.vote;
+        vEl.className = 'v ' + bandClass(e.vote);
+        var rc = readableColor(e.c);
+        if (rc) uEl.style.color = rc;
+      } else {
+        var v2 = row.querySelector('.v');
+        if (v2.textContent !== String(e.vote)) {          // re-vote: update + bump
+          v2.textContent = e.vote;
+          v2.className = 'v ' + bandClass(e.vote);
+          row.classList.remove('bump'); void row.offsetWidth; row.classList.add('bump');
+        }
+        row.classList.toggle('rev', !!e.revote);
+      }
+      c.appendChild(row);                                // (re)orders; no re-animation
+    }
+  }
+  function fadeRow(row) {
+    if (row.dataset.out) return;
+    row.dataset.out = '1';
+    row.removeAttribute('data-user');                     // not adoptable while fading
+    row.classList.add('out');
+    setTimeout(function () { if (row.parentNode) row.parentNode.removeChild(row); }, 520);
+  }
+  /* Glue the stack to the bar: read the panel's live rect (scale- and
+     corner-aware), dock the stack above the bar for bottom corners / below
+     for top corners, aligned to the bar's inner edge. Called on each spawn
+     and every render tick while pops exist, so the stack follows corner
+     slides. */
+  function positionPops() {
+    var c = $('votepops'), panel = $('panel');
+    if (!c || !panel) return;
+    var r = panel.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+    var corner = panel.getAttribute('data-corner') || 'bl';
+    var bottom = corner.charAt(0) === 'b', left = corner.charAt(1) === 'l';
+    c.className = bottom ? 'above' : 'below';
+    c.style.left = c.style.right = c.style.top = c.style.bottom = '';
+    if (bottom) c.style.bottom = (window.innerHeight - r.top + 12) + 'px';
+    else        c.style.top    = (r.bottom + 12) + 'px';
+    if (left) { c.style.left = r.left + 'px'; c.style.alignItems = 'flex-start'; }
+    else      { c.style.right = (window.innerWidth - r.right) + 'px'; c.style.alignItems = 'flex-end'; }
+    c.style.transformOrigin = (left ? 'left' : 'right') + ' ' + (bottom ? 'bottom' : 'top');
   }
   function closePoll() {
     var p = S.poll;
@@ -618,7 +916,7 @@ body.testmode #testbar { display: block; }
     addEvent('Now watching: ' + S.show_name, true);
   }
 
-  function handleChat(user, badges, msgid, message) {
+  function handleChat(user, badges, msgid, message, color) {
     if (msgid) {
       if (S.seen.indexOf(msgid) !== -1) return;       // multi-instance dedupe
       S.seen.push(msgid);
@@ -630,7 +928,7 @@ body.testmode #testbar { display: block; }
     var args = message.length > parts[0].length ? message.slice(parts[0].length).trim() : '';
 
     if (cmd === '!vote' || cmd === '!rate') {
-      if (/^\d+$/.test(args)) cmdVote(user, args);
+      if (/^\d+$/.test(args)) cmdVote(user, args, color, badges);
     } else if (isMod(user, badges)) {
       if (cmd === '!rateopen' || cmd === '!poll') cmdRateOpen(args);
       else if (cmd === '!rateend' || cmd === '!pollend') closePoll();
@@ -640,9 +938,9 @@ body.testmode #testbar { display: block; }
     saveState();
   }
 
-  /* test hook: window.__petegenInject(user, badges, msgid, message) */
-  window.__petegenInject = function (user, badges, msgid, message) {
-    handleChat(String(user).toLowerCase(), badges || '', msgid || '', String(message));
+  /* test hook: window.__petegenInject(user, badges, msgid, message, color) */
+  window.__petegenInject = function (user, badges, msgid, message, color) {
+    handleChat(String(user).toLowerCase(), badges || '', msgid || '', String(message), color || '');
   };
 
   /* ---------- rendering (targeted DOM updates, no innerHTML thrash) ---------- */
@@ -650,10 +948,32 @@ body.testmode #testbar { display: block; }
   var lastPollSig = '', lastAvgText = '', distBuilt = false, avgPopTimer = null;
 
   function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
   }
+  /* Twitch chat color, readability-bumped: dark colors (dark blue, black…)
+     get mixed toward white so names stay legible on the dark panel. */
+  function readableColor(hex) {
+    if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return '';
+    var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    if (lum >= 0.33) return hex;
+    var m = 0.45;
+    r = Math.round(r + (255 - r) * m); g = Math.round(g + (255 - g) * m); b = Math.round(b + (255 - b) * m);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+  /* highest-priority badge wins: broadcaster > mod > vip > sub/founder */
+  function badgeClass(b) {
+    b = b || '';
+    if (/broadcaster\/1/.test(b)) return 'bd bc';
+    if (/moderator\/1/.test(b)) return 'bd md';
+    if (/vip\/1/.test(b)) return 'bd vp';
+    if (/founder\/1|subscriber\//.test(b)) return 'bd sub';
+    return '';
+  }
+  /* score band: 1-3 rust (lo), 4-7 neutral, 8-10 amber (hi) */
+  function bandClass(v) { return v <= 3 ? 'lo' : v >= 8 ? 'hi' : ''; }
   function rebuildPollStructure(p) {
     var chip = $('chip');
     lastAvgText = '';                       // reset so first update after rebuild doesn't pop
@@ -666,7 +986,10 @@ body.testmode #testbar { display: block; }
       return;
     }
     chip.className = 'chip ' + p.status;
-    chip.textContent = p.status === 'open' ? 'OPEN · VOTE 1-10' : 'CLOSED · FINAL';
+    var cmp = $('panel').classList.contains('compact');
+    chip.textContent = p.status === 'open'
+      ? (cmp ? 'OPEN' : 'OPEN · VOTE 1-10')
+      : (cmp ? 'FINAL' : 'CLOSED · FINAL');
     var body = '<div class="pollq">' + esc(p.question) + '</div>';
     body += '<div class="crowd"><div class="big" id="avgnum">0.0</div>' +
             '<div class="of">/ 10 crowd score</div><div class="cnt" id="cnt">0 votes</div></div>';
@@ -769,10 +1092,12 @@ body.testmode #testbar { display: block; }
     var d = new Date(e.ts * 1000);
     var hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
     if (e.kind === 'vote') {
+      var bc = badgeClass(e.b), rc = readableColor(e.c), band = bandClass(e.vote);
       return '<div class="e vote' + (e.revote ? ' rev' : '') + '" data-sig="' + esc(sig) + '">' +
              '<span class="t">' + hh + ':' + mm + '</span>' +
-             '<span class="u">' + esc(e.user) + '</span>' +
-             '<span class="v">' + e.vote + '</span></div>';
+             (bc ? '<span class="' + bc + '"></span>' : '') +
+             '<span class="u"' + (rc ? ' style="color:' + rc + '"' : '') + '>' + esc(e.user) + '</span>' +
+             '<span class="v' + (band ? ' ' + band : '') + '">' + e.vote + '</span></div>';
     }
     return '<div class="e' + (e.flash ? ' flash' : '') + '" data-sig="' + esc(sig) + '">' +
            '<b>' + hh + ':' + mm + '</b> \u00b7 ' + esc(e.text) + '</div>';
@@ -780,14 +1105,15 @@ body.testmode #testbar { display: block; }
   function renderFeed() {
     if (!SHOWFEED) return;
     var box = $('feedbox');
-    var toShow = S.events.slice(0, 6);
+    var maxRows = $('panel').classList.contains('slim') ? 4 : 6;
+    var toShow = S.events.slice(0, maxRows);
     var i;
     // Build new sigs
     var newSigs = [];
     for (i = 0; i < toShow.length; i++) {
       var e = toShow[i];
       newSigs.push(e.kind === 'vote'
-        ? 'v:' + e.user + ':' + e.vote + ':' + (e.revote ? 1 : 0)
+        ? 'v:' + e.user + ':' + e.vote + ':' + (e.revote ? 1 : 0) + ':' + (e.c || '')
         : 't:' + e.ts + ':' + e.text);
     }
     // Build map of existing rows by sig
@@ -822,13 +1148,14 @@ body.testmode #testbar { display: block; }
         else box.appendChild(newEl);
       }
     }
-    // Trim any rows past 6
-    while (box.children.length > 6) box.removeChild(box.lastChild);
+    // Trim any rows past the cap (4 in slim, 6 in full)
+    while (box.children.length > maxRows) box.removeChild(box.lastChild);
   }
   function render() {
     $('show').textContent = S.show_name || 'Live';
     renderPoll();
     renderFeed();
+    renderRecent();
   }
 
   function expirePoll() {
@@ -883,6 +1210,38 @@ body.testmode #testbar { display: block; }
     var b = e.target.closest('button');
     if (!b) return;
     applyCorner(b.getAttribute('data-c'));
+  });
+
+  /* panel layout: full card or compact bar. ?mode= takes priority and is
+     sticky (petegen-rate-mode-v1); the drawer pills toggle it live. */
+  var MODE_KEY = 'petegen-rate-mode-v1';
+  function applyMode(m) {
+    if (m !== 'compact' && m !== 'full' && m !== 'slim') m = 'slim';
+    var panel = $('panel');
+    panel.classList.toggle('compact', m === 'compact');
+    panel.classList.toggle('slim', m === 'slim');
+    $('votepops').innerHTML = '';                          // pops are compact-only
+    var pills = $('drlayout').querySelectorAll('button');
+    for (var i = 0; i < pills.length; i++)
+      pills[i].classList.toggle('on', pills[i].getAttribute('data-m') === m);
+    lastPollSig = null;               // force chip-text rebuild for the mode
+    render();
+  }
+  (function () {
+    var m = (q.get('mode') || '').toLowerCase();
+    if (m === 'compact' || m === 'full' || m === 'slim') {
+      try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
+    } else {
+      try { m = localStorage.getItem(MODE_KEY) || 'slim'; } catch (e) { m = 'slim'; }
+    }
+    applyMode(m);
+  })();
+  $('drlayout').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var m = b.getAttribute('data-m');
+    try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
+    applyMode(m);
   });
 
   function drawerOpen() { return drawer.classList.contains('open'); }
@@ -999,12 +1358,17 @@ body.testmode #testbar { display: block; }
     var names = ['rivetedfan', 'hammer_time', 'botwhisperer', 'aggro_main', 'wedgeenjoyer',
       'gearhead99', 'clockblocker', 'greg_42', 'drumbreaker', 'spinner_supremacy',
       'box_bot_ben', 'vex_nation', 'killjoy_77', 'snacktivist', 'bolter_42', 'toaster_bot'];
+    var dcols = ['#ff4500', '#1e90ff', '#00ff7f', '#b22222', '#9acd32',
+                 '#ff69b4', '#8a2be2', '#daa520', '#5f9ea0', '#2e8b57'];
+    var dbadges = ['subscriber/12', '', 'vip/1', 'subscriber/3', 'moderator/1',
+                   '', 'subscriber/24', '', 'founder/1', ''];
     var i = 0, target = 8.3;
     var t = setInterval(function () {
       if (i >= 16) { clearInterval(t); return; }
       var nm = names[i % names.length];
       var v = Math.max(1, Math.min(10, Math.round(target + (Math.random() - 0.5) * 3)));
-      window.__petegenInject(nm, '', 'demo-v-' + Date.now() + '-' + i, '!vote ' + v);
+      window.__petegenInject(nm, dbadges[i % dbadges.length], 'demo-v-' + Date.now() + '-' + i,
+                             '!vote ' + v, dcols[i % dcols.length]);
       i++;
       render();
     }, 180);
@@ -1069,7 +1433,7 @@ body.testmode #testbar { display: block; }
           var m = rest.match(/:(\w+)!\S+ PRIVMSG #\S+ :(.+)/);
           if (!m) continue;
           var user = (tags['login'] || m[1] || '').toLowerCase();
-          handleChat(user, tags['badges'] || '', tags['id'] || '', m[2].trim());
+          handleChat(user, tags['badges'] || '', tags['id'] || '', m[2].trim(), tags['color'] || '');
           render();
         }
       };
@@ -1099,23 +1463,29 @@ body.testmode #testbar { display: block; }
              events: [{ ts: Math.floor(Date.now() / 1000), text: 'TEST DATA - not live', flash: true }], seen: [] };
   }
   function demoOpen() {
-    var p = { question: 'Rate the season 8 trailer', votes: {}, status: 'open',
+    var p = { question: 'Rate the season 8 trailer', votes: {}, voters: {}, status: 'open',
               opened: Date.now(), deadline: Date.now() + 90 * 1000, final_avg: null };
     applyDemo(demoBase(p));
     var target = 6.2 + Math.random() * 3.2, n = 0;
+    var dcols = ['#ff4500', '#1e90ff', '#00ff7f', '#b22222', '#9acd32', '#ff69b4', '#8a2be2', '#daa520'];
     var timer = setInterval(function () {
       n++;
       p.votes['demo' + n] = Math.max(1, Math.min(10, Math.round(target + (Math.random() - 0.5) * 2.4)));
+      p.voters['demo' + n] = { c: dcols[n % dcols.length], b: '' };
       render();
       if (n >= 18) clearInterval(timer);
     }, 90);
     demoTimers.push(timer);
   }
   function demoClosed() {
-    var votes = {}, i;
-    for (i = 0; i < 42; i++) votes['v' + i] = Math.max(1, Math.min(10, Math.round(8.4 + (Math.random() - 0.5) * 3)));
+    var votes = {}, voters = {}, i;
+    var dcols = ['#ff4500', '#1e90ff', '#00ff7f', '#b22222', '#9acd32', '#ff69b4', '#8a2be2', '#daa520'];
+    for (i = 0; i < 42; i++) {
+      votes['v' + i] = Math.max(1, Math.min(10, Math.round(8.4 + (Math.random() - 0.5) * 3)));
+      voters['v' + i] = { c: dcols[i % dcols.length], b: '' };
+    }
     var p = { question: 'Hypershock vs Sawblaze - how good was this fight?',
-              votes: votes, status: 'closed', opened: Date.now(), deadline: 0, final_avg: null };
+              votes: votes, voters: voters, status: 'closed', opened: Date.now(), deadline: 0, final_avg: null };
     var n = 0, s = 0;
     for (var k in votes) { s += votes[k]; n++; }
     p.final_avg = Math.round(s / n * 10) / 10;
