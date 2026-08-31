@@ -65,6 +65,8 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
   --s: 1;
   position: fixed; top: 0; left: 0; width: 420px;
   max-height: 664px; overflow: hidden;
+  /* flex column — see the height-chain block below the corner rules */
+  display: flex; flex-direction: column;
   background: var(--bg); border: 1px solid var(--line);
   border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   transform: translate(var(--x), var(--y)) translateY(var(--idle-y)) scale(var(--s));
@@ -113,6 +115,16 @@ body { font-family: var(--body); color: var(--t1); -webkit-font-smoothing: antia
 }
 #panel[data-status="open"]::before { opacity: 1; }
 #panel > * { position: relative; z-index: 1; }   /* content sits above the halo */
+/* ── height chain: #panel (max-height 664) is a flex column; every section
+   is rigid EXCEPT #view-live, which flexes into the leftover space and
+   shrinks its own .feed (min 56px ≈ 2 rows) so the prompt/histogram/stats
+   never clip when the card runs tall (timerbar on, 2-line prompts). The
+   old block stack overflowed the cap and #panel's overflow:hidden clipped
+   the feed's tail mid-row. ── */
+#panel > * { flex: 0 0 auto; }
+#view-live { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#view-live > * { flex: 0 0 auto; }
+#view-live > .feed { flex: 0 1 auto; min-height: 56px; overflow: hidden; }
 /* ── top-5 countdown segment (!top5 mod command): replaces the poll body
    with one card per ranking step — position number left, question + avg,
    ~of the night" subhead. Auto-advances every 2.5s, ranks from N to 1
@@ -481,6 +493,17 @@ body.no-sweep #panel[data-status="top5"] .pollq { animation: none !important; }
                        text-shadow: 0 0 26px rgba(212, 168, 83, 0.35); }
 .callout.final .co-n { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em;
                        text-transform: uppercase; color: var(--t3); align-self: center; }
+/* trend sub-chip on the final callout — the comparison beat that fires the
+   MOMENT a rating ends: "▲ 0.4 vs last". Same sage/rust/dim coding as the
+   verdict pill's chip, gated by FEAT.trend (?trend=0 / drawer). */
+.callout.final .co-trend {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+  align-self: center; padding: 3px 10px; border-radius: 100px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.callout.final .co-trend.up   { color: var(--ok); background: rgba(100, 255, 160, 0.07); border-color: rgba(100, 255, 160, 0.25); }
+.callout.final .co-trend.down { color: var(--rust); background: rgba(212, 146, 116, 0.08); border-color: rgba(212, 146, 116, 0.32); }
+.callout.final .co-trend.flat { color: var(--t2); background: rgba(255, 255, 255, 0.04); border-color: var(--line); }
 .callout.final.out { animation: coOut 0.5s ease forwards; }
 @keyframes coFin {
   from { opacity: 0; transform: translate(-50%, -44%) scale(calc(var(--s) * 0.92)); }
@@ -489,8 +512,11 @@ body.no-sweep #panel[data-status="top5"] .pollq { animation: none !important; }
 
 /* ── streak callout — fires when 3+ ratings in a row match a pattern
    (all 8+, all below 4, rising, falling). Same amber family as the final
-   pill but a wider text-first shape so it reads as a different beat. ~5.5s
-   life. Same placement + toggle as the other callouts. ── */
+   pill but a wider text-first shape so it reads as a different beat.
+   Spawned ~1.1s AFTER the final-score pill lands and docked in formation
+   with it (same x center, stacked clear of it — never layered on top),
+   fading in lockstep at ~6.5s. Same container + toggles as the other
+   callouts. ── */
 .callout.streak {
   gap: 0; padding: 12px 22px;
   border-color: rgba(212, 168, 83, 0.5); background: rgba(8, 8, 10, 0.88);
@@ -600,6 +626,24 @@ body.no-timerbar .timerbar { display: none !important; }
 .verdict .v-n { color: var(--t2); }
 .verdict .v-n::after { content: " votes"; color: var(--t3); font-size: 9px; }
 .verdict .v-n.one::after { content: " vote"; }
+/* trend chip — the "how did the crowd move?" beat at close time: compares
+   this rating's avg to the PREVIOUS closed rating. Sits right after the
+   score so the read order is "7.8 /10 · ▲ 0.4 · 23 votes". sage = crowd
+   scored higher than last time, rust = lower, dim = unchanged. Hidden on
+   the first rating of the night, drawer demos, zero-vote closes, and when
+   FEAT.trend is off (drawer row / ?trend=0). */
+.verdict .v-trend {
+  display: none;                                  /* hidden unless .up/.down/.flat */
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em;
+  padding: 2px 7px; border-radius: 100px; margin-left: -3px;
+  border: 1px solid transparent; align-self: center; line-height: 1.4;
+}
+.verdict .v-trend.up   { display: inline-block; color: var(--ok);
+                         background: rgba(100, 255, 160, 0.07); border-color: rgba(100, 255, 160, 0.22); }
+.verdict .v-trend.down { display: inline-block; color: var(--rust);
+                         background: rgba(212, 146, 116, 0.08); border-color: rgba(212, 146, 116, 0.3); }
+.verdict .v-trend.flat { display: inline-block; color: var(--t2);
+                         background: rgba(255, 255, 255, 0.04); border-color: var(--line); }
 .verdict.out {                                   /* fade-out when next poll starts */
   opacity: 0; visibility: hidden; transform: translate(var(--vx), var(--vy)) translateY(-6px) scale(0.92);
 }
@@ -1099,6 +1143,8 @@ body.testmode #testbar { display: block; }
         <button data-f="timerbar" data-v="1">on</button><button data-f="timerbar" data-v="0">off</button></div></div>
       <div class="dr-feat"><span class="dr-fl">Verdict pill (pinned)</span><div class="dr-presets">
         <button data-f="verdict" data-v="1">on</button><button data-f="verdict" data-v="0">off</button></div></div>
+      <div class="dr-feat"><span class="dr-fl">Trend chip (vs last)</span><div class="dr-presets">
+        <button data-f="trend" data-v="1">on</button><button data-f="trend" data-v="0">off</button></div></div>
     </div>
     <div class="dr-lab" style="margin-top:10px">Accent color</div>
     <div class="dr-accent" id="draccent">
@@ -1143,7 +1189,7 @@ body.testmode #testbar { display: block; }
       Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> (end-of-night countdown).
       URLs: <b>?heat=0</b> / <b>?halo=0</b> / <b>?sweep=0</b> / <b>?reveal=0</b> /
       <b>?countup=0</b> / <b>?ripple=0</b> / <b>?streak=0</b> / <b>?hate=0</b> /
-      <b>?timerbar=0</b> / <b>?verdict=0</b> / <b>?accent=hex</b>.</div>
+      <b>?timerbar=0</b> / <b>?verdict=0</b> / <b>?trend=0</b> / <b>?accent=hex</b>.</div>
   </div>
   <div id="panel">
     <div class="timerbar" id="timerbar"><i></i></div>
@@ -1185,6 +1231,7 @@ body.testmode #testbar { display: block; }
   <div class="verdict" id="verdict" data-corner="tr">
     <span class="v-label">verdict</span>
     <span class="v-avg" id="verdict-avg">0.0</span>
+    <span class="v-trend" id="verdict-trend"></span>
     <span class="v-sep">&middot;</span>
     <span class="v-n" id="verdict-n">0</span>
   </div>
@@ -1278,19 +1325,20 @@ body.testmode #testbar { display: block; }
   })();
 
   /* ── Phase 21 feature toggles ──
-     Each of the ten visual/motion features (heat bars, ambient halo,
+     Each of the eleven visual/motion features (heat bars, ambient halo,
      poll-open sweep, final-reveal cascade, count-up average, vote ripple,
-     streak callouts, hate toast, timer depletion bar, verdict pill) can
-     be flipped off from the drawer or via a URL param (?heat=0, ?halo=0,
-     ?sweep=0, ?reveal=0, ?countup=0, ?ripple=0, ?streak=0, ?hate=0,
-     ?timerbar=0, ?verdict=0). The whole bundle persists in localStorage
+     streak callouts, hate toast, timer depletion bar, verdict pill, verdict
+     trend chip) can be flipped off from the drawer or via a URL param
+     (?heat=0, ?halo=0, ?sweep=0, ?reveal=0, ?countup=0, ?ripple=0,
+     ?streak=0, ?hate=0, ?timerbar=0, ?verdict=0, ?trend=0). The whole
+     bundle persists in localStorage
      (petegen-rate-feat-v1) so the streamer's preferred "calm" config
      survives reloads and is shared between the OBS Interact window and
      the plain URL. URL params take priority and also persist. */
   var FEAT_KEY = 'petegen-rate-feat-v1';
   var FEAT_DEFAULTS = { heat: true, halo: true, sweep: true, reveal: true,
                         countup: true, ripple: true, streak: true, hate: true,
-                        timerbar: true, verdict: true };
+                        timerbar: true, verdict: true, trend: true };
   var FEAT = (function () {
     var f = {}, saved = {}, k;
     try { saved = JSON.parse(localStorage.getItem(FEAT_KEY) || '{}') || {}; } catch (e) {}
@@ -1317,6 +1365,15 @@ body.testmode #testbar { display: block; }
     document.body.classList.toggle('no-sweep', !FEAT.sweep);
     document.body.classList.toggle('no-timerbar', !FEAT.timerbar);
     document.body.classList.toggle('no-verdict', !FEAT.verdict);
+    /* trend is JS-gated at the call sites (finalCallout / showVerdict) like
+       reveal + countup, but a chip already pinned in the verdict pill must
+       also wipe the moment the toggle flips off — do it here so the drawer
+       feels instant. (Flipping trend back on re-populates it via the
+       verdict re-show below, which re-runs showVerdict on a closed poll.) */
+    if (!FEAT.trend) {
+      var trEl = document.getElementById('verdict-trend');
+      if (trEl) { trEl.className = 'v-trend'; trEl.textContent = ''; trEl.removeAttribute('title'); }
+    }
     /* verdict re-show: if the toggle was just flipped back on while a poll
        is closed, re-fire showVerdict so the .on class lands again (the CSS
        display:none override killed the visible state but the .on class may
@@ -1326,8 +1383,9 @@ body.testmode #testbar { display: block; }
     if (FEAT.verdict && typeof S !== 'undefined' && S && S.poll && S.poll.status === 'closed') {
       showVerdict(S.poll);
     }
-    /* reveal, countup, ripple, streak, hate are gated at the JS call site
-       (finalReveal, countUp, pulseBar, detectStreak, callOutHate) so we
+    /* reveal, countup, ripple, streak, hate, trend are gated at the JS call
+       site (finalReveal, countUp, pulseBar, detectStreak, callOutHate,
+       finalCallout + setVerdictTrend) so we
        don't waste a frame on the bar transition when it's been turned off.
        timerbar + verdict also bail at their JS call sites but the body
        class gives us a hard CSS off-switch for layout-affecting cases
@@ -1572,7 +1630,7 @@ body.testmode #testbar { display: block; }
      would collide. ~6.5s life so it lingers through the auto-hide fade.
      The number counts up from 0.0 → final over ~900 ms so the reveal feels
      like a result being tallied, not just a static number slapped on screen. */
-  function finalCallout(avg, votes) {
+  function finalCallout(avg, votes, trend) {
     if (!SHOWCO) return;
     var box = $('callouts');
     if (!box) return;
@@ -1585,6 +1643,17 @@ body.testmode #testbar { display: block; }
     var n = document.createElement('span'); n.className = 'co-n';
     n.textContent = votes + (votes === 1 ? ' vote' : ' votes');
     el.appendChild(t); el.appendChild(v); el.appendChild(n);
+    /* trend sub-chip — the "vs last" comparison lands on the payoff moment
+       itself so the close beat answers "did the crowd like this MORE than
+       the last one?" in the same breath as the score. Appended BEFORE
+       placeFinal() measures the pill width. */
+    if (FEAT.trend && trend) {
+      var tr = document.createElement('span');
+      tr.className = 'co-trend ' + trend.dir;
+      tr.title = 'previous rating: ' + trend.prev.toFixed(1) + '/10';
+      tr.textContent = trendText(trend) + ' vs last';
+      el.appendChild(tr);
+    }
     box.appendChild(el);
     placeFinal(el);
     if (FEAT.countup) countUp(v, avg, 900);
@@ -1685,6 +1754,29 @@ body.testmode #testbar { display: block; }
     else i.style.width = '0%';
   }
 
+  /* ---------- trend vs last (close-time comparison) ----------
+     The beat that was missing when a rating ends: how did the crowd move
+     compared to the PREVIOUS closed rating? Computed once in closePoll()
+     and stored on the poll object as p.trend = { d, dir, prev } so reloads
+     restore it together with the verdict pill. Rendered in two places:
+     the final callout ("\u25b2 0.4 vs last") and the verdict pill chip (same
+     arrow + delta, tooltip "vs last: 7.2 \u2192 7.6"). null when there's no
+     previous rating (first of the night), on drawer demos, and on
+     zero-vote closes. */
+  function trendText(tr) {
+    var arrow = tr.dir === 'up' ? '\u25b2 ' : (tr.dir === 'down' ? '\u25bc ' : '\u00b1 ');
+    return arrow + tr.d.toFixed(1);
+  }
+  function setVerdictTrend(tr, avg) {
+    var el = $('verdict-trend');
+    if (!el) return;
+    var t = (FEAT.trend && tr) ? tr : null;
+    el.className = 'v-trend' + (t ? ' ' + t.dir : '');
+    el.textContent = t ? trendText(t) : '';
+    if (t) el.title = 'vs last: ' + t.prev.toFixed(1) + ' \u2192 ' + avg.toFixed(1);
+    else el.removeAttribute('title');
+  }
+
   /* ---------- verdict pill ----------
      Small persistent chip in the opposite corner from the panel that shows
      the last closed rating's avg + votes. Fires the moment closePoll()
@@ -1707,6 +1799,7 @@ body.testmode #testbar { display: block; }
       nEl.classList.toggle('one', n === 1);
     }
     el.title = p.question || '';
+    setVerdictTrend(p.trend, avg);                // "\u25b2 0.4" chip vs the previous rating
     el.classList.remove('out');
     /* force a reflow so the .on transition fires even on back-to-back
        close → open → close cycles (where the class was already .on) */
@@ -2018,6 +2111,12 @@ body.testmode #testbar { display: block; }
     p.deadline = 0;
     p.final_avg = rateAvg(p);
     p.autohide_at = AUTOHIDE_MS > 0 ? Date.now() + AUTOHIDE_MS : 0;
+    /* capture the previous closed rating BEFORE the unshift below pushes
+       this one to the front — that's the trend baseline. Zero-vote previous
+       ratings don't count (an empty close isn't a "0.0 score", it's nothing,
+       and trending off it would scream "\u25bc 7.2" for no reason). */
+    var prev = (!p.demo && (S.results || []).length) ? S.results[0] : null;
+    var prevAvg = (prev && prev.votes > 0 && isFinite(prev.avg)) ? prev.avg : null;
     if (!p.demo) {                            // drawer demos never pollute history
       S.results.unshift({
         question: p.question, avg: p.final_avg, votes: len(p.votes),
@@ -2027,9 +2126,18 @@ body.testmode #testbar { display: block; }
       });
       if (S.results.length > 100) S.results.length = 100;
     }
+    /* trend vs last — fires once the rating ends (final callout sub-chip +
+    verdict pill chip). Stored on the poll object so the reload-restore path
+    brings it back pinned to the verdict. */
+    if (prevAvg != null && len(p.votes) > 0) {
+      var dRaw = Math.round((p.final_avg - prevAvg) * 10) / 10;   // 0.1 precision
+      p.trend = { d: Math.abs(dRaw), dir: dRaw > 0 ? 'up' : (dRaw < 0 ? 'down' : 'flat'), prev: prevAvg };
+    } else {
+      p.trend = null;                         // first of the night / demo / no votes
+    }
     addEvent('Final score ' + p.final_avg.toFixed(1) + '/10 (' + len(p.votes) + ' votes)' +
              (p.autohide_at ? ' - panel auto-hides in ' + Math.round(AUTOHIDE_MS / 1000) + 's' : ''), true);
-    finalCallout(p.final_avg, len(p.votes));
+    finalCallout(p.final_avg, len(p.votes), p.trend);
     finalReveal(p);                              // histogram cascade roll-up
     detectStreak();                             // streak callout if 3 in a row match a pattern
     showVerdict(p);                              // pinned verdict pill (persists through auto-hide)
@@ -2074,7 +2182,9 @@ body.testmode #testbar { display: block; }
      match a pattern (all 8+, all below 4, monotonically rising, monotonically
      falling) fire a single streak callout so the audience feels the run.
      Skips demos (already excluded from history). Reuses the callout box so
-     ?callouts=0 and the drawer toggle also gate it. */
+     ?callouts=0 and the drawer toggle also gate it. The beat is DEFERRED
+     ~1.15s and docked in formation with the live final pill (placeStreak)
+     so it never stacks on top of the score reveal. */
   function detectStreak() {
     if (!FEAT.streak) return;                          // drawer / ?streak=0 kills it
     if (!SHOWCO) return;
@@ -2091,19 +2201,66 @@ body.testmode #testbar { display: block; }
       streakCallout('falling trend', c.toFixed(1) + ' → ' + b.toFixed(1) + ' → ' + a.toFixed(1));
     }
   }
+  var STREAK_DELAY = 1150, STREAK_LIFE = 5350;
   function streakCallout(label, value) {
     var box = $('callouts');
     if (!box) return;
-    var el = document.createElement('div');
-    el.className = 'callout streak';
-    var l = document.createElement('span'); l.className = 'co-streak-l';
-    l.textContent = label;
-    var v = document.createElement('span'); v.className = 'co-streak-v';
-    v.textContent = value;
-    el.appendChild(l); el.appendChild(v);
-    box.appendChild(el);
-    placeFinal(el);
-    setTimeout(function () { coOut(el); }, 5500);
+    /* deferred beat: the close moment belongs to the final-score pill. Both
+       used to spawn in the same breath and placeFinal() parked them at the
+       SAME center point — the streak pill landed exactly on top of the
+       score reveal and buried it. Now the streak waits for the count-up to
+       land, then docks in formation with the live final pill (placeStreak):
+       same x center, stacked clear of it, never layered over it. 1150 +
+       5350 = 6500 ms so it fades in lockstep with the final pill. A
+       !rateopen that beats the timer cancels the now-stale beat. */
+    setTimeout(function () {
+      if (S.poll && S.poll.status === 'open') return;   // a new rating already started
+      var el = document.createElement('div');
+      el.className = 'callout streak';
+      var l = document.createElement('span'); l.className = 'co-streak-l';
+      l.textContent = label;
+      var v = document.createElement('span'); v.className = 'co-streak-v';
+      v.textContent = value;
+      el.appendChild(l); el.appendChild(v);
+      box.appendChild(el);
+      placeStreak(el);
+      setTimeout(function () { coOut(el); }, STREAK_LIFE);
+    }, STREAK_DELAY);
+  }
+  /* streak placement ladder — fly in formation with the live final-score
+     callout: same x center, 16px below it (the score pill is the hero, the
+     streak is the follow-up line). If the space below is blocked — the
+     typical case is the final nudged 40px above a bottom-anchored panel,
+     and a ~46px pill never fits in a 40px gap — flip to 16px ABOVE the
+     final instead; if that clips the viewport, bail out to placeCallout's
+     random clear spot. Solo spawn (no live final — defensive only) keeps
+     the old placeFinal center spot. */
+  function placeStreak(el) {
+    var box = $('callouts');
+    var fins = box.querySelectorAll('.callout.final:not(.out)');
+    var fin = fins.length ? fins[fins.length - 1] : null;
+    if (!fin) { placeFinal(el); return; }
+    var fr = fin.getBoundingClientRect(), pr = $('panel').getBoundingClientRect();
+    var w = el.offsetWidth || 260, h = el.offsetHeight || 46;
+    var cx = fr.left + fr.width / 2, gap = 16;
+    /* candidate = streak rect top (height h, centered on the final's x):
+       docked 16px under it, or flipped 16px above it. A slot is clean when
+       it's fully on screen AND clears the panel rect by 14px. */
+    function cleanSlot(t) {
+      if (t < 16 || t + h > window.innerHeight - 16) return false;
+      var b = t + h, l = cx - w / 2, r = cx + w / 2;
+      /* TRUE when the slot clears the panel entirely (any one axis fully
+         separated by 14px+): above it, below it, or past its left/right. */
+      return (b < pr.top - 14 || t > pr.bottom + 14 || r < pr.left - 14 || l > pr.right + 14);
+    }
+    var belowT = fr.bottom + gap;                        // preferred: the follow-up line under the score
+    var aboveT = fr.top - gap - h;                       // fallback: kicker line above the score
+    var cy;
+    if (cleanSlot(belowT))      cy = belowT + h / 2;
+    else if (cleanSlot(aboveT)) cy = aboveT + h / 2;
+    else { placeCallout(el); return; }                   // no clean formation slot → random clear spot
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
   }
 
   function cmdRateClear() {
