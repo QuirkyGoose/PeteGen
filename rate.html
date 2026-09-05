@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark" />
-<title>PeteGen — Crowd Rating Overlay (Original design · island layout · pacing · rich panel · b-left default)</title>
+<title>PeteGen — Crowd Rating Overlay (Original design · island default · custom pacing · votes -10..10 · rich panel)</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -608,6 +608,15 @@ body.clean .sidebtn, body.history .sidebtn, body.voters .sidebtn, body.archive .
 .dr-secs { display: flex; align-items: center; gap: 8px; }
 .dr-secs .dr-in { width: 86px; font-family: var(--mono); font-size: 12px; }
 .dr-secs span { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--t3); }
+/* v10: custom island interval — "Opens every [n] [sec|min]" */
+#drgaprow[hidden] { display: none; } /* .dr-feat's flex would override [hidden] */
+.dr-gap { display: flex; align-items: center; gap: 5px; }
+.dr-gap input { width: 58px; font-family: var(--mono); font-size: 10px; color: var(--t1); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-full); padding: 5px 9px; outline: none; text-align: right; transition: border-color .2s ease; }
+.dr-gap input:focus { border-color: var(--amber-line); }
+.dr-gap input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.dr-gap select { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--t2); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-full); padding: 5px 7px; cursor: pointer; outline: none; }
+.dr-gap select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.dr-gap select option { background: #0a0a10; color: var(--t1); }
 .dr-go { font-family: var(--body); font-size: 13px; font-weight: 600; color: #08080a; background: var(--accent); border: none; border-radius: var(--r-md); padding: 10px 12px; cursor: pointer; margin-top: 2px; transition: filter .2s, box-shadow .2s; }
 .dr-go:hover { filter: brightness(1.08); box-shadow: 0 6px 20px rgba(212,168,83,0.24); }
 .dr-go:disabled { opacity: .45; cursor: default; }
@@ -623,6 +632,11 @@ body.clean .sidebtn, body.history .sidebtn, body.voters .sidebtn, body.archive .
 .dr-feat { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dr-fl { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--t2); flex: 1 1 auto; }
 .dr-feat .dr-presets { gap: 4px; flex: 0 0 auto; }
+/* v10: island pacing rows stack label-over-chips so wide preset groups wrap
+   inside the drawer instead of clipping (frequency has 6 chips now) */
+.dr-feat.dr-isl-row { flex-wrap: wrap; }
+.dr-feat.dr-isl-row .dr-fl { flex: 1 1 100%; }
+.dr-feat.dr-isl-row .dr-presets { flex: 0 1 auto; }
 .dr-feat .dr-presets button { font-size: 8.5px; padding: 3px 8px; }
 .dr-accent { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .dr-sw { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); cursor: pointer; padding: 0; position: relative; transition: border-color .2s, box-shadow .2s, transform .15s; }
@@ -901,7 +915,8 @@ body.no-island #diland { display: none !important; }
     <div class="dr-feat"><span class="dr-fl">Trend chip (vs last)</span><div class="dr-presets"><button data-f="trend" data-v="1">on</button><button data-f="trend" data-v="0">off</button></div></div>
     <div class="dr-feat dr-isl-row"><span class="dr-fl">Island position</span><div class="dr-presets"><button data-ip="top">top</button><button data-ip="bl" class="on">b-left</button><button data-ip="br">b-right</button></div></div>
     <div class="dr-feat dr-isl-row"><span class="dr-fl">Island auto-showcase</span><div class="dr-presets"><button data-f="autoshow" data-v="1">on</button><button data-f="autoshow" data-v="0">off</button></div></div>
-    <div class="dr-feat dr-isl-row"><span class="dr-fl">Island frequency</span><div class="dr-presets"><button data-ir="chatty">chatty</button><button data-ir="balanced" class="on">balanced</button><button data-ir="chill">chill</button><button data-ir="minimal">minimal</button></div></div>
+    <div class="dr-feat dr-isl-row"><span class="dr-fl">Island frequency</span><div class="dr-presets"><button data-ir="chatty">chatty</button><button data-ir="balanced" class="on">balanced</button><button data-ir="chill">chill</button><button data-ir="minimal">minimal</button><button data-ir="custom">custom</button><button data-ir="off">off</button></div></div>
+    <div class="dr-feat dr-isl-row" id="drgaprow" hidden><span class="dr-fl">Opens every</span><div class="dr-gap"><input type="number" id="drgapv" min="1" max="3600" step="any" value="5" inputmode="numeric" aria-label="Custom island interval value"><select id="drgapu" aria-label="Custom island interval unit"><option value="1">sec</option><option value="60" selected>min</option></select></div></div>
     <div class="dr-feat dr-isl-row"><span class="dr-fl">Showcase length</span><div class="dr-presets"><button data-il="brief">brief</button><button data-il="standard" class="on">standard</button><button data-il="extended">extended</button></div></div>
   </div>
   <div class="dr-lab" style="margin-top:10px">Accent color</div>
@@ -933,7 +948,7 @@ body.no-island #diland { display: none !important; }
   </div>
   <div class="dr-lab" style="margin-top:10px">Panel layout</div>
   <div class="dr-presets" id="drlayout">
-    <button data-m="full">Full</button><button data-m="slim">Slim</button><button data-m="compact" class="on dr-only-classic">Bar</button><button data-m="island">Island</button>
+    <button data-m="full">Full</button><button data-m="slim">Slim</button><button data-m="compact" class="dr-only-classic">Bar</button><button data-m="island" class="on">Island</button>
   </div>
   <div class="dr-lab" style="margin-top:10px">Recent ratings</div>
   <div class="dr-hist" id="drhist"></div>
@@ -958,7 +973,7 @@ body.no-island #diland { display: none !important; }
     <a class="dr-link" id="lnk-voters" target="_blank" rel="noopener">Voters</a>
     <a class="dr-link" id="lnk-archive" target="_blank" rel="noopener">Archive</a>
   </div>
-  <div class="dr-hint">Chat votes with <b>!vote 1-10</b> (decimals OK, e.g. <b>7.5</b>). <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only). Confetti fires at 7.5+.<br>The island shows only in the <b>Island</b> layout — Full/Slim/Bar keep the overlay clean. Pacing: <b>Island frequency</b> (chatty / balanced / chill / minimal — how often it opens) + <b>Showcase length</b> (brief / standard / extended — how long it stays). URL: <b>?mode=island</b> · <b>?ipos=top|br</b> (default b-left) · <b>?islrate=chatty|chill|minimal</b> · <b>?isllen=brief|extended</b> · <b>?itop=120</b> top offset · <b>?scale=1.2</b> resize · <b>?autoshow=0</b> manual island · <b>?sound=1</b> sounds.</div>
+  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>). <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only). Confetti fires at 7.5+.<br>The <b>Island</b> layout is the default — Full/Slim/Bar keep the overlay clean. Pacing: <b>Island frequency</b> (chatty / balanced / chill / minimal / <b>custom</b> — the island opens every N sec·min while a rating is live / <b>off</b> — never opens by itself, hover · click · <b>I</b> only) + <b>Showcase length</b> (brief / standard / extended — how long it stays). URL: <b>?mode=island</b> · <b>?ipos=top|br</b> (default b-left) · <b>?islrate=chatty|custom|off</b> · <b>?islgap=90</b> custom seconds · <b>?isllen=brief|extended</b> · <b>?itop=120</b> top offset · <b>?scale=1.2</b> resize · <b>?autoshow=0</b> manual island · <b>?sound=1</b> sounds.</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -1128,14 +1143,16 @@ function cmdRateOpen(args) {
   if (mt) { secs = Math.max(0, Math.min(3600, parseInt(mt[1], 10) || 0)); s = s.slice(mt[0].length); }
   var label = s.slice(0, 80) || 'Rate this';
   S.poll = { question: label, votes: {}, voters: {}, status: 'open', opened: Date.now(), deadline: secs > 0 ? Date.now() + secs * 1000 : 0, duration: secs > 0 ? secs * 1000 : 0, final_avg: null };
-  hideVerdict(); addEvent('RATE IT: ' + label + ' - !vote 1-10' + (secs ? ' (' + secs + 's)' : ''), true);
+  hideVerdict(); addEvent('RATE IT: ' + label + ' - !vote -10 to 10' + (secs ? ' (' + secs + 's)' : ''), true);
 }
 function cmdVote(user, args, color, badges) {
   var p = S.poll; if (!p || p.status !== 'open') return;
   var v = parseFloat(String(args).replace(',', '.')); if (!isFinite(v)) return;
   v = Math.round(v * 10) / 10;
+  /* v11: full range -10..10 — decimals below 1 (0.5) and negatives (-3) are
+     real votes; exactly 0 (after 0.1 rounding) stays the hate toast. */
   if (v === 0) { callOutHate(user, color); return; }
-  if (!(v >= 1 && v <= 10)) return;
+  if (!(v >= -10 && v <= 10)) return;
   var isRevote = p.votes.hasOwnProperty(user); p.votes[user] = v;
   if (!p.voters) p.voters = {}; p.voters[user] = { c: color || '', b: badges || '' };
   addVote(user, v, isRevote, color, badges); callOut(user, v, isRevote, color); pulseBar(v);
@@ -1242,7 +1259,7 @@ function handleChat(user, badges, msgid, message, color) {
   if (!message || message.charAt(0) !== '!') return;
   var parts = message.split(/\s+/, 2); var cmd = parts[0].toLowerCase();
   var args = message.length > parts[0].length ? message.slice(parts[0].length).trim() : '';
-  if (cmd === '!vote' || cmd === '!rate') { if (!_canVote(user)) return; if (_rateLock && S.poll && S.poll.status==='open' && !S.poll.votes.hasOwnProperty(user)) { addEvent(user+' blocked (locked)',false); saveState(); return; } if (/^\d+([.,]\d+)?$/.test(args)) cmdVote(user, args, color, badges); }
+  if (cmd === '!vote' || cmd === '!rate') { if (!_canVote(user)) return; if (_rateLock && S.poll && S.poll.status==='open' && !S.poll.votes.hasOwnProperty(user)) { addEvent(user+' blocked (locked)',false); saveState(); return; } if (/^-?\d+([.,]\d+)?$/.test(args)) cmdVote(user, args, color, badges); /* v11: leading minus allowed */ }
   else if (isMod(user, badges)) {
     if (cmd === '!rateopen' || cmd === '!poll') cmdRateOpen(args);
     else if (cmd === '!rateend' || cmd === '!pollend') closePoll();
@@ -1438,15 +1455,15 @@ function rebuildClassic(p) {
   chip.className = 'chip ' + p.status;
   var cmp = $('cpanel').classList.contains('compact');
   if (p.status === 'top5') { chip.textContent = cmp ? 'TOP 5' : 'TOP 5 \u00b7 OF THE NIGHT'; $('cpollbody').innerHTML = '<div class="pollq">Top 5 of the night</div><div class="top5-card" id="ctop5card"></div>'; $('cdistbox').innerHTML = ''; return; }
-  if (p.paused) { chip.textContent = cmp ? 'PAUSED' : 'PAUSED \u00b7 VOTE 1-10'; chip.className = 'chip open'; }
-  else chip.textContent = p.status === 'open' ? (cmp ? 'OPEN' : 'OPEN \u00b7 VOTE 1-10') : (cmp ? 'FINAL' : 'CLOSED \u00b7 FINAL');
+  if (p.paused) { chip.textContent = cmp ? 'PAUSED' : 'PAUSED \u00b7 VOTE -10..10'; chip.className = 'chip open'; }
+  else chip.textContent = p.status === 'open' ? (cmp ? 'OPEN' : 'OPEN \u00b7 VOTE -10..10') : (cmp ? 'FINAL' : 'CLOSED \u00b7 FINAL');
   var body = '<div class="pollq">' + esc(p.question) + '</div><div class="crowd"><div class="big" id="cavg">0.0</div><div class="of">/ 10 crowd score</div><div class="cnt" id="ccnt">0 votes</div></div><div class="stars" id="cstars">';
   for (var i = 1; i <= 10; i++) body += '<i></i>'; body += '</div>';
   var showTimer = (p.status === 'open' && (p.deadline || p.paused)) || (p.status === 'closed' && p.autohide_at);
   if (showTimer) body += '<div class="timer" id="ctimer">00:00</div>';
   $('cpollbody').innerHTML = body;
   var html = '<div class="dist-cap" id="cdcap">Votes \u00b7 0 cast</div><div class="dist">';
-  for (i = 1; i <= 10; i++) html += '<div class="dc" data-n="' + i + '"><div class="dc-mark"></div><div class="dl">' + i + '</div><div class="db"><div class="dn"></div><i style="height:0%"></i></div></div>';
+  for (i = 1; i <= 10; i++) html += '<div class="dc" data-n="' + i + '"><div class="dc-mark"></div><div class="dl">' + (i === 1 ? '≤1' : i) + '</div><div class="db"><div class="dn"></div><i style="height:0%"></i></div></div>'; /* v11: first band = 1-and-below */
   html += '</div><div class="dist-stats" id="cdstats"></div>'; $('cdistbox').innerHTML = html; distBuilt = true;
 }
 function updateClassicValues(p) {
@@ -1500,7 +1517,10 @@ function updateClassicDist(p) {
     // show percentage inside count pill on hover via data attr (CSS can use attr, but tooltip via title is enough)
   }
   var cap = $('cdcap'); if (cap) { var t = 'Votes \u00b7 ' + len(p.votes) + ' cast'; if (cap.textContent !== t) cap.textContent = t; }
-  var arr = []; for (i = 1; i <= 10; i++) for (var j = 0; j < counts[i]; j++) arr.push(i);
+  /* v11: avg + median from REAL vote values (votes may be < 1 or negative —
+     the 10 heat buckets are a display banding; mode stays the band mode,
+     aligned with the histogram above) */
+  var arr = []; for (var u2 in p.votes) if (p.votes.hasOwnProperty(u2)) arr.push(p.votes[u2]);
   var avg = arr.length ? arr.reduce(function(a,b){return a+b},0) / arr.length : 0;
   var median = 0; if (arr.length) { arr.sort(function(a,b){return a-b}); var mid = Math.floor(arr.length / 2); median = arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2; }
   var modeBand = bandClass(mode), avgBand = bandClass(avg), medBand = bandClass(median);
@@ -1721,7 +1741,11 @@ function tickRender() {
   render();
 }
 
-/* ═══════ DYNAMIC ISLAND v3.3 — the self-driving island ═══════
+/* ═══════ DYNAMIC ISLAND v4 — the self-driving island ═══════
+   v10: the Island layout is now the DEFAULT panel · pacing gains a custom
+   every-N interval ('islgap' · ?islgap=90) and 'off' (never self-opens).
+   v11: votes span -10..10 (decimals below 1 + negatives; 0 stays the hate
+   toast) · custom-interval default is now 5 minutes.
    STREAMS FIRST. Nobody can hover an OBS overlay, so the island no
    longer leans on hover: it drives itself.
      · poll opens      → auto-showcases the full panel (the call to vote)
@@ -1734,7 +1758,7 @@ function tickRender() {
    I-key / Esc remain as bonus manual controls.
    Design: the app's ORIGINAL design language (dark-glass gradient pill,
    amber/sage/rust status colors, Instrument Serif big score).  Anchor:
-   top-center by default, or bottom-left / bottom-right (?ipos=bl|br,
+   bottom-left by default, or bottom-right / top-center (?ipos=br|top,
    drawer "Island position" row — panel grows upward from a corner).
    ?itop=N top offset (top anchor only), ?scale support. Sounds respect
    SOUND. Auto behavior honors FEAT.autoshow (drawer toggle · ?autoshow=0). */
@@ -1818,30 +1842,83 @@ document.addEventListener('click', function (e) {
    balanced  live ~26s (new votes) / 45s (quiet) · ambient 15-24s · top5 11s   (v5-v7 default)
    chill     live ~42s / 75s · ambient 26-40s · top5 16s
    minimal   only lifecycle moments (open · final · result · first top5) — no live/ambient/cycles
+   custom    every N seconds while a rating is live ('islgap' · ?islgap=90 · drawer input) — no ambient
+   off       never opens by itself — no showcases, no lifecycle pops; hover / click / I only
    length scales every showcase duration (brief .62× · standard 1× · extended 1.45×). */
-var ISL_RATE = { chatty: { live: 14000, quiet: 26000, amb: [9000, 15000], t5: 7000 }, balanced: { live: 26000, quiet: 45000, amb: [15000, 24000], t5: 11000 }, chill: { live: 42000, quiet: 75000, amb: [26000, 40000], t5: 16000 }, minimal: { live: Infinity, quiet: Infinity, amb: null, t5: Infinity } };
+var ISL_RATE = { chatty: { live: 14000, quiet: 26000, amb: [9000, 15000], t5: 7000 }, balanced: { live: 26000, quiet: 45000, amb: [15000, 24000], t5: 11000 }, chill: { live: 42000, quiet: 75000, amb: [26000, 40000], t5: 16000 }, minimal: { live: Infinity, quiet: Infinity, amb: null, t5: Infinity }, custom: { live: 0, quiet: 0, amb: null, t5: 0 }, off: { live: Infinity, quiet: Infinity, amb: null, t5: Infinity } };
 var ISL_LEN = { brief: .62, standard: 1, extended: 1.45 };
+/* v10 custom: the island opens every N seconds (5s-60min) while a rating is
+   live — persisted in localStorage ('islgap', seconds), seeded at boot from
+   ?islgap=90 (URL is boot-time only, like ?islrate — after that the drawer
+   input owns the value). No ambient idle notes in custom — the every-N
+   promise stays honest. */
+function islGapSecs() {
+  var s = NaN;
+  try { s = parseInt(localStorage.getItem('islgap'), 10); } catch (e) { s = NaN; }
+  if (!isFinite(s) || s < 5 || s > 3600) s = 300; /* v11: default 5 minutes */
+  return Math.round(s);
+}
+function islRateOff() { return ISL.rate === 'off'; }
 function islSavedRate() { try { var v = localStorage.getItem('islrate'); return ISL_RATE[v] ? v : 'balanced'; } catch (e) { return 'balanced'; } }
 function islSavedLen() { try { var v = localStorage.getItem('isllen'); return ISL_LEN[v] ? v : 'standard'; } catch (e) { return 'standard'; } }
 function islCfgFor(rate, lenv) {
   var k = ISL_LEN[lenv] || 1;
-  return { rate: ISL_RATE[rate] || ISL_RATE.balanced, k: k,
+  var gms = (rate === 'custom') ? islGapSecs() * 1000 : 0;
+  var rr = (rate === 'custom') ? { live: gms, quiet: gms, amb: null, t5: gms } : (ISL_RATE[rate] || ISL_RATE.balanced);
+  return { rate: rr, k: k,
     open: Math.round(7200 * k), live: Math.round(5600 * k), result: Math.round(8200 * k), t5: Math.round(8200 * k),
     finalHold: Math.round(3600 * Math.min(k, 1.2)), amb: Math.round(3600 * k),
     peek: Math.round(2600 * Math.min(Math.max(k, .85), 1.3)), warn: Math.round(2200 * Math.min(Math.max(k, .85), 1.3)) };
 }
+function islGapSync() {
+  var s = islGapSecs(), v = $('drgapv'), u = $('drgapu');
+  if (!v || !u) return;
+  if (s < 60) { u.value = '1'; v.value = String(s); }
+  else { u.value = '60'; v.value = String(Math.round(s / 60 * 100) / 100); }
+  u.setAttribute('data-u', u.value);
+}
 function islApplyPace(rate, lenv, persist) {
   rate = ISL_RATE[rate] ? rate : 'balanced'; lenv = ISL_LEN[lenv] ? lenv : 'standard';
+  var wasOff = (ISL.rate === 'off');
   ISL.rate = rate; ISL.len = lenv; ISL.cfg = islCfgFor(rate, lenv);
   if (persist) { try { localStorage.setItem('islrate', rate); localStorage.setItem('isllen', lenv); } catch (e) {} }
   var btns = document.querySelectorAll('[data-ir], [data-il]');
   for (var i = 0; i < btns.length; i++) { var b = btns[i]; b.classList.toggle('on', b.getAttribute('data-ir') === rate || b.getAttribute('data-il') === lenv); }
+  /* v10: 'custom' reveals the interval input (display synced to the stored
+     gap); switching to 'off' stops any showcase mid-flight and collapses */
+  var grow = $('drgaprow');
+  if (grow) { grow.hidden = (rate !== 'custom'); if (!grow.hidden) islGapSync(); }
+  if (rate === 'off' && !wasOff && ISL.built) {
+    islAutoCancel();
+    if (!ISL.pinned && !ISL.hover && ISL.state !== 'collapsed') islSetState('collapsed');
+  }
 }
+/* v10: ?islgap=90 seeds the interval once at boot (clamped 5-3600) — after
+   that localStorage owns it, so the drawer input always takes effect. */
+(function () { var g = parseInt(q.get('islgap'), 10); if (isFinite(g)) { g = Math.max(5, Math.min(3600, Math.round(g))); try { localStorage.setItem('islgap', String(g)); } catch (e) {} } })();
 islApplyPace((ISL_RATE[q.get('islrate')] ? q.get('islrate') : islSavedRate()), (ISL_LEN[q.get('isllen')] ? q.get('isllen') : islSavedLen()), true);
 document.addEventListener('click', function (e) {
   var b = e.target && e.target.closest ? e.target.closest('[data-ir],[data-il]') : null; if (!b) return;
   islApplyPace(b.getAttribute('data-ir') || ISL.rate, b.getAttribute('data-il') || ISL.len, true);
   if (ISL.cfg.rate.amb) ISL.auto.nextAmbient = Math.min(ISL.auto.nextAmbient, Date.now() + 1500); /* ambient resumes soon after switching to a chattier rate */
+});
+/* v10: the custom-interval input — number x unit (sec/min) -> 'islgap'
+   seconds. Changing the unit converts the displayed number; the pacing
+   config is rebuilt, and the display stays in the unit the user works in
+   (islApplyPace's islGapSync re-picks a "best" unit for fresh reveals). */
+document.addEventListener('change', function (e) {
+  var t = e.target; if (!t || (t.id !== 'drgapv' && t.id !== 'drgapu')) return;
+  var v = $('drgapv'), u = $('drgapu'); if (!v || !u) return;
+  var prev = parseInt(u.getAttribute('data-u'), 10) || parseInt(u.value, 10) || 1; /* unit the number was typed in */
+  var mult = parseInt(u.value, 10) || 1; /* unit to display in now */
+  var n = parseFloat(v.value); if (!isFinite(n) || n <= 0) n = 300 / prev; /* v11: default 5 minutes */
+  var s = Math.max(5, Math.min(3600, Math.round(n * prev)));
+  try { localStorage.setItem('islgap', String(s)); } catch (er) {}
+  if (ISL.rate === 'custom') {
+    islApplyPace('custom', ISL.len, true); /* rebuild cfg (its islGapSync may re-pick the unit) */
+    v.value = (mult === 60) ? String(Math.round(s / 60 * 100) / 100) : String(s);
+    u.value = String(mult); u.setAttribute('data-u', String(mult));
+  }
 });
 
 /* ── build once ── */
@@ -1900,7 +1977,7 @@ function islandInit() {
             '<button class="di-ab danger" type="button" data-di-act="end" id="diAEnd">end</button>' +
             '<button class="di-ab" type="button" data-di-act="copy" id="diAC">copy</button>' +
           '</div>' +
-          '<span class="di-hint2" id="diHint2"><b>!vote 1-10</b> in chat · decimals ok</span>' +
+          '<span class="di-hint2" id="diHint2"><b>!vote -10 to 10</b> in chat · decimals ok</span>' +
         '</div>' +
       '</div>' +
       '<div class="di-face" data-face="final">' +
@@ -1914,7 +1991,7 @@ function islandInit() {
   var box = $('diBox'), faces = {}, fl = host.querySelectorAll('.di-face');
   for (var fi = 0; fi < fl.length; fi++) faces[fl[fi].getAttribute('data-face')] = fl[fi];
   var hb = '', hn = '';
-  for (var hi = 1; hi <= 10; hi++) { hb += '<div class="di-hb"><i></i></div>'; hn += '<b>' + hi + '</b>'; }
+  for (var hi = 1; hi <= 10; hi++) { hb += '<div class="di-hb"><i></i></div>'; hn += '<b>' + (hi === 1 ? '≤1' : hi) + '</b>'; } /* v11: first band = 1-and-below */
   $('diHbars').innerHTML = hb; $('diHnums').innerHTML = hn;
   ISL.refs = {
     host: host, box: box, faces: faces, panelFace: faces.panel,
@@ -1932,9 +2009,9 @@ function islandInit() {
   var bd = document.body;
   if (!bd.classList.contains('clean') && !bd.classList.contains('history') && !bd.classList.contains('voters') && !bd.classList.contains('archive')) {
     var coach = document.createElement('button'); coach.type = 'button'; coach.className = 'di-coach'; coach.id = 'diCoach';
-    coach.innerHTML = (FEAT.autoshow !== false)
-      ? 'the island runs itself — <b>!vote 1-10</b> in chat'
-      : 'hover for stats · click to pin · <b>!vote 1-10</b> in chat';
+    coach.innerHTML = (FEAT.autoshow !== false && ISL.rate !== 'off')
+      ? 'the island runs itself — <b>!vote -10 to 10</b> in chat'
+      : 'hover for stats · click to pin · <b>!vote -10 to 10</b> in chat';
     coach.addEventListener('click', function () { ISL.pinned = true; islAutoCancel(); islSetState('panel'); });
     host.appendChild(coach);
     setTimeout(islCoachGone, 12000);
@@ -1996,7 +2073,7 @@ function islandInit() {
   });
   ISL.built = true;
   /* debug handle (mirrors window.__petegenInject) */
-  window.__islDbg = function () { return { state: ISL.state, pinned: ISL.pinned, hover: ISL.hover, auto: ISL.auto.phase, built: ISL.built, everRendered: ISL.everRendered, openPeekedFor: ISL.openPeekedFor, finalDoneFor: ISL.finalDoneFor, pollId: (S.poll ? ((S.poll.opened || 0) + '|' + (S.poll.question || '')) : 'null'), pollStatus: (S.poll ? S.poll.status : null), autoshow: FEAT.autoshow, rate: ISL.rate, len: ISL.len, cfg: ISL.cfg ? { open: ISL.cfg.open, live: ISL.cfg.live, result: ISL.cfg.result, finalHold: ISL.cfg.finalHold, liveGap: ISL.cfg.rate.live, quietGap: ISL.cfg.rate.quiet, amb: ISL.cfg.rate.amb, t5Gap: ISL.cfg.rate.t5 } : null }; };
+  window.__islDbg = function () { return { state: ISL.state, pinned: ISL.pinned, hover: ISL.hover, auto: ISL.auto.phase, built: ISL.built, everRendered: ISL.everRendered, openPeekedFor: ISL.openPeekedFor, finalDoneFor: ISL.finalDoneFor, pollId: (S.poll ? ((S.poll.opened || 0) + '|' + (S.poll.question || '')) : 'null'), pollStatus: (S.poll ? S.poll.status : null), autoshow: FEAT.autoshow, rate: ISL.rate, len: ISL.len, gap: (ISL.rate === 'custom' ? islGapSecs() : null), cfg: ISL.cfg ? { open: ISL.cfg.open, live: ISL.cfg.live, result: ISL.cfg.result, finalHold: ISL.cfg.finalHold, liveGap: ISL.cfg.rate.live, quietGap: ISL.cfg.rate.quiet, amb: ISL.cfg.rate.amb, t5Gap: ISL.cfg.rate.t5 } : null }; };
 }
 
 /* ── state machine ── */
@@ -2041,6 +2118,7 @@ function islBarReset(el) { el.style.transition = 'none'; el.style.width = '0%'; 
 function islAutoShow(kind, ms, force) {
   var r = ISL.refs; if (!r || !r.box) return;
   if (ISL.pinned || ISL.hover) return;                     /* manual control always wins */
+  if (ISL.rate === 'off' && !force) return;                /* v10: off — the island never self-opens */
   var st = ISL.state;
   if (!force && st !== 'collapsed' && st !== 'peek' && st !== 'final') return;
   if (ISL.auto.timer) clearTimeout(ISL.auto.timer);
@@ -2048,10 +2126,10 @@ function islAutoShow(kind, ms, force) {
   ISL.auto.phase = kind; ISL.auto.remaining = ms; ISL.auto.t0 = performance.now(); ISL.auto.paused = false;
   r.host.classList.add('auto');
   r.cta.innerHTML = ({
-    open: 'chat votes only — <b>!vote 1-10</b> · decimals ok',
-    live: 'live standings — <b>!vote 1-10</b> to move the needle',
+    open: 'chat votes only — <b>!vote -10 to 10</b> · decimals ok',
+    live: 'live standings — <b>!vote -10 to 10</b> to move the needle',
     result: 'final locked — the next rating starts in chat',
-    top5: 'the night\u2019s best — <b>!vote 1-10</b> crowns the next one'
+    top5: 'the night\u2019s best — <b>!vote -10 to 10</b> crowns the next one'
   })[kind] || '';
   islSay(kind === 'open' ? 'Rating open — vote 1 to 10 in chat' : (kind === 'live' ? 'Live standings' : (kind === 'result' ? 'Final results' : (kind === 'top5' ? 'Top 5 of the night' : ''))));
   islSetState('panel');
@@ -2116,13 +2194,14 @@ function islFinal() {
   r.ft2.innerHTML = sub;
   islChime(); islCoachGone(); islSay('Final: ' + avg.toFixed(1) + ' — ' + word + ' — ' + n + (n === 1 ? ' vote' : ' votes'));
   if (ISL.pinned || ISL.hover) return;                     /* manual panel already tells the story */
+  if (islRateOff()) { clearTimeout(ISL.finalT); if (ISL.state !== 'collapsed') islSetState('collapsed'); return; } /* v10 off: no final morph, no result showcase */
   islAutoCancel();
   clearTimeout(ISL.leaveT);
   islSetState('final');
   clearTimeout(ISL.finalT);
   ISL.finalT = setTimeout(function () {
     if (ISL.state !== 'final') return;
-    if (FEAT.autoshow !== false) islAutoShow('result', ISL.cfg.result);
+    if (FEAT.autoshow !== false && !islRateOff()) islAutoShow('result', ISL.cfg.result);
     else islSetState('collapsed');
   }, ISL.cfg.finalHold);
 }
@@ -2315,7 +2394,7 @@ function islUpdatePanel(p, vel) {
   r.ae.disabled = !(open && !paused);
   r.aend.disabled = !open;
   r.ac.disabled = !p && !(S.results || []).length;
-  r.hint2.innerHTML = isT5 ? 'best of the night — sit back' : '<b>!vote 1-10</b> in chat · decimals ok';
+  r.hint2.innerHTML = isT5 ? 'best of the night — sit back' : '<b>!vote -10 to 10</b> in chat · decimals ok';
   islSpark(p, snap);
   islTB(p);
 }
@@ -2342,7 +2421,7 @@ function islSpark(p, snap) {
   var W = 240, H = 46, pad = 4, i2;
   if (pts.length > 60) { var step = Math.ceil(pts.length / 60), ds = []; for (i2 = 0; i2 < pts.length; i2 += step) ds.push(pts[i2]); if (ds[ds.length - 1] !== pts[pts.length - 1]) ds.push(pts[pts.length - 1]); pts = ds; }
   var dmn = Math.min.apply(null, pts), dmx = Math.max.apply(null, pts);
-  var mn = Math.max(0, dmn - .6), mx = Math.min(10, dmx + .6);
+  var mn = Math.max(-10, dmn - .6), mx = Math.min(10, dmx + .6); /* v11: floor -10 — all-negative polls no longer invert the domain */
   if (mx - mn < 1) { mn -= .5; mx += .5; }
   var X = function (i) { return pad + (W - 2 * pad) * (i / (pts.length - 1)); };
   var Y = function (v) { return H - pad - (H - 2 * pad) * ((v - mn) / (mx - mn)); };
@@ -2378,7 +2457,7 @@ function islandRender() {
   /* edge: new vote → peek */
   var topEv = (S.events && S.events[0] && S.events[0].kind === 'vote') ? S.events[0] : null;
   var vsig = topEv ? topEv.user + ':' + topEv.vote + ':' + topEv.ts : '';
-  if (!first && vsig && vsig !== ISL.lastVoteSig && p && p.status === 'open' && !p.paused) {
+  if (!first && !islRateOff() && vsig && vsig !== ISL.lastVoteSig && p && p.status === 'open' && !p.paused) {
     var rc = readableColor(topEv.c) || '';
     var nm = '<b style="color:' + (rc || 'var(--amber, #EFA332)') + '">' + esc(topEv.user) + '</b>';
     if (topEv.revote) islPeek('mi', ISL_ICONS.swap, nm + ' changed to <b>' + fmtChip(topEv.vote) + '</b>/10', ISL.cfg.peek);
@@ -2391,8 +2470,9 @@ function islandRender() {
   /* edge: poll opened → full panel showcase (the audience's call to vote) */
   if (!first && p && p.status === 'open' && ISL.openPeekedFor !== pollId) {
     ISL.openPeekedFor = pollId;
-    if (AUTO) islAutoShow('open', ISL.cfg.open);
-    else islPeek('info', ISL_ICONS.play, 'rating open — <b>!vote 1-10</b> in chat' + (p.question ? ' · ' + esc(String(p.question).slice(0, 26)) : ''), 3600, true);
+    if (islRateOff()) {}                                   /* v10: off — no open showcase, not even a peek */
+    else if (AUTO) islAutoShow('open', ISL.cfg.open);
+    else islPeek('info', ISL_ICONS.play, 'rating open — <b>!vote -10 to 10</b> in chat' + (p.question ? ' · ' + esc(String(p.question).slice(0, 26)) : ''), 3600, true);
   }
   /* edge: closed → final morph (skip if never seen open — e.g. page reload) */
   if (!first && p && p.status === 'closed' && ISL.finalDoneFor !== pollId) {
@@ -2403,19 +2483,20 @@ function islandRender() {
   if (p && p.status === 'top5') {
     if (!first && ISL.lastTop5Sig !== 't5' && p.top5 && p.top5.length) {
       ISL.lastTop5Sig = 't5';
-      if (AUTO) islAutoShow('top5', ISL.cfg.t5);
+      if (islRateOff()) {}                                 /* v10: off — quiet here too */
+      else if (AUTO) islAutoShow('top5', ISL.cfg.t5);
       else { var e1 = p.top5[p.top5_idx] || p.top5[0], rk1 = p.top5.length - (p.top5_idx || 0); islPeek('info', ISL_ICONS.crown, '#' + rk1 + ' · ' + esc(String(e1.question || '')).slice(0, 24) + ' — <b>' + e1.avg.toFixed(1) + '</b>', 3000); }
     }
   } else ISL.lastTop5Sig = '';
 
   /* edge: timer ≤10s → warn peek */
-  if (!first && p && p.status === 'open' && !p.paused && p.deadline && ISL.lastWarnFor !== pollId) {
+  if (!first && !islRateOff() && p && p.status === 'open' && !p.paused && p.deadline && ISL.lastWarnFor !== pollId) {
     var rem = p.deadline - now;
     if (rem > 0 && rem <= 10200) { ISL.lastWarnFor = pollId; islPeek('mi', ISL_ICONS.timer, '<b>' + Math.ceil(rem / 1000) + 's</b> left — lock in final votes', ISL.cfg.warn, true); }
   }
 
   /* AUTO-SHOWCASE SCHEDULER — the island drives itself between edges */
-  if (AUTO && !ISL.pinned && !ISL.hover && !ISL.auto.phase && ISL.state === 'collapsed') {
+  if (AUTO && !islRateOff() && !ISL.pinned && !ISL.hover && !ISL.auto.phase && ISL.state === 'collapsed') {
     var pn = performance.now();
     if (p && p.status === 'open' && !p.paused) {
       var nv = len(p.votes);
@@ -2464,7 +2545,7 @@ function applyPos(p) {
 (function () { var p = ''; try { p = localStorage.getItem(POS_KEY) || ''; } catch (e) {} applyPos(p || 'left'); })();
 $('drpos').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; applyPos(b.getAttribute('data-p')); });
 function applyMode(m) {
-  if (m !== 'compact' && m !== 'full' && m !== 'slim' && m !== 'island') m = 'full';
+  if (m !== 'compact' && m !== 'full' && m !== 'slim' && m !== 'island') m = 'island';
   var panel = $('cpanel');
   var isl = m === 'island';
   if ((m === 'compact' || isl) && VIEW !== 'live') { VIEW = 'live'; panel.classList.remove('view-recap', 'view-voters', 'view-archive'); var tabs0 = document.querySelectorAll('.vt'); for (var t = 0; t < tabs0.length; t++) tabs0[t].classList.toggle('on', tabs0[t].getAttribute('data-v') === 'live'); }
@@ -2476,7 +2557,25 @@ function applyMode(m) {
   $('votepops').innerHTML = ''; var pills = $('drlayout').querySelectorAll('button'); for (var i = 0; i < pills.length; i++) pills[i].classList.toggle('on', pills[i].getAttribute('data-m') === m);
   lastClassicSig = null; render();
 }
-(function () { var m = (q.get('mode') || '').toLowerCase(); if (m === 'compact' || m === 'full' || m === 'slim' || m === 'island') { try { localStorage.setItem(MODE_KEY, m); } catch (e) {} } else { try { m = localStorage.getItem(MODE_KEY) || 'full'; } catch (e) { m = 'full'; } } applyMode(m); })();
+(function () {
+  var m = (q.get('mode') || '').toLowerCase();
+  if (m === 'compact' || m === 'full' || m === 'slim' || m === 'island') { try { localStorage.setItem(MODE_KEY, m); } catch (e) {} }
+  else {
+    /* v10: the Island layout is the default panel. Legacy builds defaulted
+       to Full, so a stored 'full' (or nothing) migrates to 'island' once
+       ('islv10m' marker); explicit Slim/Bar picks persist untouched, and
+       anything chosen after this migration — Full included — persists. */
+    try {
+      if (!localStorage.getItem('islv10m')) {
+        var legacy = localStorage.getItem(MODE_KEY);
+        localStorage.setItem(MODE_KEY, (legacy === 'slim' || legacy === 'compact' || legacy === 'island') ? legacy : 'island');
+        try { localStorage.setItem('islv10m', '1'); } catch (e2) {}
+      }
+      m = localStorage.getItem(MODE_KEY) || 'island';
+    } catch (e) { m = 'island'; }
+  }
+  applyMode(m);
+})();
 $('drlayout').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var m = b.getAttribute('data-m'); try { localStorage.setItem(MODE_KEY, m); } catch (e) {} applyMode(m); });
 
 function drawerOpen() { return !!(drawer && drawer.classList.contains('open')); }
@@ -2502,7 +2601,7 @@ function markCallouts() { for (var i = 0; i < coPills.length; i++) coPills[i].cl
 $('drcallouts').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; SHOWCO = b.getAttribute('data-co') === '1'; try { localStorage.setItem(CO_KEY, SHOWCO ? '1' : '0'); } catch (e) {} markCallouts(); });
 markCallouts();
 
-function markFeats() { var rows = $('drfeats').querySelectorAll('.dr-feat'); for (var i = 0; i < rows.length; i++) { var key = rows[i].querySelector('button').getAttribute('data-f'); if (!key) continue; var on = !!FEAT[key]; var btns = rows[i].querySelectorAll('button'); for (var j = 0; j < btns.length; j++) btns[j].classList.toggle('on', (btns[j].getAttribute('data-v') === '1') === on); } }
+function markFeats() { var rows = $('drfeats').querySelectorAll('.dr-feat'); for (var i = 0; i < rows.length; i++) { var fb = rows[i].querySelector('button'); if (!fb) continue; var key = fb.getAttribute('data-f'); if (!key) continue; var on = !!FEAT[key]; var btns = rows[i].querySelectorAll('button'); for (var j = 0; j < btns.length; j++) btns[j].classList.toggle('on', (btns[j].getAttribute('data-v') === '1') === on); } }
 $('drfeats').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var key = b.getAttribute('data-f'), val = b.getAttribute('data-v') === '1'; if (!key || FEAT[key] === undefined) return; FEAT[key] = val; saveFeats(); applyFeats(); markFeats(); render(); });
 markFeats();
 
