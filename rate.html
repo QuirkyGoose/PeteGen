@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark" />
-<title>PeteGen — Crowd Rating Overlay (Original design · island layout · showcase pacing · rich panel)</title>
+<title>PeteGen — Crowd Rating Overlay (Original design · island layout · pacing · rich panel · b-left default)</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -102,9 +102,9 @@ body.clean #dswitch, body.testmode #dswitch, body.history #dswitch, body.voters 
    The island lives ONLY in the Island layout (drawer → Layout → Island, or
    ?mode=island). Full / Slim / Bar keep the overlay clean: #diland is
    display:none there and the engine sleeps (islSleep on every mode change).
-   Top-center by default. ?ipos=bl / ?ipos=br (or the drawer row) anchor it
-   bottom-left / bottom-right — there the panel grows upward, the coach mark
-   floats above, and progress bars ride the outer (top) edge.
+   Bottom-left by default. ?ipos=top / ?ipos=br (or the drawer row) anchor it
+   top-center / bottom-right — in corner anchors the panel grows upward, the
+   coach mark floats above, and progress bars ride the outer (top) edge.
    #diland.auto = self-driving showcase state (quick actions swap for the
    viewer CTA, progress bar di-pb2 becomes visible). */
 #cpanel.compact { overflow: visible; cursor: default; transition: border-radius .5s var(--ease-spring), box-shadow .4s, transform .4s; }
@@ -899,7 +899,7 @@ body.no-island #diland { display: none !important; }
     <div class="dr-feat"><span class="dr-fl">Timer depletion bar</span><div class="dr-presets"><button data-f="timerbar" data-v="1">on</button><button data-f="timerbar" data-v="0">off</button></div></div>
     <div class="dr-feat"><span class="dr-fl">Verdict pill (pinned)</span><div class="dr-presets"><button data-f="verdict" data-v="1">on</button><button data-f="verdict" data-v="0">off</button></div></div>
     <div class="dr-feat"><span class="dr-fl">Trend chip (vs last)</span><div class="dr-presets"><button data-f="trend" data-v="1">on</button><button data-f="trend" data-v="0">off</button></div></div>
-    <div class="dr-feat dr-isl-row"><span class="dr-fl">Island position</span><div class="dr-presets"><button data-ip="top" class="on">top</button><button data-ip="bl">b-left</button><button data-ip="br">b-right</button></div></div>
+    <div class="dr-feat dr-isl-row"><span class="dr-fl">Island position</span><div class="dr-presets"><button data-ip="top">top</button><button data-ip="bl" class="on">b-left</button><button data-ip="br">b-right</button></div></div>
     <div class="dr-feat dr-isl-row"><span class="dr-fl">Island auto-showcase</span><div class="dr-presets"><button data-f="autoshow" data-v="1">on</button><button data-f="autoshow" data-v="0">off</button></div></div>
     <div class="dr-feat dr-isl-row"><span class="dr-fl">Island frequency</span><div class="dr-presets"><button data-ir="chatty">chatty</button><button data-ir="balanced" class="on">balanced</button><button data-ir="chill">chill</button><button data-ir="minimal">minimal</button></div></div>
     <div class="dr-feat dr-isl-row"><span class="dr-fl">Showcase length</span><div class="dr-presets"><button data-il="brief">brief</button><button data-il="standard" class="on">standard</button><button data-il="extended">extended</button></div></div>
@@ -958,7 +958,7 @@ body.no-island #diland { display: none !important; }
     <a class="dr-link" id="lnk-voters" target="_blank" rel="noopener">Voters</a>
     <a class="dr-link" id="lnk-archive" target="_blank" rel="noopener">Archive</a>
   </div>
-  <div class="dr-hint">Chat votes with <b>!vote 1-10</b> (decimals OK, e.g. <b>7.5</b>). <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only). Confetti fires at 7.5+.<br>The island shows only in the <b>Island</b> layout — Full/Slim/Bar keep the overlay clean. Pacing: <b>Island frequency</b> (chatty / balanced / chill / minimal — how often it opens) + <b>Showcase length</b> (brief / standard / extended — how long it stays). URL: <b>?mode=island</b> · <b>?ipos=bl|br</b> corner · <b>?islrate=chatty|chill|minimal</b> · <b>?isllen=brief|extended</b> · <b>?itop=120</b> top offset · <b>?scale=1.2</b> resize · <b>?autoshow=0</b> manual island · <b>?sound=1</b> sounds.</div>
+  <div class="dr-hint">Chat votes with <b>!vote 1-10</b> (decimals OK, e.g. <b>7.5</b>). <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only). Confetti fires at 7.5+.<br>The island shows only in the <b>Island</b> layout — Full/Slim/Bar keep the overlay clean. Pacing: <b>Island frequency</b> (chatty / balanced / chill / minimal — how often it opens) + <b>Showcase length</b> (brief / standard / extended — how long it stays). URL: <b>?mode=island</b> · <b>?ipos=top|br</b> (default b-left) · <b>?islrate=chatty|chill|minimal</b> · <b>?isllen=brief|extended</b> · <b>?itop=120</b> top offset · <b>?scale=1.2</b> resize · <b>?autoshow=0</b> manual island · <b>?sound=1</b> sounds.</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -1738,7 +1738,7 @@ function tickRender() {
    drawer "Island position" row — panel grows upward from a corner).
    ?itop=N top offset (top anchor only), ?scale support. Sounds respect
    SOUND. Auto behavior honors FEAT.autoshow (drawer toggle · ?autoshow=0). */
-var ISL = { built: false, state: 'collapsed', pinned: false, hover: false, everRendered: false, pos: 'top',
+var ISL = { built: false, state: 'collapsed', pinned: false, hover: false, everRendered: false, pos: 'bl',
   leaveT: null, faceT: null, peekT: null, finalT: null,
   lastVoteSig: '', finalDoneFor: '', openPeekedFor: '', lastWarnFor: '', lastTop5Sig: '',
   sigC: '', sigH: '', sigHeat: '', sigSide: '', refs: {},
@@ -1773,13 +1773,26 @@ function islCoachGone() { var c = $('diCoach'); if (c && !c.classList.contains('
 /* screen-reader announcements for the big moments (poll open / final / showcases) */
 function islSay(txt) { var el = $('diSr'); if (!el) return; el.textContent = ''; setTimeout(function () { el.textContent = txt; }, 40); }
 
-/* ── anchor position: top-center (default) · bottom-left · bottom-right ──
+/* ── anchor position: bottom-left (default) · bottom-right · top-center ──
    Persisted in localStorage ('islpos'), overridable per-window via ?ipos=.
    In corner anchors the pill is pinned to the screen edge, so the panel
    morphs upward and progress bars / coach mark flip to the outer edge. */
-function islSavedPos() { try { return localStorage.getItem('islpos'); } catch (e) { return null; } }
+/* v9: bottom-left is the default. Legacy builds auto-persisted 'top' even when
+   nobody chose it, so on the first v9 load an inherited 'top' (or nothing)
+   migrates to 'bl' once ('islposv9' marker); explicit picks — and anything
+   chosen after this migration, including top — keep persisting normally. */
+function islSavedPos() {
+  try {
+    if (!localStorage.getItem('islposv9')) {
+      var legacy = localStorage.getItem('islpos');
+      localStorage.setItem('islpos', (legacy === 'bl' || legacy === 'br') ? legacy : 'bl');
+      try { localStorage.setItem('islposv9', '1'); } catch (e2) {}
+    }
+    return localStorage.getItem('islpos');
+  } catch (e) { return null; }
+}
 function islApplyPos(pos, silent) {
-  pos = (pos === 'bl' || pos === 'br') ? pos : 'top';
+  pos = (pos === 'top' || pos === 'bl' || pos === 'br') ? pos : 'bl';
   ISL.pos = pos;
   var host = ISL.refs.host;
   if (host) {
