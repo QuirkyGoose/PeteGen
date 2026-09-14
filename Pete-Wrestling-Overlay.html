@@ -160,7 +160,7 @@ body.clean #dswitch, body.testmode #dswitch, body.history #dswitch, body.voters 
 #cpanel.slim .feed { padding: 6px 13px 8px; }
 
 /* host + anchor positions */
-#diland { --isl-spring: cubic-bezier(.32, .72, 0, 1); --s: 1; position: fixed; top: 12px; left: 50%; right: auto; bottom: auto; z-index: 45; transform: translateX(-50%) scale(var(--s)); transform-origin: top center; display: none; }
+#diland { --isl-spring: cubic-bezier(.32, .72, 0, 1); --isl-pop: cubic-bezier(.34, 1.45, .44, 1); --s: 1; position: fixed; top: 12px; left: 50%; right: auto; bottom: auto; z-index: 45; transform: translateX(-50%) scale(var(--s)); transform-origin: top center; display: none; transition: top .45s var(--isl-spring); }
 #diland.ipos-bl { top: auto; bottom: 12px; left: 12px; right: auto; transform: scale(var(--s)); transform-origin: bottom left; }
 #diland.ipos-br { top: auto; bottom: 12px; left: auto; right: 12px; transform: scale(var(--s)); transform-origin: bottom right; }
 body.history #diland, body.voters #diland, body.archive #diland, body.no-island #diland { display: none !important; }
@@ -171,9 +171,15 @@ body.mode-island:not(.history):not(.voters):not(.archive) #diland { display: blo
 body:not(.mode-island) .dr-isl-row { opacity: .38; }
 body.mode-island #diland { --s: 1.06; }
 
+/* ── staged preview backdrops (?bg= packs on the overlay pages).
+   Canvases sit at z-index 0 behind all UI; anything but browser-stage
+   (notably OBS) hides them, and reduced-transparency opts out too. */
+#softaurora, #dotgrid, #lightrays, #faulty { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:not(.browser-stage) #lightrays, body:not(.browser-stage) #faulty { display: none !important; }
+
 /* ── the Dynamic Island shell: solid-black pill that morphs into a material panel ── */
-.di { position: relative; width: 360px; max-width: calc(100vw - 16px); height: 38px; background: #000; border: 1px solid rgba(255,255,255,0.09); border-radius: var(--r-full); box-shadow: var(--sh-chip); overflow: hidden; cursor: pointer; transition: width .5s var(--isl-spring), height .5s var(--isl-spring), border-radius .45s var(--isl-spring), background .35s ease, border-color .3s ease, box-shadow .35s ease, transform .25s ease; animation: islIn .7s .25s var(--ease-spring) backwards; }
-@keyframes islIn { from { transform: translateY(-72px); opacity: 0; } }
+.di { position: relative; width: 360px; max-width: calc(100vw - 16px); height: 38px; background: #000; border: 1px solid rgba(255,255,255,0.09); border-radius: var(--r-full); box-shadow: var(--sh-chip); overflow: hidden; cursor: pointer; transition: width .5s var(--isl-pop), height .5s var(--isl-pop), border-radius .45s var(--isl-spring), background .35s ease, border-color .3s ease, box-shadow .35s ease, transform .25s ease; animation: islIn .7s .25s var(--ease-spring) backwards; }
+@keyframes islIn { from { transform: translateY(-72px) scale(.94); opacity: 0; } }
 @keyframes islInUp { from { transform: translateY(72px); opacity: 0; } }
 #diland.ipos-bl .di, #diland.ipos-br .di { animation-name: islInUp; }
 .di[data-state="collapsed"]:hover { border-color: rgba(255,255,255,0.2); }
@@ -189,7 +195,7 @@ body.mode-island #diland { --s: 1.06; }
 /* faces */
 .di-face { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .18s ease; }
 .di-face.active { opacity: 1; pointer-events: auto; }
-.di-rise { opacity: 0; transform: translateY(8px); }
+.di-rise { opacity: 0; transform: translateY(8px); transition: opacity .3s ease, transform .38s var(--isl-pop); }
 .di-face.active .di-rise { opacity: 1; transform: none; transition: opacity .4s ease, transform .4s var(--ease-spring); transition-delay: calc(.15s + var(--i, 0) * .045s); }
 #diland.ipos-bl .di-rise, #diland.ipos-br .di-rise { transform: translateY(-8px); }
 
@@ -230,6 +236,114 @@ body.mode-island #diland { --s: 1.06; }
 .di-pt b { color: var(--t1); font-weight: 600; }
 .di-pb { position: absolute; left: 0; bottom: 0; height: 2.5px; width: 0; background: var(--amber); border-radius: 0 2px 2px 0; }
 #diland.ipos-bl .di-pb, #diland.ipos-br .di-pb { bottom: auto; top: 0; border-radius: 2px 2px 0 0; }
+
+/* ── face 2b · HOOMP takeover — the pill springs open into a green
+   celebration: expanding rings, staggered wordmark, one-shot sheen and a
+   draining dwell bar, then settles back. Transform/opacity only. ── */
+.di[data-state="hoomp"] { width: 430px; height: 92px; border-radius: 26px; background: #000; border-color: rgba(48,209,88,0.4); box-shadow: var(--sh-chip), 0 0 32px rgba(48,209,88,0.22); cursor: default; }
+.di-face[data-face="hoomp"] { display: flex; align-items: center; gap: 14px; padding: 0 22px; overflow: hidden; }
+.di-hring { position: relative; flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; isolation: isolate; }
+.di-hring::before { content: ""; position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 18px rgba(48,209,88,0.8); animation: hoompCore 2.4s ease-in-out infinite; will-change: transform; }
+.di-hring::after { content: ""; position: absolute; place-self: center; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle, rgba(48,209,88,0.30) 0%, rgba(48,209,88,0.10) 45%, rgba(48,209,88,0) 70%); animation: hoompHalo 2.4s ease-in-out infinite; pointer-events: none; will-change: transform, opacity; }
+.di-hring i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(48,209,88,0.55); box-shadow: 0 0 12px rgba(48,209,88,0.22), inset 0 0 6px rgba(48,209,88,0.10); opacity: 0; animation: hoompRing 2.4s cubic-bezier(.22,.61,.36,1) infinite; will-change: transform, opacity; }
+.di-hring i:nth-child(2) { animation-delay: .8s; }
+.di-hring i:nth-child(3) { animation-delay: 1.6s; }
+@keyframes hoompRing { 0% { transform: scale(.24); opacity: 0; } 12% { opacity: .75; } 42% { opacity: .32; } 100% { transform: scale(1.04); opacity: 0; } }
+@keyframes hoompCore { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes hoompHalo { 0%, 100% { transform: scale(.88); opacity: .65; } 50% { transform: scale(1.12); opacity: 1; } }
+.di-ht { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.di-ht strong { font-family: var(--display); font-size: 30px; line-height: 1; font-weight: 700; letter-spacing: -0.02em; color: var(--ok); text-shadow: 0 0 24px rgba(48,209,88,0.45); white-space: nowrap; }
+.di-ht em { font-family: var(--mono); font-size: 10px; font-style: normal; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.di-hsheen { position: absolute; top: -30%; bottom: -30%; left: 0; width: 40%; background: linear-gradient(100deg, rgba(48,209,88,0) 0%, rgba(48,209,88,0.16) 50%, rgba(48,209,88,0) 100%); transform: translateX(-160%) skewX(-9deg); pointer-events: none; }
+.di-face.active .di-hsheen { animation: hoompSheen .8s .1s var(--ease-spring) both; }
+@keyframes hoompSheen { to { transform: translateX(360%) skewX(-9deg); } }
+.di-hpb { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--ok); border-radius: 0 2px 2px 0; transform: scaleX(1); transform-origin: left center; transition: transform .26s linear; will-change: transform; }
+#diland.ipos-bl .di-hpb, #diland.ipos-br .di-hpb { bottom: auto; top: 0; border-radius: 2px 2px 0 0; }
+
+/* ── face 2b2 · SLOP takeover — the pill fills with brown liquid from the
+   bottom, holds full, then drains, and the pill settles back via the
+   standard expiry path. Fill + drain ride one scaleY pass matched to the
+   4s island hold; the scalloped surface drifts sideways while full.
+   Compositor-friendly (transform-only fill, background-position wave). ── */
+.di[data-state="slop"] { width: 430px; height: 92px; border-radius: 26px; background: #000; border-color: rgba(138,90,43,0.55); box-shadow: var(--sh-chip), 0 0 32px rgba(138,90,43,0.3); cursor: default; }
+.di-face[data-face="slop"] { display: flex; align-items: center; gap: 14px; padding: 0 22px; overflow: hidden; }
+.di-slopfill { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform: scaleY(0); transform-origin: bottom center; background: linear-gradient(180deg, #9a6831 0%, #7a4e22 34%, #5a3a1a 68%, #3d2712 100%); will-change: transform; pointer-events: none; }
+.di-slopfill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, rgba(255,235,200,0) 20%, rgba(255,235,200,0.16) 50%, rgba(255,235,200,0) 80%); pointer-events: none; }
+.di-slopfill.run { animation: slopFill 4s linear both; }
+@keyframes slopFill { 0% { transform: scaleY(0); } 22% { transform: scaleY(1); } 68% { transform: scaleY(1); } 100% { transform: scaleY(0); } }
+.di-slopwave { position: absolute; top: -8px; left: 0; right: 0; height: 12px; background: radial-gradient(circle at 10px 11px, #9a6831 9px, rgba(154,104,49,0) 10px); background-size: 22px 12px; background-repeat: repeat-x; animation: slopWave 1.1s linear infinite; pointer-events: none; }
+@keyframes slopWave { to { background-position-x: 22px; } }
+.di-slopt { position: relative; z-index: 1; }
+.di-slopt strong { color: #f5e6c4 !important; text-shadow: 0 0 24px rgba(255,220,160,0.35), 0 1px 2px rgba(0,0,0,0.8) !important; }
+.di-slopsheen { background: linear-gradient(100deg, rgba(255,235,200,0) 0%, rgba(255,235,200,0.22) 50%, rgba(255,235,200,0) 100%) !important; }
+#diSlopPb { background: #9a6831; }
+@media (prefers-reduced-motion: reduce) {
+  .di-slopfill.run { animation: none; transform: scaleY(1); }
+  .di-slopwave { animation: none; }
+}
+
+/* ── face 2c · new-follower takeover — same choreography as HOOMP, worn in
+   the channel accent: pulsing rings, staggered name, sheen, dwell bar. ── */
+.di[data-state="follow"] { width: 430px; height: 92px; border-radius: 26px; background: #000; border-color: rgba(0,113,227,0.45); box-shadow: var(--sh-chip), 0 0 32px rgba(0,113,227,0.25); cursor: default; }
+.di-face[data-face="follow"] { display: flex; align-items: center; gap: 14px; padding: 0 22px; overflow: hidden; }
+.di-fring { position: relative; flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; isolation: isolate; }
+.di-fring::before { content: ""; position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 18px rgba(0,113,227,0.8); animation: followCore 2.4s ease-in-out infinite; will-change: transform; }
+.di-fring::after { content: ""; position: absolute; place-self: center; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle, rgba(0,113,227,0.30) 0%, rgba(0,113,227,0.10) 45%, rgba(0,113,227,0) 70%); animation: followHalo 2.4s ease-in-out infinite; pointer-events: none; will-change: transform, opacity; }
+.di-fring i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(0,113,227,0.55); box-shadow: 0 0 12px rgba(0,113,227,0.22), inset 0 0 6px rgba(0,113,227,0.10); opacity: 0; animation: followRing 2.4s cubic-bezier(.22,.61,.36,1) infinite; will-change: transform, opacity; }
+.di-fring i:nth-child(2) { animation-delay: .8s; }
+.di-fring i:nth-child(3) { animation-delay: 1.6s; }
+@keyframes followRing { 0% { transform: scale(.24); opacity: 0; } 12% { opacity: .75; } 42% { opacity: .32; } 100% { transform: scale(1.04); opacity: 0; } }
+@keyframes followCore { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes followHalo { 0%, 100% { transform: scale(.88); opacity: .65; } 50% { transform: scale(1.12); opacity: 1; } }
+.di-ft2 { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.di-ft2 strong { font-family: var(--display); font-size: 24px; line-height: 1; font-weight: 700; letter-spacing: -0.02em; color: var(--amber-hi); text-shadow: 0 0 24px rgba(0,113,227,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.di-ft2 em { font-family: var(--mono); font-size: 10px; font-style: normal; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--t3); white-space: nowrap; }
+/* Accent-aware glows where color-mix exists (falls back to stock blue). */
+@supports (border-color: color-mix(in srgb, red 50%, blue)) {
+  .di[data-state="follow"] { border-color: color-mix(in srgb, var(--amber) 45%, transparent); box-shadow: var(--sh-chip), 0 0 32px color-mix(in srgb, var(--amber) 25%, transparent); }
+  .di-fring::before { box-shadow: 0 0 18px color-mix(in srgb, var(--amber) 80%, transparent); }
+  .di-fring::after { background: radial-gradient(circle, color-mix(in srgb, var(--amber) 30%, transparent) 0%, color-mix(in srgb, var(--amber) 10%, transparent) 45%, transparent 70%); }
+  .di-fring i { border-color: color-mix(in srgb, var(--amber) 55%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--amber) 22%, transparent); }
+  .di-ft2 strong { text-shadow: 0 0 24px color-mix(in srgb, var(--amber) 45%, transparent); }
+}
+.di-fsheen { position: absolute; top: -30%; bottom: -30%; left: 0; width: 40%; background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%); transform: translateX(-160%) skewX(-9deg); pointer-events: none; }
+.di-face.active .di-fsheen { animation: followSheen .8s .1s var(--ease-spring) both; }
+@keyframes followSheen { to { transform: translateX(360%) skewX(-9deg); } }
+.di-fpb { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--amber); border-radius: 0 2px 2px 0; transform: scaleX(1); transform-origin: left center; transition: transform .26s linear; will-change: transform; }
+#diland.ipos-bl .di-fpb, #diland.ipos-br .di-fpb { bottom: auto; top: 0; border-radius: 2px 2px 0 0; }
+
+/* ── face 2d · parameterized celebration (subs / gifts / cheers / raids).
+   Same choreography as HOOMP; the accent rides --ev/--evg set per event
+   (falls back to the channel accent). Future moments reuse this face. ── */
+.di[data-state="event"] { width: 430px; height: 92px; border-radius: 26px; background: #000; border-color: var(--ev, rgba(0,113,227,0.45)); box-shadow: var(--sh-chip), 0 0 32px rgba(0,113,227,0.25); cursor: default; }
+.di-face[data-face="event"] { display: flex; align-items: center; gap: 14px; padding: 0 22px; overflow: hidden; }
+.di-ering { position: relative; flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; isolation: isolate; }
+.di-ering::before { content: ""; position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 50%; background: var(--ev, var(--amber)); box-shadow: 0 0 18px var(--evg, rgba(0,113,227,0.8)); animation: eventCore 2.4s ease-in-out infinite; will-change: transform; }
+.di-ering::after { content: ""; position: absolute; place-self: center; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle, var(--evg, rgba(0,113,227,0.30)) 0%, transparent 70%); opacity: .55; animation: eventHalo 2.4s ease-in-out infinite; pointer-events: none; will-change: transform, opacity; }
+.di-ering i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--ev, var(--amber)); box-shadow: 0 0 12px var(--evg, rgba(0,113,227,0.22)); opacity: 0; animation: eventRing 2.4s cubic-bezier(.22,.61,.36,1) infinite; will-change: transform, opacity; }
+.di-ering i:nth-child(2) { animation-delay: .8s; }
+.di-ering i:nth-child(3) { animation-delay: 1.6s; }
+@keyframes eventRing { 0% { transform: scale(.24); opacity: 0; } 12% { opacity: .75; } 42% { opacity: .32; } 100% { transform: scale(1.04); opacity: 0; } }
+@keyframes eventCore { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes eventHalo { 0%, 100% { transform: scale(.88); opacity: .4; } 50% { transform: scale(1.12); opacity: .7; } }
+.di-et { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.di-et strong { font-family: var(--display); font-size: 26px; line-height: 1; font-weight: 700; letter-spacing: -0.02em; color: var(--ev, var(--amber-hi)); text-shadow: 0 0 24px var(--evg, rgba(0,113,227,0.45)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.di-et em { font-family: var(--mono); font-size: 10px; font-style: normal; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.di-esheen { position: absolute; top: -30%; bottom: -30%; left: 0; width: 40%; background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%); transform: translateX(-160%) skewX(-9deg); pointer-events: none; }
+.di-face.active .di-esheen { animation: eventSheen .8s .1s var(--ease-spring) both; }
+@keyframes eventSheen { to { transform: translateX(360%) skewX(-9deg); } }
+.di-epb { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--ev, var(--amber)); border-radius: 0 2px 2px 0; transform: scaleX(1); transform-origin: left center; transition: transform .26s linear; will-change: transform; }
+#diland.ipos-bl .di-epb, #diland.ipos-br .di-epb { bottom: auto; top: 0; border-radius: 2px 2px 0 0; }
+
+/* ── celebration polish: shimmering LIVE label + electric final glow ── */
+.di[data-st="open"] .di-lab { background: linear-gradient(100deg, var(--ok) 25%, #fff 50%, var(--ok) 75%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: diShine 2.8s linear infinite; }
+@keyframes diShine { to { background-position: -220% 0; } }
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .di[data-st="open"] .di-lab { background: none; color: var(--ok); animation: none; }
+}
+.di[data-state="final"] { animation: islIn .7s .25s var(--ease-spring) backwards, finalGlow 1.8s ease-in-out 1s infinite; }
+#diland.ipos-bl .di[data-state="final"], #diland.ipos-br .di[data-state="final"] { animation-name: islInUp, finalGlow; }
+@keyframes finalGlow { 0%, 100% { box-shadow: var(--sh-chip), 0 0 22px rgba(48,209,88,.16); } 50% { box-shadow: var(--sh-chip), 0 0 46px rgba(48,209,88,.42); } }
 
 /* ── face 3 · expanded panel (iOS material sheet) ── */
 .di-face[data-face="panel"] { display: flex; flex-direction: column; padding: 14px 16px 12px; }
@@ -351,7 +465,16 @@ body.mode-island #diland { --s: 1.06; }
 .di-face.active .di-fi .tick { animation: islDraw .4s .45s ease-out forwards; }
 @keyframes islDraw { to { stroke-dashoffset: 0; } }
 .di-ft { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.di-ft strong { font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.di-ft strong { font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+/* ── Shiny-Text-in-spirit: one light pass across the final headline right
+   after it focuses (sweep lives on ::after so it never fights the blur-in
+   on the element itself; base state parks off-box = invisible) ── */
+.di-ft strong.blur-in::after { content: ""; position: absolute; top: -25%; bottom: -25%; left: 0; width: 38%; background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%); transform: translateX(-190%) skewX(-12deg); pointer-events: none; animation: diShinePass .9s ease .55s 1 both; }
+@keyframes diShinePass { to { transform: translateX(380%) skewX(-12deg); } }
+/* ── final headline focus reveal (BlurText in spirit: frosted → sharp,
+   drifting down into place like a lens finding focus) ── */
+.di-ft strong.blur-in { animation: diFocusIn .55s cubic-bezier(.22,.61,.21,1) both; }
+@keyframes diFocusIn { from { opacity: 0; filter: blur(10px); transform: translateY(-8px); } to { opacity: 1; filter: blur(0); transform: none; } }
 .di-ft strong b { color: var(--ok); }
 .di-ft em { font-family: var(--mono); font-size: 10px; font-style: normal; font-weight: 500; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .di-ft em .up { color: var(--ok); } .di-ft em .down { color: var(--danger); }
@@ -365,16 +488,20 @@ body.mode-island #diland { --s: 1.06; }
 
 @media (max-width: 560px) {
   .di { width: calc(100vw - 24px); }
-  .di[data-state="peek"], .di[data-state="final"], .di[data-state="panel"] { width: calc(100vw - 20px); }
+  .di[data-state="peek"], .di[data-state="hoomp"], .di[data-state="follow"], .di[data-state="event"], .di[data-state="final"], .di[data-state="panel"] { width: calc(100vw - 20px); }
   #diland.ipos-bl { left: 10px; bottom: 10px; }
   #diland.ipos-br { right: 10px; bottom: 10px; }
   .di-side { flex-basis: 118px; }
   .di-topic2 { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .di, .di-face, .di-face.active .di-rise, .di-hb i, .di-coach { animation: none !important; transition-duration: .01ms !important; }
+  .di, .di-face, .di-rise, .di-face.active .di-rise, .di-hb i, .di-coach { animation: none !important; transition-duration: .01ms !important; }
+  .di-hring::before, .di-hring::after, .di-hring i, .di-hsheen, .di-fring::before, .di-fring::after, .di-fring i, .di-fsheen, .di-ering::before, .di-ering::after, .di-ering i, .di-esheen { animation: none !important; }
+  .di-hring i, .di-fring i, .di-ering i { opacity: 0 !important; }
+  .di-hring::after, .di-fring::after, .di-ering::after { opacity: 0 !important; }
   .di-eq i { animation: none !important; transform: scaleY(.55); }
   .di[data-st="open"] .di-dot, .di-timer.low { animation: none !important; }
+  .di[data-st="open"] .di-lab { animation: none !important; }
   .di-face.active .di-fi .ring, .di-face.active .di-fi .tick { animation: none !important; stroke-dashoffset: 0; }
 }
 
@@ -467,6 +594,9 @@ body.mode-island #diland { --s: 1.06; }
 .feed .e.vote .v.hi { color: var(--ok); }
 .feed .e.vote.rev { opacity: 0.62; }
 .feed .e.vote.rev .v { color: var(--t2); }
+/* HOOMP as a countable vote: green wordmark, no /10 suffix. */
+.feed .e.vote.hoompv .v { font-size: 11px; letter-spacing: .06em; }
+.feed .e.vote.hoompv .v::after { content: none; }
 
 /* ═══════ STUDIO DESIGN — iOS widget card ═══════ */
 #spanel { position: fixed; --inset: 28px; --s: 1; width: 440px; max-width: calc(100vw - 56px); z-index: 10; transition: opacity .4s, transform .4s var(--ease-spring); }
@@ -580,7 +710,12 @@ body.no-verdict .verdict { display: none !important; }
 .co-v::after { content: "/10"; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--t3); margin-left: 3px; letter-spacing: 0; }
 .callout.final { gap: 0; padding: 18px 30px 16px; background: var(--glass); -webkit-backdrop-filter: var(--mat); backdrop-filter: var(--mat); border-color: var(--line); box-shadow: var(--sh-panel); animation: coFin 0.65s var(--ease-spring); border-radius: 28px; flex-direction: column; align-items: center; text-align: center; max-width: min(460px, 64vw); }
 .callout.final .co-t { font-size: 15.5px; font-weight: 600; color: var(--t1); letter-spacing: -0.01em; }
-.callout.final .co-v { font-size: 46px; color: var(--t1); }
+.callout.final .co-v { font-size: 46px; color: var(--t1); position: relative; overflow: hidden; }
+/* ── Shiny-Text-in-spirit: one crisp light pass across the hero score just
+   after the card sheen (broader, blurred) has swept. ::before is free here
+   (::after renders the "/10"); base state parks off-box = invisible ── */
+.callout.final .co-v::before { content: ""; position: absolute; top: -20%; bottom: -20%; left: 0; width: 34%; background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%); transform: translateX(-200%) skewX(-12deg); pointer-events: none; animation: coVShine 1s ease .6s 1 both; }
+@keyframes coVShine { to { transform: translateX(400%) skewX(-12deg); } }
 /* refined final structure: eyebrow → hero score → verdict/votes/trend pills */
 .callout.final .co-final-col { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
 .callout.final .co-eyebrow { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--t3); line-height: 1; }
@@ -729,6 +864,11 @@ body:not(.no-liquid) .dr-row-frosted { display: none; }
 .dr-only-classic, .dr-only-studio { display: none; }
 body[data-design="classic"] .dr-only-classic { display: flex; }
 body[data-design="studio"] .dr-only-studio { display: flex; }
+/* Island layout hides the Classic/Studio cards outright, so their corner /
+   L-C-R buttons would look live yet move nothing — dim them exactly like
+   the island rows dim outside island mode. */
+body.mode-island .dr-only-classic,
+body.mode-island .dr-only-studio { opacity: .38; }
 .dr-links { display: flex; gap: 6px; }
 .dr-link { flex: 1 1 0; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--t1); background: rgba(255,255,255,0.1); border: none; border-radius: 10px; padding: 8px 8px; min-height: 24px; cursor: pointer; text-align: center; text-decoration: none; display: block; transition: color .2s, border-color .2s, background .2s; }
 .dr-link:hover { color: var(--t1); border-color: rgba(255, 255, 255, 0.25); background: rgba(255,255,255,0.16); }
@@ -947,7 +1087,7 @@ body.no-sweep .pollq, body.no-sweep .crowd, body.no-sweep .stars, body.no-sweep 
 body.no-island #diland { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-  .vpop, .callout, .hoomp-toast, .pollq, .crowd, .stars, .timer, .chip.open { animation: none !important; }
+  .vpop, .callout, .hoomp-toast, .pollq, .crowd, .stars, .timer, .chip.open, .di-ft strong.blur-in { animation: none !important; }
 }
 
 /* ═══════ POLISH ═══════ */
@@ -1343,6 +1483,7 @@ body.no-fx .di {
   .di, .di[data-state="collapsed"], .di[data-state="peek"],
   .di[data-state="final"], .di[data-state="panel"] { background: rgba(16,16,18,0.97); }
   .lg-rim, .di::before { display: none !important; }
+  #softaurora, #dotgrid, #lightrays, #faulty { display: none !important; }
   body.browser-stage:not(.history):not(.voters):not(.archive):not(.recapscene) { background: #09090d; }
 }
 
@@ -1426,6 +1567,11 @@ body.no-fx .di {
   gap: 0;
   filter: drop-shadow(0 12px 26px rgba(0,0,0,0.55));
   z-index: 15;
+  /* Wrestling column docks the scene's right sidebar: base 329px stack at
+     scale 1, anchored bottom-right so it grows up-left and stays pinned.
+     Tune per scene with ?stack= (0.5–2.5, default 1). */
+  transform: scale(var(--wr-scale, 1));
+  transform-origin: bottom right;
 }
 .episode {
   order: 1;
@@ -1500,7 +1646,10 @@ body.no-fx .di {
   position: relative;
 }
 .ticker-tag { display: flex; align-items: center; padding: 0 8px; flex: none; border-right: 1px solid var(--line); color: var(--amber); font-family: var(--mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
-.ticker-window { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+/* ── Gradual-Blur-in-spirit: the rules text melts at both window edges
+   instead of clipping hard. A mask (not backdrop-filter) so it works over
+   the transparent OBS canvas, where backdrop layers sample nothing. ── */
+.ticker-window { display: flex; align-items: center; min-width: 0; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 26px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, transparent, #000 26px, #000 calc(100% - 26px), transparent); }
 .ticker-track { white-space: nowrap; padding-left: 10px; color: var(--t1); font-family: var(--mono); font-size: 8px; line-height: 1; font-weight: 600; letter-spacing: 0.035em; text-transform: uppercase; animation: wrScroll 34s linear infinite; will-change: transform; }
 .ticker.paused .ticker-track { animation-play-state: paused; }
 @keyframes wrScroll { from { transform: translate3d(0,0,0); } to { transform: translate3d(-48%,0,0); } }
@@ -1573,6 +1722,10 @@ body.no-fx .di {
   scrollbar-color: var(--line) transparent;
 }
 .drawer.open { transform: translateY(0); }
+/* ── Gradual-Blur-in-spirit: the control strip melts at its lower edge
+   instead of ending in a hard border crop (mask, so it holds over any
+   backdrop without an extra backdrop-filter layer). ── */
+.drawer { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 14px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 14px), transparent); }
 /* no liquid glass on the control chrome — flat and readable */
 .drawer::after { display: none !important; }
 .drawer .dr-hd {
@@ -1609,16 +1762,26 @@ body.no-fx .di {
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
+/* Unified layout zones: rater panels + island bottom-left (16px grid),
+   wrestling stack bottom-right. One inset everywhere so switching
+   design/mode never jumps. */
+#cpanel { --inset: 16px; }
+#spanel { --inset: 16px; }
+#diland.ipos-bl { left: 16px; bottom: 16px; }
+#diland.ipos-br { right: 16px; bottom: 16px; }
+.stack { right: 16px; bottom: 16px; }
 /* Top strip is permanently cropped in OBS: no popup ever parks there.
-   Vote lanes start below the crop line (final stays centered at 34%,
-   verdict top corners and top island sit below it too). */
-#callouts > .callout:not(.final):nth-child(1) { top: 302px !important; }
-#callouts > .callout:not(.final):nth-child(2) { top: 374px !important; }
-#callouts > .callout:not(.final):nth-child(3) { top: 446px !important; }
-#callouts > .callout:not(.final):nth-child(4) { top: 518px !important; }
-.verdict[data-corner="tl"],
-.verdict[data-corner="tr"] { --vy: 300px; }
-#diland.ipos-top { margin-top: 290px; }
+   Push the whole callout layer below the crop (drawer max 250px) and let
+   the engine's JS lanes (70 + n*72px) land at 302/374/446/518 viewport.
+   Container offset keeps lanes stable — the old nth-child tops jumped
+   whenever the first toast expired. Final stays centered on the viewport. */
+#callouts { top: 232px; }
+#callouts > .callout.final { top: calc(34vh - 232px); }
+.verdict[data-corner="tl"] { --vx: 16px; --vy: 300px; }
+.verdict[data-corner="tr"] { --vx: calc(100vw - 100% - 16px); --vy: 300px; }
+.verdict[data-corner="bl"] { --vx: 16px; --vy: calc(100vh - 100% - 16px); }
+.verdict[data-corner="br"] { --vx: calc(100vw - 100% - 16px); --vy: calc(100vh - 100% - 16px); }
+#diland.ipos-top { top: 302px !important; margin-top: 0; } /* !important: beats the engine's inline ?itop= style so top island stays below the OBS crop */
 /* one-time coach mark — control view only, never in OBS output */
 .wr-coach {
   position: fixed;
@@ -1757,6 +1920,268 @@ body.no-liquid .ticker {
 }
 @media (max-width: 760px) {
   .stack, .webcam-wrap { width: calc(100vw - 28px); right: 14px; }
+  .stack { transform: none; }
+}
+
+/* ═══════ PROTOTYPE · celebration border-beam (ReactBits Star/Electric Border
+   in spirit, hand-ported to vanilla CSS — agoodpete only) ═══════════════
+   A light comet circling the takeover pill's outline while a follow / event
+   / HOOMP alert is showing. No markup, no JS, no deps: an oversized-ring
+   mask on the face's own ::before (the pill box itself, so the beam hugs
+   the 26px outline), with the comet angle carried by --beam-a.
+   Delete this block + rebuild to revert (backup: agoodpete.backup-2026-09-14.css). */
+@property --beam-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.di-face[data-face="follow"]::before,
+.di-face[data-face="event"]::before,
+.di-face[data-face="hoomp"]::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding: 2px; pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0; transition: opacity .45s ease;
+}
+.di-face.active[data-face="follow"]::before {
+  opacity: .9;
+  background: conic-gradient(from var(--beam-a), transparent 0 76%, rgba(234,209,139,0.95) 86%, transparent 96%);
+  animation: peteBeam 2.8s linear infinite;
+}
+.di-face.active[data-face="event"]::before {
+  opacity: .9;
+  background: conic-gradient(from var(--beam-a), transparent 0 76%, var(--ev, #ead18b) 86%, transparent 96%);
+  animation: peteBeam 2.8s linear infinite;
+}
+.di-face.active[data-face="hoomp"]::before {
+  opacity: .85;
+  background: conic-gradient(from var(--beam-a), transparent 0 76%, rgba(48,209,88,0.95) 86%, transparent 96%);
+  animation: peteBeam 2.8s linear infinite;
+}
+@keyframes peteBeam { to { --beam-a: 360deg; } }
+/* escape hatches: lite FX + reduced motion + no-mask fallback stay clean */
+body.no-fx .di-face[data-face="follow"]::before,
+body.no-fx .di-face[data-face="event"]::before,
+body.no-fx .di-face[data-face="hoomp"]::before { display: none !important; }
+@supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .di-face[data-face="follow"]::before,
+  .di-face[data-face="event"]::before,
+  .di-face[data-face="hoomp"]::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .di-face[data-face="follow"]::before,
+  .di-face[data-face="event"]::before,
+  .di-face[data-face="hoomp"]::before { animation: none !important; opacity: 0 !important; }
+}
+
+/* ═══════ PROTOTYPE 2 · gradual-blur edge melts (ReactBits Gradual Blur
+   in spirit, hand-ported — agoodpete only) ═════════════════════════════
+   Multi-stop mask melts so edges dissolve progressively instead of
+   clipping: a smoother ticker melt plus new melts on the island voter
+   column and the classic feed. Masks only (no extra backdrop-filter
+   layers), so they hold over the transparent OBS canvas where backdrop
+   layers sample nothing. Delete this block + rebuild to revert. */
+.ticker-window {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.3) 12px, #000 32px, #000 calc(100% - 32px), rgba(0,0,0,0.3) calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.3) 12px, #000 32px, #000 calc(100% - 32px), rgba(0,0,0,0.3) calc(100% - 12px), transparent 100%);
+}
+.di-voters {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+.feed {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+
+/* ═══════ PROTOTYPE 3 · animated list rows (ReactBits Animated List
+   in spirit, hand-ported — agoodpete only) ═══════════════════════════
+   Feed rows rise + deblur in with a tight cascade instead of sliding;
+   full-page rows (recap / voters / archive render once) cascade on open.
+   Island .di-v rows are deliberately untouched: the engine re-renders that
+   column wholesale on every vote, so any enter animation there would replay
+   on all rows each vote — that needs keyed rows in overlay.js.
+   Delete this block + rebuild to revert. */
+.feed .e { animation: peteRowIn .45s cubic-bezier(.22,.61,.36,1) both; }
+.feed .e:nth-child(2) { animation-delay: .04s; }
+.feed .e:nth-child(3) { animation-delay: .08s; }
+.feed .e:nth-child(4) { animation-delay: .12s; }
+.feed .e:nth-child(5) { animation-delay: .16s; }
+.feed .e:nth-child(n+6) { animation-delay: .2s; }
+@keyframes peteRowIn {
+  from { opacity: 0; transform: translateY(6px); filter: blur(3px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+.hp-row, .mv-row, .vp-row { animation: petePageRow .5s var(--ease-spring) both; }
+.hp-row:nth-child(2), .mv-row:nth-child(2), .vp-row:nth-child(2) { animation-delay: .05s; }
+.hp-row:nth-child(3), .mv-row:nth-child(3), .vp-row:nth-child(3) { animation-delay: .1s; }
+.hp-row:nth-child(4), .mv-row:nth-child(4), .vp-row:nth-child(4) { animation-delay: .15s; }
+.hp-row:nth-child(n+5), .mv-row:nth-child(n+5), .vp-row:nth-child(n+5) { animation-delay: .2s; }
+@keyframes petePageRow {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed .e, .hp-row, .mv-row, .vp-row { animation: none !important; }
+}
+
+/* ═══════ PROTOTYPE 4 · fluid-glass rim (ReactBits Fluid Glass in spirit,
+   hand-ported — agoodpete only) ═══════════════════════════════════════
+   Asymmetric edge light on the expanded island panel: warm top-left key
+   against a deep bottom-right shade, plus a faint gold aura — the
+   refraction-rim read without new filters. Same selector weight as the
+   engine rule, later sheet, so it wins; frosted (?liquid=0) stays more
+   specific and keeps its own look. Delete this block + rebuild to revert. */
+.di[data-state="panel"] {
+  box-shadow: var(--sh-panel),
+    inset 1px 1px 0 rgba(255,242,214,0.20),
+    inset -1px -1px 0 rgba(0,0,0,0.40),
+    0 0 38px rgba(212,168,83,0.10);
+}
+
+/* ═══════ PROTOTYPE 5 · split-text takeover wordmark (ReactBits Split
+   Text in spirit — agoodpete only, spans injected by agoodpete.js) ════
+   HOOMP! / SLOP! letters rise + unblur in sequence (--i stagger); exit
+   snaps back under the face fade, so no linger. Reduced-motion pins the
+   letters visible with no transition. */
+.di-face[data-face="hoomp"] strong .ch,
+.di-face[data-face="slop"] strong .ch {
+  display: inline-block; opacity: 0;
+  transform: translateY(.35em) rotate(5deg); filter: blur(3px);
+  will-change: transform, opacity, filter;
+}
+.di-face.active[data-face="hoomp"] strong .ch,
+.di-face.active[data-face="slop"] strong .ch {
+  opacity: 1; transform: none; filter: blur(0);
+  transition: opacity .38s ease, transform .5s cubic-bezier(.22,.61,.36,1), filter .38s ease;
+  transition-delay: calc(.12s + var(--i, 0) * .038s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .di-face[data-face="hoomp"] strong .ch,
+  .di-face[data-face="slop"] strong .ch {
+    opacity: 1 !important; transform: none !important;
+    filter: none !important; transition: none !important;
+  }
+}
+
+/* ═══════ PROTOTYPE 8 · slop surface physics, second attempt (agoodpete
+   only — P7 reverted: rotating the mass read as a rigid wobbling block) ═
+   This pass moves only surface language. The fill surges with overshoot
+   (scaleY only, never rotated) and sways a few px side to side, decaying
+   to level — like a pour seeking flat. The scallop drift and gloss are
+   stock; only the gloss highlight slides slowly, as if light plays on a
+   moving surface. The pill stays put. Delete this block + rebuild to
+   revert to stock slop. */
+/* rising current inside the pour: faint streaks drift upward while it fills */
+.di-slopfill {
+  background:
+    repeating-linear-gradient(180deg, rgba(255,235,200,0.06) 0 6px, rgba(255,235,200,0) 6px 15px),
+    linear-gradient(180deg, #9a6831 0%, #7a4e22 34%, #5a3a1a 68%, #3d2712 100%);
+}
+.di-slopfill.run { animation: peteSlopFill2 4s cubic-bezier(.3,.7,.3,1) both, peteSlopBody 4s linear 1; }
+@keyframes peteSlopBody {
+  from { background-position: 0 52px, 0 0; }
+  to { background-position: 0 0, 0 0; }
+}
+@keyframes peteSlopFill2 {
+  0% { transform: scaleY(0) translateX(0); }
+  6% { transform: scaleY(.13) translateX(-2px); }
+  20% { transform: scaleY(.38) translateX(-3px); }
+  35% { transform: scaleY(.68) translateX(2.5px); }
+  48% { transform: scaleY(.92) translateX(-1.5px); }
+  56% { transform: scaleY(1.02) translateX(1px); }
+  62% { transform: scaleY(1) translateX(0); }
+  74% { transform: scaleY(1) translateX(0); }
+  100% { transform: scaleY(0) translateX(0); }
+}
+.di-slopfill::after { animation: peteSlopSheen 2.6s ease-in-out infinite; }
+@keyframes peteSlopSheen {
+  0%, 100% { transform: translateX(-14px); opacity: .7; }
+  50% { transform: translateX(14px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .di-slopfill.run { animation: none !important; }
+  .di-slopfill::after { animation: none !important; }
+  .di-slopfill.run .di-slopwave { animation: none !important; }
+}
+
+/* ═══════ PROTOTYPE 9 · HOOMP train-whistle steam (agoodpete only) ═════
+   Puff layer injected into #diland by agoodpete.js (sibling overlay above
+   the pill, so the open-ended puffs escape the pill's overflow:hidden).
+   Each HOOMP blows 6 soft radial-gradient puffs up the whistle stack:
+   staggered chuffs drifting apart, swelling and dissolving. Transform +
+   opacity only. Delete this block + the injector + rebuild to revert. */
+.pete-steam { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 60; }
+.pete-steam i {
+  position: absolute; left: 50%; top: -8px; display: block; border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,238,0.9) 0%, rgba(232,255,238,0.42) 42%, rgba(232,255,238,0) 70%);
+  opacity: 0; animation: petePuff 1.2s cubic-bezier(.2,.6,.4,1) both;
+  will-change: transform, opacity;
+}
+@keyframes petePuff {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(.5); }
+  18% { opacity: .8; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), -84px) scale(2.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pete-steam { display: none !important; }
+}
+
+/* ═══════ PROTOTYPE 10 · liquid-gauge sine surface for slop (agoodpete
+   only — after dimaportenko/react-native-liquid-gauge, i.e. the D3
+   liquid-fill-gauge recipe) ═══════════════════════════════════════════
+   The stock scallop-dot strip is retired on this skin; an SVG injected by
+   agoodpete.js draws two real sine waves (front light, back dark, offset
+   down for depth), each scrolling by exactly its own wavelength so the
+   loops are seamless, at different periods so they interfere like the
+   gauge. The strip rides the fill's rise/fall, so pour + surface stay one
+   mass with the P8 surge. Frozen (not removed) under reduced-motion.
+   Delete this block + the injector + rebuild to revert. */
+.di-slopwave { background: none; animation: none; top: -10px; height: 16px; }
+.pete-liquid { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pete-liquid .wl-front { animation: peteWaveFront 2.6s linear infinite; will-change: transform; }
+.pete-liquid .wl-back { animation: peteWaveBack 3.4s linear infinite; will-change: transform; }
+@keyframes peteWaveFront { to { transform: translateX(-50px); } }
+@keyframes peteWaveBack { to { transform: translateX(-40px); } }
+/* wave dynamics synced to the pour: tall chop while rising, glassy when
+   full. Qualified on .run so it restarts with every takeover, like the
+   fill itself. */
+.di-slopfill.run .di-slopwave { animation: peteSlopAmp 4s ease-out 1; transform-origin: bottom center; }
+@keyframes peteSlopAmp {
+  0% { transform: scaleY(1.8); }
+  30% { transform: scaleY(1.5); }
+  55% { transform: scaleY(1.1); }
+  70%, 100% { transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pete-liquid .wl-front, .pete-liquid .wl-back { animation: none !important; }
+}
+
+/* ═══════ STREAM-SCALE LEGIBILITY (approved fixes, agoodpete only) ═════
+   1. The expanded island washes out over bright crowds: deepen just the
+      open panel with a bottom-weighted veil (small text lives low).
+      Frosted (?liquid=0) stays more specific and keeps its own look.
+   2. Heat columns get faint rails so the chart reads as "waiting" before
+      votes land, instead of empty space. */
+.di[data-state="panel"] {
+  background: linear-gradient(180deg, rgba(10,10,14,0.84), rgba(10,10,14,0.93));
+}
+.di-hb { background: rgba(255,255,255,0.055); border-radius: 3px; }
+/* Clean OBS output carries no broadcaster chrome: quick actions, the panel
+   close button and the coach hint stay control-view-only. Status pill,
+   hint line and viewer CTA are untouched; no material changed. */
+body.clean .di-acts, body.clean .di-x, body.clean .di-coach { display: none !important; }
+
+/* ═══════ PROTOTYPE 11 · living surface: animated turbulence-displacement
+   on the slop waves (ReactBits GlassSurface's SVG-displacement recipe,
+   pointed at liquid instead of glass — agoodpete only) ═════════════════
+   The sine scroll gives translation; this gives the wobble. feTurbulence
+   fed into feDisplacementMap breathes the wave edge via declarative SMIL
+   (no JS loop; frozen turbulence still beats a pure sine if SMIL is ever
+   unsupported). One filter pass over a 430x16px strip — judge OBS frames.
+   Delete this block + the defs in the injector + rebuild to revert. */
+.pete-liquid { filter: url(#peteSlopTurb); }
+@media (prefers-reduced-motion: reduce) {
+  .pete-liquid { filter: none; }
 }
 
 </style>
@@ -1771,9 +2196,22 @@ try {
     if (!__m) { try { localStorage.setItem('rhchan', 'agoodpete'); } catch (e) {} }
   }
 } catch (e) {}
+/* Stack size knob: ?stack= scales the wrestling column (default 1 ≈ 329px
+   wide, clamped 0.5–2.5 — was 1.75 full-bleed). */
+try {
+  var __s = parseFloat(String(new URLSearchParams(location.search).get('stack') || '').replace(',', '.'));
+  if (isFinite(__s)) {
+    __s = Math.min(2.5, Math.max(0.5, __s));
+    document.documentElement.style.setProperty('--wr-scale', __s.toFixed(2));
+  }
+} catch (e) {}
 </script>
 </head>
 <body data-design="classic" data-mode="">
+<canvas id="softaurora" data-softaurora aria-hidden="true"></canvas>
+<canvas id="dotgrid" data-dotgrid aria-hidden="true"></canvas>
+<canvas id="lightrays" data-lightrays aria-hidden="true"></canvas>
+<canvas id="faulty" data-faulty aria-hidden="true"></canvas>
 
 <div id="dswitch">
   <button data-d="classic" class="on">Classic</button>
@@ -1935,6 +2373,31 @@ try {
   <div class="dr-row" style="margin-top:6px">
     <button class="dr-ghost" id="drcopy" title="Copy final score to clipboard">Copy result</button>
     <button class="dr-ghost" id="drsound" title="Toggle sounds — countdown tick + island (?sound=1)">Sound: off</button>
+    <button class="dr-ghost" id="drhoomp" style="flex:1" title="Preview the HOOMP moment on this screen only — not counted, not sent to OBS">HOOMP</button>
+    <button class="dr-ghost" id="drslop" style="flex:1" title="Preview the SLOP moment on this screen only — not counted, not sent to OBS">SLOP</button>
+  </div>
+  </section>
+  <section class="dr-sec">
+  <div class="dr-lab">Alerts — Follows (StreamElements)</div>
+  <input class="dr-in" id="alJwt" type="password" placeholder="JWT: dashboard → avatar → channel → token" spellcheck="false" autocomplete="off" aria-label="StreamElements channel JWT">
+  <div class="dr-row" style="margin-top:6px">
+    <input class="dr-in" id="alRoom" placeholder="Room (auto-decoded from JWT)" spellcheck="false" autocomplete="off" aria-label="StreamElements channel id" style="flex:1">
+  </div>
+  <div class="dr-row" style="margin-top:6px">
+    <button class="dr-ghost" id="alConnect" style="flex:1" title="Connect the StreamElements Astro feed for live follows">Connect alerts</button>
+    <button class="dr-ghost" id="alDrop" style="flex:1" title="Drop the alerts feed">Drop</button>
+  </div>
+  <div class="dr-stat" id="alStatus">Alerts: not connected. Secrets stay in memory + URL only — never saved. URL alternative: ?sejwt=…&amp;seroom=…</div>
+  <div class="dr-lab" style="margin-top:10px">Alerts — Test (broadcaster-only, sent to OBS)</div>
+  <div class="dr-row">
+    <input class="dr-in" id="alFollowUser" value="new_fan" maxlength="40" spellcheck="false" aria-label="Test follower name" style="flex:1">
+    <button class="dr-ghost" id="alFollow" style="flex:1" title="Preview the new-follower island takeover">Simulate follow</button>
+  </div>
+  <div class="quick-grid" style="margin-top:6px">
+    <button class="dr-ghost" id="alSub" title="Preview a sub celebration">Sub</button>
+    <button class="dr-ghost" id="alGift" title="Preview a ×3 gift-sub celebration">Gift ×3</button>
+    <button class="dr-ghost" id="alCheer" title="Preview a 500-bit celebration">Cheer 500</button>
+    <button class="dr-ghost" id="alRaid" title="Preview a 42-viewer raid">Raid 42</button>
   </div>
   </section>
   <section class="dr-sec">
@@ -1971,7 +2434,7 @@ try {
     <a class="dr-link" id="lnk-scene" target="_blank" rel="noopener" title="End-of-stream dashboard — add it as a browser source in your Ending scene">End scene</a>
   </div>
   </section>
-  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>). <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only).<br>Wrestling controls live above under <b>Wrestling</b> — episode, live merch, ticker. Accent recolors rater and stack together.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
+  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only).<br>Wrestling controls live above under <b>Wrestling</b> — episode, live merch, ticker. Accent recolors rater and stack together. Wrestling size: <b>?stack=0.5–2.5</b> (default 1). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -1988,6 +2451,7 @@ try {
   <button data-t="empty">Empty panel</button>
   <button data-t="top5">!top5 countdown</button>
   <button data-t="hoomp">Fire HOOMP</button>
+  <button data-t="slop">Fire SLOP</button>
   <button data-t="live" class="live">Back to live data</button>
   <input id="cmdin" type="text" placeholder="!rateopen 120 Rate this match" spellcheck="false" aria-label="Test console — send a chat message as broadcaster">
   <div class="note">Manual commands run as the broadcaster. OBS never sees this console.</div>
@@ -2026,6 +2490,1372 @@ try {
 
 <div class="wr-toast" id="wrToast"></div>
 
+<script>
+/* ==== inlined: assets/alerts.js ==== */
+/* RateHive alerts — StreamElements Astro follower feed, no dependencies.
+ * Browser-native WebSocket to wss://astro.streamelements.com with the
+ * channel JWT (dashboard → avatar → channel → token). Pure message parsing
+ * at top level (headless-testable); DOM-free. The overlay wires
+ * AlertBus.connect({jwt, room, onFollow}) and turns follows into island
+ * takeovers; the lab drives it manually for testing.
+ *
+ * Follow detection: channel.session.update / follower-latest carries the
+ * name and fires immediately. A bare channel.activities follow (no name)
+ * is held 2.5s and dropped if the named session event lands meanwhile, so
+ * one follow never parades twice. Backoff mirrors the IRC recipe (5s→60s).
+ */
+var AlertBus = (function () {
+'use strict';
+
+var ASTRO_URL = 'wss://astro.streamelements.com/';
+var HOLD_MS = 2500;
+var ECHO_MS = 8000;
+
+function uid() {
+  try {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  } catch (e) {}
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+}
+
+/* Best-effort StreamElements channel id from the JWT payload ({channel}).
+ * Falls back to '' — caller passes ?seroom= explicitly then. */
+function roomFromJwt(jwt) {
+  try {
+    var parts = String(jwt || '').split('.');
+    if (parts.length < 2) return '';
+    var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var payload = JSON.parse(atob(b64));
+    var room = payload && (payload.channel || payload.channelId);
+    return room ? String(room) : '';
+  } catch (e) { return ''; }
+}
+
+function cleanName(value) {
+  var name = String(value == null ? '' : value).trim().slice(0, 40);
+  return name || '';
+}
+
+/* parseAstroMessage(data) → {hello} | {reconnect, token} | {ack, topic} |
+ * {kind:'follow', user} | null. Never throws. */
+function parseAstroMessage(data) {
+  var m = null;
+  try {
+    m = typeof data === 'string' ? JSON.parse(data) : data;
+  } catch (e) { return null; }
+  if (!m || typeof m !== 'object') return null;
+  if (m.type === 'welcome') return { hello: true };
+  if (m.type === 'reconnect') {
+    var token = null;
+    try { token = (m.data && m.data.reconnect_token) || null; } catch (e2) {}
+    return { reconnect: true, token: token };
+  }
+  if (m.type === 'response') {
+    var topic = null;
+    try { topic = (m.data && m.data.topic) || null; } catch (e3) {}
+    return { ack: true, topic: topic };
+  }
+  if (m.type !== 'message' || !m.data || typeof m.data !== 'object') return null;
+  if (m.topic === 'channel.session.update' && m.data.key === 'follower-latest') {
+    var named = null;
+    try { named = m.data.data && m.data.data.name; } catch (e4) {}
+    named = cleanName(named);
+    if (!named) return null;
+    return { kind: 'follow', user: named };
+  }
+  if (m.topic === 'channel.activities' && m.data.type === 'follow') {
+    var who = null;
+    try {
+      who = (m.data.data && m.data.data.name) || m.data.name || null;
+    } catch (e5) {}
+    return { kind: 'follow', user: cleanName(who) || null };
+  }
+  return null;
+}
+
+var ws = null;
+var retryTimer = 0;
+var delayMs = 5000;
+var reconnectToken = null;
+var holdTimer = 0;
+var lastNamedAt = 0;
+var statusCb = null;
+
+function status(state) {
+  try { if (statusCb) statusCb(state); } catch (e) {}
+  try { console.log('[alerts] ' + state); } catch (e2) {}
+}
+
+function subscribe(socket, topic, room, jwt) {
+  try {
+    socket.send(JSON.stringify({
+      type: 'subscribe',
+      nonce: uid(),
+      data: { topic: topic, room: room, token: jwt, token_type: 'jwt' }
+    }));
+  } catch (e) {}
+}
+
+function scheduleReconnect(opts) {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = setTimeout(function () {
+    retryTimer = 0;
+    openSocket(opts);
+  }, delayMs);
+  delayMs = Math.min(60000, delayMs * 1.5);
+  status('reconnecting');
+}
+
+function fireFollow(opts, user) {
+  lastNamedAt = Date.now();
+  try { if (opts && opts.onFollow) opts.onFollow(user || null); } catch (e) {}
+}
+
+function onPayload(opts, raw) {
+  var parsed = parseAstroMessage(raw);
+  if (!parsed) return;
+  if (parsed.hello) {
+    delayMs = 5000;
+    try {
+      subscribe(ws, 'channel.session.update', opts.room, opts.jwt);
+      subscribe(ws, 'channel.activities', opts.room, opts.jwt);
+    } catch (e) {}
+    status('subscribed');
+    return;
+  }
+  if (parsed.reconnect) {
+    try { if (parsed.token) reconnectToken = parsed.token; } catch (e) {}
+    try { if (ws) ws.close(); } catch (e2) {}
+    return;
+  }
+  if (parsed.ack || parsed.reconnect === false) return;
+  if (parsed.kind === 'follow') {
+    if (parsed.user) {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; }
+      fireFollow(opts, parsed.user);
+    } else {
+      /* Nameless activities echo: hold briefly — the named session event
+         for the same follow usually lands within a heartbeat. */
+      if (Date.now() - lastNamedAt < ECHO_MS) return;
+      if (holdTimer) return;
+      holdTimer = setTimeout(function () {
+        holdTimer = 0;
+        if (Date.now() - lastNamedAt < ECHO_MS) return;
+        fireFollow(opts, null);
+      }, HOLD_MS);
+    }
+  }
+}
+
+function openSocket(opts) {
+  try {
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+  } catch (e) {}
+  var url = ASTRO_URL;
+  try {
+    if (reconnectToken) url += '?reconnect_token=' + encodeURIComponent(reconnectToken);
+  } catch (e2) {}
+  var socket = null;
+  try {
+    socket = new WebSocket(url);
+  } catch (e3) {
+    scheduleReconnect(opts);
+    return;
+  }
+  ws = socket;
+  status('connecting');
+  try {
+    socket.onopen = function () {
+      if (ws !== socket) return;
+      status('waiting for welcome');
+    };
+    socket.onmessage = function (ev) {
+      if (ws !== socket) return;
+      try { onPayload(opts, ev.data); } catch (e4) {}
+    };
+    var down = function () {
+      if (ws !== socket) return;
+      ws = null;
+      scheduleReconnect(opts);
+    };
+    socket.onclose = down;
+    socket.onerror = function () { try { socket.close(); } catch (e5) {} };
+  } catch (e6) {
+    scheduleReconnect(opts);
+  }
+}
+
+function connect(opts) {
+  opts = opts || {};
+  var jwt = String((opts.jwt || '')).trim();
+  var room = String((opts.room || roomFromJwt(jwt) || '')).trim();
+  if (!jwt || !room) {
+    status('missing jwt/room');
+    return false;
+  }
+  statusCb = opts.onStatus || null;
+  delayMs = 5000;
+  openSocket({ jwt: jwt, room: room, onFollow: opts.onFollow });
+  try {
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && (!ws || (ws.readyState !== 0 && ws.readyState !== 1))) {
+        delayMs = 5000;
+        openSocket({ jwt: jwt, room: room, onFollow: opts.onFollow });
+      }
+    });
+  } catch (e) {}
+  return true;
+}
+
+function disconnect() {
+  try { if (retryTimer) clearTimeout(retryTimer); } catch (e) {}
+  retryTimer = 0;
+  try { if (holdTimer) clearTimeout(holdTimer); } catch (e2) {}
+  holdTimer = 0;
+  try { if (ws) ws.close(); } catch (e3) {}
+  ws = null;
+  reconnectToken = null;
+  statusCb = null;
+}
+
+return {
+  connect: connect,
+  disconnect: disconnect,
+  parse: parseAstroMessage,
+  roomFromJwt: roomFromJwt,
+  url: ASTRO_URL
+};
+})();
+try { if (typeof window !== 'undefined') window.AlertBus = AlertBus; } catch (e) {}
+
+</script>
+<script>
+/* ==== inlined: assets/softaurora.js ==== */
+/* RateHive softaurora v1 — shared vanilla aurora-night engine, no deps.
+ *
+ * Slow northern-lights bands breathing across a near-black sky, in the
+ * spirit of the aurora reference: layered sine-warped ribbons (teal,
+ * green, violet) with additive glow falloff, a sparse twinkle field,
+ * fine film grain, vignette. Fully procedural (seeded) — no images.
+ * A richer animated take on the gradients-only ?bg=aurora mode, which
+ * stays untouched; ?bg=softaurora picks this canvas instead.
+ *
+ * Never touches OBS transparency: pages mount the canvas only for browser
+ * previews (countdown removes it when not in browser-stage); CSS hides it
+ * wherever the stage is off. Guards: prefers-reduced-motion and
+ * data-static="1" (?fx=lite) draw one frozen frame; reduced-transparency
+ * is left to page CSS (display:none, aurora/solid shows through instead).
+ *
+ * Usage: <canvas data-softaurora data-speed="1"></canvas>
+ * ?seed=words pin a favorite roll (window.__softauroraSeed reports it);
+ * ?bg=softaurora picks it. Auto-mounts on DOMContentLoaded;
+ * also window.SoftAurora.mount(el).
+ */
+(function () {
+'use strict';
+
+function xfnv1a(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seedParam() {
+  try {
+    var s = new URLSearchParams(location.search).get('seed');
+    if (s !== null && s !== '') return String(s);
+  } catch (e) {}
+  return null;
+}
+function hexRgb(hex) {
+  var h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(h)) h = 'd4a853';
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function accentRgb() {
+  try {
+    var a = (new URLSearchParams(location.search).get('accent') || '').trim().replace(/^#/, '');
+    if (/^[0-9a-f]{6}$/i.test(a)) return hexRgb(a);
+    var bd = document.body && document.body.getAttribute && document.body.getAttribute('data-accent');
+    if (bd && /^[0-9a-f]{6}$/i.test(String(bd).replace(/^#/, ''))) return hexRgb(bd);
+  } catch (e) {}
+  return hexRgb('d4a853');
+}
+function reducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch (e) { return false; }
+}
+function mix(a, b, t) {
+  return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
+}
+function css(rgb, alpha) {
+  return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha.toFixed(3) + ')';
+}
+function makeGrain() {
+  var c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  var x = c.getContext('2d');
+  var img = x.createImageData(128, 128);
+  var d = img.data;
+  for (var k = 0; k < d.length; k += 4) {
+    var v = (Math.random() * 255) | 0;
+    d[k] = d[k + 1] = d[k + 2] = v;
+    d[k + 3] = 20;
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+function makeVignette() {
+  var c = document.createElement('canvas');
+  c.width = 256; c.height = 144;
+  var x = c.getContext('2d');
+  var g = x.createRadialGradient(128, 72, 40, 128, 72, 165);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.55)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 144);
+  return c;
+}
+
+function mount(canvas) {
+  if (!canvas || canvas.__softauroraMounted) return null;
+  var ctx = null;
+  try { ctx = canvas.getContext('2d'); } catch (e) { return null; }
+  if (!ctx) return null;
+  canvas.__softauroraMounted = true;
+
+  var speed = parseFloat(canvas.getAttribute('data-speed') || '1') || 1;
+  if (!(speed > 0)) speed = 1;
+  speed = Math.max(0.25, Math.min(3, speed));
+  var frozen = canvas.hasAttribute('data-static') || reducedMotion();
+
+  var seedStr = seedParam();
+  var rnd = seedStr === null ? Math.random : mulberry32(xfnv1a(seedStr));
+  try {
+    window.__softauroraSeed = seedStr === null
+      ? String((Math.random() * 1e9) | 0)
+      : seedStr;
+  } catch (e) {}
+
+  var accent = accentRgb();
+  var families = [
+    { deep: [16, 90, 80], bright: mix([45, 200, 180], accent, 0.45) },
+    { deep: [20, 110, 60], bright: [90, 230, 150] },
+    { deep: [60, 50, 130], bright: [150, 120, 255] },
+    { deep: [30, 60, 140], bright: [100, 150, 255] }
+  ];
+  var bands = [];
+  for (var i = 0; i < families.length; i++) {
+    bands.push({
+      cy: 0.28 + i * 0.15 + (rnd() - 0.5) * 0.08,
+      amp: 0.05 + rnd() * 0.05,
+      amp2: 0.02 + rnd() * 0.03,
+      k: 1.6 + rnd() * 1.4,
+      k2: 3.2 + rnd() * 2.2,
+      w: (0.05 + rnd() * 0.06) * (rnd() < 0.5 ? 1 : -1),
+      w2: 0.03 + rnd() * 0.05,
+      ph: rnd() * 6.283,
+      thick: 0.10 + rnd() * 0.08,
+      alpha: 0.34 + rnd() * 0.22,
+      breatheP: 9 + rnd() * 10,
+      fam: families[i]
+    });
+  }
+  var stars = [];
+  for (var s = 0; s < 90; s++) {
+    stars.push({ x: rnd(), y: rnd() * 0.75, r: 0.4 + rnd() * 1.1, ph: rnd() * 6.283, p: 2.5 + rnd() * 4 });
+  }
+  var grain = makeGrain(), vig = makeVignette();
+  var grainTick = 0, gox = 0, goy = 0;
+
+  var W = 0, H = 0;
+  function resize() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = 1;
+    try { dpr = Math.min(1.25, window.devicePixelRatio || 1); } catch (e) {}
+    W = Math.max(320, Math.round(Math.max(1, r.width) * dpr));
+    H = Math.max(180, Math.round(Math.max(1, r.height) * dpr));
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  }
+
+  function bandPath(b, t, yOff) {
+    ctx.beginPath();
+    var step = Math.max(6, W / 160);
+    for (var x = -step; x <= W + step; x += step) {
+      var u = x / W;
+      var y = (b.cy + yOff) * H
+        + Math.sin(u * 6.283 * b.k + t * b.w * 6.283 + b.ph) * b.amp * H
+        + Math.sin(u * 6.283 * b.k2 - t * b.w2 * 6.283) * b.amp2 * H;
+      if (x <= 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+  }
+  function drawBand(b, t) {
+    var breathe = 0.78 + 0.22 * Math.sin((t / b.breatheP) * 6.283 + b.ph);
+    var layers = 5;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (var l = 0; l < layers; l++) {
+      var f = l / (layers - 1);
+      var col = mix(b.fam.deep, b.fam.bright, f * f);
+      ctx.strokeStyle = css(col, b.alpha * breathe * (0.25 + 0.75 * f) / layers * 2.4);
+      ctx.lineWidth = Math.max(2, b.thick * H * (1 - f * 0.82));
+      bandPath(b, t, (f - 0.5) * 0.02);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function draw(t) {
+    if (!W || !H) resize();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#04050a';
+    ctx.fillRect(0, 0, W, H);
+    var i;
+    ctx.fillStyle = '#ffffff';
+    for (i = 0; i < stars.length; i++) {
+      var st = stars[i];
+      var tw = frozen ? 0.7 : 0.45 + 0.55 * (0.5 + 0.5 * Math.sin((t / st.p) * 6.283 + st.ph));
+      ctx.globalAlpha = 0.5 * tw;
+      ctx.beginPath();
+      ctx.arc(st.x * W, st.y * H, st.r, 0, 6.2832);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (i = 0; i < bands.length; i++) drawBand(bands[i], t);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    if (!frozen && (grainTick++ % 3 === 0)) {
+      gox = (Math.random() * 128) | 0;
+      goy = (Math.random() * 128) | 0;
+    }
+    var pat = null;
+    try { pat = ctx.createPattern(grain, 'repeat'); } catch (e) {}
+    if (pat) {
+      ctx.save();
+      ctx.translate(-gox, -goy);
+      ctx.fillStyle = pat;
+      ctx.fillRect(0, 0, W + 128, H + 128);
+      ctx.restore();
+    }
+    ctx.drawImage(vig, 0, 0, W, H);
+    try {
+      var inst = window.__rhLiquidGlass;
+      if (inst && inst.markChanged) inst.markChanged(canvas);
+    } catch (e2) {}
+  }
+
+  var raf = 0, running = false, last = 0, acc = Math.random() * 40;
+  function frame(now) {
+    if (!running) return;
+    var dt = Math.min(0.1, (now - last) / 1000 || 0.016);
+    last = now; acc += dt;
+    draw(acc * speed);
+    raf = requestAnimationFrame(frame);
+  }
+  function start() {
+    if (running || frozen) return;
+    running = true;
+    try { last = performance.now(); } catch (e) { last = Date.now(); }
+    raf = requestAnimationFrame(frame);
+  }
+  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+
+  var visible = true, shown = !document.hidden;
+  function gate() { if (visible && shown) start(); else stop(); }
+  var io = null;
+  try {
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver(function (es) {
+        visible = !!(es[0] && es[0].isIntersecting);
+        gate();
+      }, { threshold: 0.02 });
+      io.observe(canvas);
+    }
+  } catch (e) {}
+  try {
+    document.addEventListener('visibilitychange', function () {
+      shown = !document.hidden;
+      gate();
+    });
+  } catch (e2) {}
+  var rzT = 0;
+  try {
+    window.addEventListener('resize', function () {
+      clearTimeout(rzT);
+      rzT = setTimeout(function () { resize(); if (frozen) draw(acc); }, 200);
+    });
+  } catch (e3) {}
+
+  resize();
+  draw(acc);
+  gate();
+
+  return {
+    el: canvas,
+    redraw: function () { resize(); draw(acc); },
+    destroy: function () { stop(); try { if (io) io.disconnect(); } catch (e) {} canvas.__softauroraMounted = false; }
+  };
+}
+
+function mountAll() {
+  var found = [];
+  try {
+    var els = document.querySelectorAll('canvas[data-softaurora]');
+    for (var i = 0; i < els.length; i++) {
+      var h = mount(els[i]);
+      if (h) found.push(h);
+    }
+  } catch (e) {}
+  return found;
+}
+
+try { window.SoftAurora = { mount: mount, mountAll: mountAll }; } catch (e) {}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { mountAll(); });
+} else {
+  mountAll();
+}
+})();
+
+</script>
+<script>
+/* ==== inlined: assets/dotgrid.js ==== */
+/* RateHive dotgrid v1 — shared vanilla dot-matrix engine, no deps.
+ *
+ * A quiet field of dots breathing in traveling waves, in the spirit of the
+ * dot-grid reference: tabular dot matrix with slow sinusoidal brightness
+ * swells, sparse random twinkles, and an occasional auto ripple ring that
+ * expands from a random node and fades. Minimal and near-free, so the
+ * liquid glass stays the hero.
+ *
+ * Never touches OBS transparency: pages mount the canvas only for browser
+ * previews (countdown removes it when not in browser-stage); CSS hides it
+ * wherever the stage is off. Guards: prefers-reduced-motion and
+ * data-static="1" (?fx=lite) draw one frozen frame; reduced-transparency
+ * is left to page CSS (display:none, aurora/solid shows through instead).
+ *
+ * Usage: <canvas data-dotgrid data-speed="1"></canvas>
+ * ?seed=words pin a favorite roll (window.__dotgridSeed reports it);
+ * ?bg=dotgrid picks it. Auto-mounts on DOMContentLoaded;
+ * also window.DotGrid.mount(el).
+ */
+(function () {
+'use strict';
+
+function xfnv1a(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seedParam() {
+  try {
+    var s = new URLSearchParams(location.search).get('seed');
+    if (s !== null && s !== '') return String(s);
+  } catch (e) {}
+  return null;
+}
+function hexRgb(hex) {
+  var h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(h)) h = 'd4a853';
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function accentRgb() {
+  try {
+    var a = (new URLSearchParams(location.search).get('accent') || '').trim().replace(/^#/, '');
+    if (/^[0-9a-f]{6}$/i.test(a)) return hexRgb(a);
+    var bd = document.body && document.body.getAttribute && document.body.getAttribute('data-accent');
+    if (bd && /^[0-9a-f]{6}$/i.test(String(bd).replace(/^#/, ''))) return hexRgb(bd);
+  } catch (e) {}
+  return hexRgb('d4a853');
+}
+function reducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch (e) { return false; }
+}
+function makeVignette() {
+  var c = document.createElement('canvas');
+  c.width = 256; c.height = 144;
+  var x = c.getContext('2d');
+  var g = x.createRadialGradient(128, 72, 40, 128, 72, 165);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.55)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 144);
+  return c;
+}
+
+function mount(canvas) {
+  if (!canvas || canvas.__dotgridMounted) return null;
+  var ctx = null;
+  try { ctx = canvas.getContext('2d'); } catch (e) { return null; }
+  if (!ctx) return null;
+  canvas.__dotgridMounted = true;
+
+  var speed = parseFloat(canvas.getAttribute('data-speed') || '1') || 1;
+  if (!(speed > 0)) speed = 1;
+  speed = Math.max(0.25, Math.min(3, speed));
+  var frozen = canvas.hasAttribute('data-static') || reducedMotion();
+
+  var seedStr = seedParam();
+  var rnd = seedStr === null ? Math.random : mulberry32(xfnv1a(seedStr));
+  try {
+    window.__dotgridSeed = seedStr === null
+      ? String((Math.random() * 1e9) | 0)
+      : seedStr;
+  } catch (e) {}
+
+  var accent = accentRgb();
+  var dot = [Math.round(200 + (accent[0] - 200) * 0.35), Math.round(205 + (accent[1] - 205) * 0.35), Math.round(220 + (accent[2] - 220) * 0.35)];
+  var vig = makeVignette();
+
+  var GAP = 34;
+  var twinkles = [];
+  for (var i = 0; i < 26; i++) {
+    twinkles.push({ fx: rnd(), fy: rnd(), ph: rnd() * 6.283, p: 3 + rnd() * 5 });
+  }
+  var ripples = [];
+  var nextRipple = 4 + rnd() * 5;
+
+  var W = 0, H = 0, cols = 0, rows = 0;
+  function resize() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = 1;
+    try { dpr = Math.min(1.25, window.devicePixelRatio || 1); } catch (e) {}
+    W = Math.max(320, Math.round(Math.max(1, r.width) * dpr));
+    H = Math.max(180, Math.round(Math.max(1, r.height) * dpr));
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    cols = Math.ceil(W / GAP) + 1;
+    rows = Math.ceil(H / GAP) + 1;
+  }
+
+  function draw(t) {
+    if (!W || !H) resize();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, W, H);
+    var ox = (W - (cols - 1) * GAP) / 2, oy = (H - (rows - 1) * GAP) / 2;
+    var gx, gy, x, y, wave, r, a;
+    ctx.fillStyle = 'rgb(' + dot[0] + ',' + dot[1] + ',' + dot[2] + ')';
+    for (gy = 0; gy < rows; gy++) {
+      for (gx = 0; gx < cols; gx++) {
+        x = ox + gx * GAP;
+        y = oy + gy * GAP;
+        wave = 0.5 + 0.5 * Math.sin(gx * 0.42 + t * 0.9 + Math.sin(gy * 0.35 + t * 0.6) * 1.4);
+        a = 0.10 + 0.30 * wave * wave;
+        r = 1.1 + 1.3 * wave;
+        ctx.globalAlpha = Math.min(1, a);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 6.2832);
+        ctx.fill();
+      }
+    }
+    var ti;
+    for (ti = 0; ti < twinkles.length; ti++) {
+      var tw = twinkles[ti];
+      var blink = 0.5 + 0.5 * Math.sin((t / tw.p) * 6.283 + tw.ph);
+      blink = blink * blink * blink;
+      if (blink < 0.03) continue;
+      ctx.globalAlpha = 0.85 * blink;
+      ctx.beginPath();
+      ctx.arc(ox + tw.fx * (cols - 1) * GAP, oy + tw.fy * (rows - 1) * GAP, 2.1, 0, 6.2832);
+      ctx.fill();
+    }
+    var ri;
+    ctx.strokeStyle = 'rgb(' + dot[0] + ',' + dot[1] + ',' + dot[2] + ')';
+    for (ri = ripples.length - 1; ri >= 0; ri--) {
+      var rp = ripples[ri];
+      var age = t - rp.t0;
+      if (age > rp.life) { ripples.splice(ri, 1); continue; }
+      var f = age / rp.life;
+      ctx.globalAlpha = 0.5 * (1 - f);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, 8 + f * rp.max, 0, 6.2832);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.drawImage(vig, 0, 0, W, H);
+    try {
+      var inst = window.__rhLiquidGlass;
+      if (inst && inst.markChanged) inst.markChanged(canvas);
+    } catch (e) {}
+  }
+
+  var raf = 0, running = false, last = 0, acc = Math.random() * 40;
+  function frame(now) {
+    if (!running) return;
+    var dt = Math.min(0.1, (now - last) / 1000 || 0.016);
+    last = now; acc += dt;
+    if (!frozen && acc >= nextRipple && ripples.length < 2) {
+      nextRipple = acc + 6 + Math.random() * 7;
+      ripples.push({ x: Math.random() * W, y: Math.random() * H, t0: acc, life: 3.2, max: Math.min(W, H) * 0.45 });
+    }
+    draw(acc * speed);
+    raf = requestAnimationFrame(frame);
+  }
+  function start() {
+    if (running || frozen) return;
+    running = true;
+    try { last = performance.now(); } catch (e) { last = Date.now(); }
+    raf = requestAnimationFrame(frame);
+  }
+  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+
+  var visible = true, shown = !document.hidden;
+  function gate() { if (visible && shown) start(); else stop(); }
+  var io = null;
+  try {
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver(function (es) {
+        visible = !!(es[0] && es[0].isIntersecting);
+        gate();
+      }, { threshold: 0.02 });
+      io.observe(canvas);
+    }
+  } catch (e) {}
+  try {
+    document.addEventListener('visibilitychange', function () {
+      shown = !document.hidden;
+      gate();
+    });
+  } catch (e2) {}
+  var rzT = 0;
+  try {
+    window.addEventListener('resize', function () {
+      clearTimeout(rzT);
+      rzT = setTimeout(function () { resize(); if (frozen) draw(acc); }, 200);
+    });
+  } catch (e3) {}
+
+  resize();
+  draw(acc);
+  gate();
+
+  return {
+    el: canvas,
+    redraw: function () { resize(); draw(acc); },
+    destroy: function () { stop(); try { if (io) io.disconnect(); } catch (e) {} canvas.__dotgridMounted = false; }
+  };
+}
+
+function mountAll() {
+  var found = [];
+  try {
+    var els = document.querySelectorAll('canvas[data-dotgrid]');
+    for (var i = 0; i < els.length; i++) {
+      var h = mount(els[i]);
+      if (h) found.push(h);
+    }
+  } catch (e) {}
+  return found;
+}
+
+try { window.DotGrid = { mount: mount, mountAll: mountAll }; } catch (e) {}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { mountAll(); });
+} else {
+  mountAll();
+}
+})();
+
+</script>
+<script>
+/* ==== inlined: assets/lightrays.js ==== */
+/* RateHive lightrays v1 — shared vanilla god-rays engine, no deps.
+ *
+ * A slow fan of volumetric-feeling light rays breathing from a vanishing
+ * point above the frame, in the spirit of the light-rays reference: warm
+ * additive blades on near-black, gently swaying as one fan while each ray
+ * breathes on its own cycle. Builds anticipation behind a countdown
+ * without ever shouting over the glass.
+ *
+ * Never touches OBS transparency: pages mount the canvas only for browser
+ * previews (countdown removes it when not in browser-stage); CSS hides it
+ * wherever the stage is off. Guards: prefers-reduced-motion and
+ * data-static="1" (?fx=lite) draw one frozen frame; reduced-transparency
+ * is left to page CSS (display:none, aurora/solid shows through instead).
+ *
+ * Usage: <canvas data-lightrays data-speed="1"></canvas>
+ * ?seed=words pin a favorite roll (window.__lightraysSeed reports it);
+ * ?bg=lightrays picks it. Auto-mounts on DOMContentLoaded;
+ * also window.LightRays.mount(el).
+ */
+(function () {
+'use strict';
+
+function xfnv1a(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seedParam() {
+  try {
+    var s = new URLSearchParams(location.search).get('seed');
+    if (s !== null && s !== '') return String(s);
+  } catch (e) {}
+  return null;
+}
+function hexRgb(hex) {
+  var h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(h)) h = 'd4a853';
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function accentRgb() {
+  try {
+    var a = (new URLSearchParams(location.search).get('accent') || '').trim().replace(/^#/, '');
+    if (/^[0-9a-f]{6}$/i.test(a)) return hexRgb(a);
+    var bd = document.body && document.body.getAttribute && document.body.getAttribute('data-accent');
+    if (bd && /^[0-9a-f]{6}$/i.test(String(bd).replace(/^#/, ''))) return hexRgb(bd);
+  } catch (e) {}
+  return hexRgb('d4a853');
+}
+function reducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch (e) { return false; }
+}
+function mix(a, b, t) {
+  return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
+}
+function makeGrain() {
+  var c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  var x = c.getContext('2d');
+  var img = x.createImageData(128, 128);
+  var d = img.data;
+  for (var k = 0; k < d.length; k += 4) {
+    var v = (Math.random() * 255) | 0;
+    d[k] = d[k + 1] = d[k + 2] = v;
+    d[k + 3] = 20;
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+function makeVignette() {
+  var c = document.createElement('canvas');
+  c.width = 256; c.height = 144;
+  var x = c.getContext('2d');
+  var g = x.createRadialGradient(128, 72, 40, 128, 72, 165);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.55)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 144);
+  return c;
+}
+
+function mount(canvas) {
+  if (!canvas || canvas.__lightraysMounted) return null;
+  var ctx = null;
+  try { ctx = canvas.getContext('2d'); } catch (e) { return null; }
+  if (!ctx) return null;
+  canvas.__lightraysMounted = true;
+
+  var speed = parseFloat(canvas.getAttribute('data-speed') || '1') || 1;
+  if (!(speed > 0)) speed = 1;
+  speed = Math.max(0.25, Math.min(3, speed));
+  var frozen = canvas.hasAttribute('data-static') || reducedMotion();
+
+  var seedStr = seedParam();
+  var rnd = seedStr === null ? Math.random : mulberry32(xfnv1a(seedStr));
+  try {
+    window.__lightraysSeed = seedStr === null
+      ? String((Math.random() * 1e9) | 0)
+      : seedStr;
+  } catch (e) {}
+
+  var accent = accentRgb();
+  var warm = mix([232, 200, 130], accent, 0.5);
+  var rays = [];
+  var COUNT = 14;
+  for (var i = 0; i < COUNT; i++) {
+    rays.push({
+      a: -0.62 + (i / (COUNT - 1)) * 1.24 + (rnd() - 0.5) * 0.05,
+      w: 0.028 + rnd() * 0.05,
+      alpha: 0.10 + rnd() * 0.16,
+      ph: rnd() * 6.283,
+      p: 7 + rnd() * 9,
+      warmMix: rnd()
+    });
+  }
+  var grain = makeGrain(), vig = makeVignette();
+  var grainTick = 0, gox = 0, goy = 0;
+
+  var W = 0, H = 0;
+  function resize() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = 1;
+    try { dpr = Math.min(1.25, window.devicePixelRatio || 1); } catch (e) {}
+    W = Math.max(320, Math.round(Math.max(1, r.width) * dpr));
+    H = Math.max(180, Math.round(Math.max(1, r.height) * dpr));
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  }
+
+  function draw(t) {
+    if (!W || !H) resize();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#040405';
+    ctx.fillRect(0, 0, W, H);
+    var vx = W * 0.5, vy = -H * 0.12;
+    var reach = Math.sqrt(W * W + H * H) * 1.2;
+    var sway = Math.sin(t * 0.11) * 0.05;
+    ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < rays.length; i++) {
+      var ry = rays[i];
+      var breathe = 0.7 + 0.3 * Math.sin((t / ry.p) * 6.283 + ry.ph);
+      var col = mix([150, 170, 220], warm, ry.warmMix);
+      var ang = ry.a + sway;
+      var hw = ry.w / 2;
+      var steps = 4, s;
+      for (s = 0; s < steps; s++) {
+        var f0 = s / steps, f1 = (s + 1) / steps;
+        var edge = Math.sin(Math.PI * (f0 + f1) / 2);
+        var a0 = ang - hw + ry.w * (f0 - 0.5);
+        var a1 = ang - hw + ry.w * (f1 - 0.5);
+        ctx.fillStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' +
+          (ry.alpha * breathe * edge * 0.5).toFixed(4) + ')';
+        ctx.beginPath();
+        ctx.moveTo(vx, vy);
+        ctx.lineTo(vx + Math.tan(a0) * reach, vy + reach);
+        ctx.lineTo(vx + Math.tan(a1) * reach, vy + reach);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    if (!frozen && (grainTick++ % 3 === 0)) {
+      gox = (Math.random() * 128) | 0;
+      goy = (Math.random() * 128) | 0;
+    }
+    var pat = null;
+    try { pat = ctx.createPattern(grain, 'repeat'); } catch (e) {}
+    if (pat) {
+      ctx.save();
+      ctx.translate(-gox, -goy);
+      ctx.fillStyle = pat;
+      ctx.fillRect(0, 0, W + 128, H + 128);
+      ctx.restore();
+    }
+    ctx.drawImage(vig, 0, 0, W, H);
+    try {
+      var inst = window.__rhLiquidGlass;
+      if (inst && inst.markChanged) inst.markChanged(canvas);
+    } catch (e2) {}
+  }
+
+  var raf = 0, running = false, last = 0, acc = Math.random() * 40;
+  function frame(now) {
+    if (!running) return;
+    var dt = Math.min(0.1, (now - last) / 1000 || 0.016);
+    last = now; acc += dt;
+    draw(acc * speed);
+    raf = requestAnimationFrame(frame);
+  }
+  function start() {
+    if (running || frozen) return;
+    running = true;
+    try { last = performance.now(); } catch (e) { last = Date.now(); }
+    raf = requestAnimationFrame(frame);
+  }
+  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+
+  var visible = true, shown = !document.hidden;
+  function gate() { if (visible && shown) start(); else stop(); }
+  var io = null;
+  try {
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver(function (es) {
+        visible = !!(es[0] && es[0].isIntersecting);
+        gate();
+      }, { threshold: 0.02 });
+      io.observe(canvas);
+    }
+  } catch (e) {}
+  try {
+    document.addEventListener('visibilitychange', function () {
+      shown = !document.hidden;
+      gate();
+    });
+  } catch (e2) {}
+  var rzT = 0;
+  try {
+    window.addEventListener('resize', function () {
+      clearTimeout(rzT);
+      rzT = setTimeout(function () { resize(); if (frozen) draw(acc); }, 200);
+    });
+  } catch (e3) {}
+
+  resize();
+  draw(acc);
+  gate();
+
+  return {
+    el: canvas,
+    redraw: function () { resize(); draw(acc); },
+    destroy: function () { stop(); try { if (io) io.disconnect(); } catch (e) {} canvas.__lightraysMounted = false; }
+  };
+}
+
+function mountAll() {
+  var found = [];
+  try {
+    var els = document.querySelectorAll('canvas[data-lightrays]');
+    for (var i = 0; i < els.length; i++) {
+      var h = mount(els[i]);
+      if (h) found.push(h);
+    }
+  } catch (e) {}
+  return found;
+}
+
+try { window.LightRays = { mount: mount, mountAll: mountAll }; } catch (e) {}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { mountAll(); });
+} else {
+  mountAll();
+}
+})();
+
+</script>
+<script>
+/* ==== inlined: assets/faulty.js ==== */
+/* RateHive faulty v1 — shared vanilla faulty-terminal engine, no deps.
+ *
+ * A phosphor terminal slowly losing its mind, in the spirit of the
+ * faulty-terminal reference: dark scanline field, faint character-cell
+ * flicker, a soft refresh band sweeping down on a long period, and rare
+ * glitch slices with chromatic edges. Kept deliberately calm (no
+ * strobing): slices arrive at most about once every two seconds and fade
+ * in and out instead of cutting.
+ *
+ * Never touches OBS transparency: pages mount the canvas only for browser
+ * previews (countdown removes it when not in browser-stage); CSS hides it
+ * wherever the stage is off. Guards: prefers-reduced-motion and
+ * data-static="1" (?fx=lite) draw one frozen frame; reduced-transparency
+ * is left to page CSS (display:none, aurora/solid shows through instead).
+ *
+ * Usage: <canvas data-faulty data-speed="1"></canvas>
+ * ?seed=words pin a favorite roll (window.__faultySeed reports it);
+ * ?bg=faulty picks it. Auto-mounts on DOMContentLoaded;
+ * also window.Faulty.mount(el).
+ */
+(function () {
+'use strict';
+
+function xfnv1a(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seedParam() {
+  try {
+    var s = new URLSearchParams(location.search).get('seed');
+    if (s !== null && s !== '') return String(s);
+  } catch (e) {}
+  return null;
+}
+function hexRgb(hex) {
+  var h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(h)) h = '3ce87a';
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function accentRgb() {
+  try {
+    var a = (new URLSearchParams(location.search).get('accent') || '').trim().replace(/^#/, '');
+    if (/^[0-9a-f]{6}$/i.test(a)) return hexRgb(a);
+    var bd = document.body && document.body.getAttribute && document.body.getAttribute('data-accent');
+    if (bd && /^[0-9a-f]{6}$/i.test(String(bd).replace(/^#/, ''))) return hexRgb(bd);
+  } catch (e) {}
+  return hexRgb('3ce87a');
+}
+function reducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch (e) { return false; }
+}
+function css(rgb, alpha) {
+  return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha.toFixed(3) + ')';
+}
+function makeGrain() {
+  var c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  var x = c.getContext('2d');
+  var img = x.createImageData(128, 128);
+  var d = img.data;
+  for (var k = 0; k < d.length; k += 4) {
+    var v = (Math.random() * 255) | 0;
+    d[k] = d[k + 1] = d[k + 2] = v;
+    d[k + 3] = 18;
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+function makeVignette() {
+  var c = document.createElement('canvas');
+  c.width = 256; c.height = 144;
+  var x = c.getContext('2d');
+  var g = x.createRadialGradient(128, 72, 40, 128, 72, 165);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.6)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 144);
+  return c;
+}
+
+function mount(canvas) {
+  if (!canvas || canvas.__faultyMounted) return null;
+  var ctx = null;
+  try { ctx = canvas.getContext('2d'); } catch (e) { return null; }
+  if (!ctx) return null;
+  canvas.__faultyMounted = true;
+
+  var speed = parseFloat(canvas.getAttribute('data-speed') || '1') || 1;
+  if (!(speed > 0)) speed = 1;
+  speed = Math.max(0.25, Math.min(3, speed));
+  var frozen = canvas.hasAttribute('data-static') || reducedMotion();
+
+  var seedStr = seedParam();
+  var rnd = seedStr === null ? Math.random : mulberry32(xfnv1a(seedStr));
+  try {
+    window.__faultySeed = seedStr === null
+      ? String((Math.random() * 1e9) | 0)
+      : seedStr;
+  } catch (e) {}
+
+  var phosphor = accentRgb();
+  var dim = [phosphor[0] >> 2, phosphor[1] >> 2, phosphor[2] >> 2];
+  var cells = [];
+  for (var i = 0; i < 40; i++) {
+    cells.push({
+      fx: rnd(), fy: rnd(), w: 2 + Math.floor(rnd() * 5), h: 1 + Math.floor(rnd() * 2),
+      ph: rnd() * 6.283, p: 4 + rnd() * 9, peak: 0.10 + rnd() * 0.22
+    });
+  }
+  var slices = [];
+  var nextSlice = 3 + rnd() * 4;
+  var grain = makeGrain(), vig = makeVignette();
+  var grainTick = 0, gox = 0, goy = 0;
+
+  var W = 0, H = 0, CW = 8, CH = 14;
+  function resize() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = 1;
+    try { dpr = Math.min(1.25, window.devicePixelRatio || 1); } catch (e) {}
+    W = Math.max(320, Math.round(Math.max(1, r.width) * dpr));
+    H = Math.max(180, Math.round(Math.max(1, r.height) * dpr));
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    CW = Math.max(6, W / 160);
+    CH = Math.max(10, H / 90);
+  }
+
+  function draw(t) {
+    if (!W || !H) resize();
+    var i;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#020403';
+    ctx.fillRect(0, 0, W, H);
+
+    // faint cell field
+    ctx.fillStyle = css(dim, 0.5);
+    for (i = 0; i < cells.length; i++) {
+      var c = cells[i];
+      ctx.fillRect(c.fx * W, c.fy * H, c.w * CW * 0.5, c.h * CH * 0.5);
+    }
+    // flickering cells (slow swells, never cuts)
+    for (i = 0; i < cells.length; i++) {
+      var f = cells[i];
+      var sw = 0.5 + 0.5 * Math.sin((t / f.p) * 6.283 + f.ph);
+      sw = sw * sw;
+      if (sw < 0.05) continue;
+      ctx.fillStyle = css(phosphor, f.peak * sw);
+      ctx.fillRect(f.fx * W, f.fy * H, f.w * CW * 0.5, f.h * CH * 0.5);
+    }
+    // refresh band sweeping down on a long period
+    var bandY = ((t * 0.055) % 1.4 - 0.2) * H;
+    var bandG = ctx.createLinearGradient(0, bandY - H * 0.08, 0, bandY + H * 0.08);
+    bandG.addColorStop(0, css(phosphor, 0));
+    bandG.addColorStop(0.5, css(phosphor, 0.05));
+    bandG.addColorStop(1, css(phosphor, 0));
+    ctx.fillStyle = bandG;
+    ctx.fillRect(0, Math.max(0, bandY - H * 0.08), W, H * 0.16);
+
+    // glitch slices with chromatic edges (fade in/out, low rate)
+    var si;
+    ctx.globalCompositeOperation = 'lighter';
+    for (si = slices.length - 1; si >= 0; si--) {
+      var sl = slices[si];
+      var age = t - sl.t0;
+      if (age > sl.life) { slices.splice(si, 1); continue; }
+      var env = Math.sin(Math.PI * Math.min(1, age / sl.life));
+      env = env * env;
+      var y = sl.y * H, hgt = sl.h;
+      ctx.fillStyle = css(phosphor, 0.16 * env);
+      ctx.fillRect(0, y, W, hgt);
+      ctx.fillStyle = 'rgba(255,70,90,' + (0.10 * env).toFixed(3) + ')';
+      ctx.fillRect(sl.dx, y, W, Math.max(1, hgt * 0.22));
+      ctx.fillStyle = 'rgba(90,200,255,' + (0.10 * env).toFixed(3) + ')';
+      ctx.fillRect(-sl.dx, y + hgt * 0.6, W, Math.max(1, hgt * 0.22));
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    // scanlines
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    for (var sy = 0; sy < H; sy += 4) ctx.fillRect(0, sy, W, 1);
+
+    ctx.globalAlpha = 1;
+    if (!frozen && (grainTick++ % 3 === 0)) {
+      gox = (Math.random() * 128) | 0;
+      goy = (Math.random() * 128) | 0;
+    }
+    var pat = null;
+    try { pat = ctx.createPattern(grain, 'repeat'); } catch (e) {}
+    if (pat) {
+      ctx.save();
+      ctx.translate(-gox, -goy);
+      ctx.fillStyle = pat;
+      ctx.fillRect(0, 0, W + 128, H + 128);
+      ctx.restore();
+    }
+    ctx.drawImage(vig, 0, 0, W, H);
+    try {
+      var inst = window.__rhLiquidGlass;
+      if (inst && inst.markChanged) inst.markChanged(canvas);
+    } catch (e2) {}
+  }
+
+  var raf = 0, running = false, last = 0, acc = Math.random() * 40;
+  function frame(now) {
+    if (!running) return;
+    var dt = Math.min(0.1, (now - last) / 1000 || 0.016);
+    last = now; acc += dt;
+    if (!frozen && acc >= nextSlice && slices.length < 2) {
+      nextSlice = acc + 2.5 + Math.random() * 4;
+      slices.push({
+        y: Math.random(), h: 6 + Math.random() * 34,
+        dx: (Math.random() - 0.5) * 60,
+        t0: acc, life: 0.9 + Math.random() * 0.9
+      });
+    }
+    draw(acc * speed);
+    raf = requestAnimationFrame(frame);
+  }
+  function start() {
+    if (running || frozen) return;
+    running = true;
+    try { last = performance.now(); } catch (e) { last = Date.now(); }
+    raf = requestAnimationFrame(frame);
+  }
+  function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+
+  var visible = true, shown = !document.hidden;
+  function gate() { if (visible && shown) start(); else stop(); }
+  var io = null;
+  try {
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver(function (es) {
+        visible = !!(es[0] && es[0].isIntersecting);
+        gate();
+      }, { threshold: 0.02 });
+      io.observe(canvas);
+    }
+  } catch (e) {}
+  try {
+    document.addEventListener('visibilitychange', function () {
+      shown = !document.hidden;
+      gate();
+    });
+  } catch (e2) {}
+  var rzT = 0;
+  try {
+    window.addEventListener('resize', function () {
+      clearTimeout(rzT);
+      rzT = setTimeout(function () { resize(); if (frozen) draw(acc); }, 200);
+    });
+  } catch (e3) {}
+
+  resize();
+  draw(acc);
+  gate();
+
+  return {
+    el: canvas,
+    redraw: function () { resize(); draw(acc); },
+    destroy: function () { stop(); try { if (io) io.disconnect(); } catch (e) {} canvas.__faultyMounted = false; }
+  };
+}
+
+function mountAll() {
+  var found = [];
+  try {
+    var els = document.querySelectorAll('canvas[data-faulty]');
+    for (var i = 0; i < els.length; i++) {
+      var h = mount(els[i]);
+      if (h) found.push(h);
+    }
+  } catch (e) {}
+  return found;
+}
+
+try { window.Faulty = { mount: mount, mountAll: mountAll }; } catch (e) {}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { mountAll(); });
+} else {
+  mountAll();
+}
+})();
+
+</script>
 <script>
 /* ==== inlined: assets/overlay.js ==== */
 (function () {
@@ -2189,14 +4019,17 @@ try {
     'island'
   );
 
+  /* ?corner= / ?pos= override the drawer like ?ipos= does — OBS outputs
+     hide the drawer (and never share its storage), so without a URL knob
+     their panels could never be repositioned. */
   let CORNER = choice(
-    readStorage(KEYS.corner, 'bl'),
+    q.get('corner') || readStorage(KEYS.corner, 'bl'),
     ['tl', 'tr', 'bl', 'br'],
     'bl'
   );
 
   let POSITION = choice(
-    readStorage(KEYS.position, 'left'),
+    q.get('pos') || readStorage(KEYS.position, 'left'),
     ['left', 'center', 'right'],
     'left'
   );
@@ -2251,6 +4084,11 @@ try {
 
   let ACCENT = q.get('accent') || readStorage(KEYS.accent, '');
   let SOUND = boolParam('sound', readStorage(KEYS.sound, '0') === '1');
+  /* Follower alerts via StreamElements Astro (URL-only secrets — never
+     persisted). ?sejwt= channel JWT (dashboard → avatar → channel → token),
+     ?seroom= channel id override (else decoded from the JWT). */
+  const SE_JWT = String(q.get('sejwt') || '').trim();
+  const SE_ROOM = String(q.get('seroom') || '').trim();
   let SHOWCO = boolParam(
     'callouts',
     readStorage(KEYS.callouts, '1') !== '0'
@@ -2331,6 +4169,7 @@ try {
   const pendingRequests = new Map();
 
   let lastHoomp = 0;
+  let lastSlop = 0;
 
   /* ----------------------- CSS compatibility fixes ---------------- */
 
@@ -2471,6 +4310,32 @@ try {
     return result;
   }
 
+  /* HOOMP votes: poll.hoomps maps user -> timestamp. Same name hygiene as
+     numeric votes, values just need to be finite (or truthy legacy). */
+  function validHoompMap(value) {
+    const result = Object.create(null);
+    if (!value || typeof value !== 'object') return result;
+
+    Object.keys(value).forEach(user => {
+      const name = channelName(user);
+      if (!name) return;
+      const ts = Number(value[user]);
+      result[name] = Number.isFinite(ts) && ts > 0 ? ts : Date.now();
+    });
+
+    return result;
+  }
+
+  function isHoompVoteText(text) {
+    return /^h+o+mp+s?$/i.test(String(text || '').trim());
+  }
+
+  function hoompCount(poll) {
+    return poll && poll.hoomps && typeof poll.hoomps === 'object'
+      ? Object.keys(poll.hoomps).length
+      : 0;
+  }
+
   function normalizePoll(value) {
     if (!value || typeof value !== 'object') return null;
     if (!['open', 'closed', 'top5'].includes(value.status)) return null;
@@ -2479,6 +4344,7 @@ try {
     poll.id = String(poll.id || `${poll.opened || 0}|${poll.question || ''}`);
     poll.question = String(poll.question || 'Rate this').slice(0, 80);
     poll.votes = validVoteMap(poll.votes);
+    poll.hoomps = validHoompMap(poll.hoomps);
     poll.voters = Object.assign(Object.create(null), poll.voters || {});
     poll.opened = Number(poll.opened) || Date.now();
     poll.duration = Math.max(0, Number(poll.duration) || 0);
@@ -2536,8 +4402,10 @@ try {
         question: String(item.question || 'Rate this').slice(0, 80),
         avg: item.avg,
         votes: Math.max(0, Number(item.votes) || 0),
+        hoomps: Math.max(0, Number(item.hoomps) || 0),
         ts: String(item.ts || ''),
         voteMap: validVoteMap(item.voteMap),
+        hoompMap: validHoompMap(item.hoompMap),
         voters: Object.assign(Object.create(null), item.voters || {})
       }));
 
@@ -2636,11 +4504,16 @@ try {
   function stats(poll) {
     const values = Object.values((poll && poll.votes) || {})
       .filter(Number.isFinite);
+    /* HOOMP votes ride alongside numeric votes: counted separately in
+       poll.hoomps, never mixed into the average. */
+    const hoomps = poll && poll.hoomps && typeof poll.hoomps === 'object'
+      ? Object.keys(poll.hoomps).length
+      : 0;
 
     if (!values.length) {
       return {
         n: 0, avg: 0, med: null, sd: null,
-        hi: 0, mid: 0, lo: 0
+        hi: 0, mid: 0, lo: 0, hoomps
       };
     }
 
@@ -2661,7 +4534,8 @@ try {
         : null,
       hi: values.filter(v => v >= 8).length,
       mid: values.filter(v => v >= 4 && v < 8).length,
-      lo: values.filter(v => v < 4).length
+      lo: values.filter(v => v < 4).length,
+      hoomps
     };
   }
 
@@ -2857,6 +4731,7 @@ try {
       id: uid(),
       question: question || 'Rate this',
       votes: Object.create(null),
+      hoomps: Object.create(null),
       voters: Object.create(null),
       status: 'open',
       opened: now,
@@ -2874,7 +4749,7 @@ try {
 
     state.events = [];
     state.undoClear = null;
-    addEvent(state, 'Rating opened — !vote -10 to 10; 0 is effect-only.');
+    addEvent(state, 'Rating opened — !vote -10 to 10, !vote hoomp; 0 is effect-only.');
     return { changed: true, effect: { kind: 'open' } };
   }
 
@@ -2910,8 +4785,10 @@ try {
         question: poll.question,
         avg: st.avg,
         votes: st.n,
+        hoomps: st.hoomps,
         ts: new Date().toISOString(),
         voteMap: clone(poll.votes),
+        hoompMap: clone(poll.hoomps || {}),
         voters: clone(poll.voters)
       });
       state.results.length = Math.min(state.results.length, 100);
@@ -2920,8 +4797,11 @@ try {
     addEvent(
       state,
       st.n
-        ? `Final: ${st.avg.toFixed(1)}/10 from ${st.n} votes`
-        : 'Rating closed with no votes'
+        ? `Final: ${st.avg.toFixed(1)}/10 from ${st.n} votes` +
+          (st.hoomps ? ` + ${st.hoomps} hoomp${st.hoomps === 1 ? '' : 's'}` : '')
+        : st.hoomps
+          ? `Closed with no numeric votes — ${st.hoomps} hoomp${st.hoomps === 1 ? '' : 's'}`
+          : 'Rating closed with no votes'
     );
 
     return {
@@ -2930,6 +4810,7 @@ try {
         kind: 'final',
         avg: st.avg,
         votes: st.n,
+        hoomps: st.hoomps,
         trend: poll.trend,
         pollId: poll.id
       }
@@ -3035,20 +4916,25 @@ try {
 
     if (!user) {
       const event = state.events.find(item =>
-        item.kind === 'vote' &&
+        (item.kind === 'vote' || item.kind === 'hoompvote') &&
         item.pollId === poll.id &&
-        own(poll.votes, item.user)
+        (own(poll.votes, item.user) ||
+          (poll.hoomps && own(poll.hoomps, item.user)))
       );
       user = event ? event.user : '';
     }
 
-    if (!user || !own(poll.votes, user)) return { changed: false };
+    if (!user) return { changed: false };
+    const hasVote = own(poll.votes, user);
+    const hasHoomp = poll.hoomps && own(poll.hoomps, user);
+    if (!hasVote && !hasHoomp) return { changed: false };
 
-    delete poll.votes[user];
-    delete poll.voters[user];
+    if (hasVote) delete poll.votes[user];
+    if (hasHoomp) delete poll.hoomps[user];
+    if (hasVote) delete poll.voters[user];
 
     state.events = state.events.filter(item =>
-      !(item.kind === 'vote' && item.user === user)
+      !((item.kind === 'vote' || item.kind === 'hoompvote') && item.user === user)
     );
 
     sampleAverage(poll);
@@ -3067,6 +4953,35 @@ try {
     ) return closePoll(state);
 
     const text = String(args || '').trim();
+    /* HOOMP as a countable vote: !vote hoomp / !rate hoomp records one
+       HOOMP per user per poll, fires the usual HOOMP moment, and never
+       touches the numeric average. Inline regex (not the shared helper)
+       keeps this function self-contained for headless tests. */
+    if (/^h+o+mp+s?$/i.test(text)) {
+      if (!poll.hoomps || typeof poll.hoomps !== 'object') poll.hoomps = Object.create(null);
+      if (poll.locked && !own(poll.votes, user) && !own(poll.hoomps, user)) return { changed: false };
+      if (own(poll.hoomps, user)) return { changed: false };
+      poll.hoomps[user] = Date.now();
+      if (!state.hoompLog) state.hoompLog = [];
+      state.hoompLog.push(Date.now());
+      state.hoompLog = state.hoompLog.slice(-300);
+      state.events = state.events.filter(event =>
+        !(event.kind === 'hoompvote' && event.user === user)
+      );
+      state.events.unshift({
+        ts: Date.now() / 1000,
+        kind: 'hoompvote',
+        pollId: poll.id,
+        user,
+        c: color || '',
+        b: badges || ''
+      });
+      state.events.length = Math.min(state.events.length, 16);
+      return {
+        changed: true,
+        effect: { kind: 'hoomp', user, color, hoompVote: true }
+      };
+    }
     if (!/^-?\d+([.,]\d+)?$/.test(text)) return { changed: false };
 
     const raw = Number(text.replace(',', '.'));
@@ -3074,7 +4989,7 @@ try {
       return { changed: false };
     }
 
-    if (poll.locked && !own(poll.votes, user)) return { changed: false };
+    if (poll.locked && !own(poll.votes, user) && !(poll.hoomps && own(poll.hoomps, user))) return { changed: false };
 
     const value = Math.round(raw * 10) / 10;
 
@@ -3121,6 +5036,7 @@ try {
       id: uid(),
       question: 'Top 5',
       votes: {},
+      hoomps: {},
       voters: {},
       status: 'top5',
       opened: Date.now(),
@@ -3193,6 +5109,15 @@ try {
       .some(word => /^h+o+mp+$/i.test(word));
   }
 
+  /* SLOP moment: same word-spotting recipe as HOOMP — any chat line
+     containing the word "slop" (elongation tolerant: sloooop) fires a
+     brown-liquid island fill. Pure visual, never counted or stored. */
+  function slopHit(message) {
+    return String(message || '')
+      .split(/[^a-z]/i)
+      .some(word => /^s+l+o+p+$/i.test(word));
+  }
+
   function dispatch(state, request) {
     const message = String(request.message || '').trim();
     const user = channelName(request.user);
@@ -3260,6 +5185,46 @@ try {
         case '!top5':
           return topFive(state);
 
+        /* Celebration simulators: mod-gated like every command above, so
+           viewers can never fake one; the lab drives these via testbar. */
+        case '!testsub': {
+          const parts = String(args || '').split(/\s+/).filter(Boolean);
+          return {
+            changed: false,
+            effect: { kind: 'sub', user: parts[0] || 'someone', months: posInt(parts[1]), plan: 'T1' }
+          };
+        }
+
+        case '!testgift': {
+          const parts = String(args || '').split(/\s+/).filter(Boolean);
+          const giver = parts[0] || 'someone';
+          const count = parseInt(parts[1], 10);
+          return Number.isFinite(count) && count > 1
+            ? { changed: false, effect: { kind: 'subgift', user: giver, recipient: '', count, plan: '' } }
+            : { changed: false, effect: { kind: 'subgift', user: giver, recipient: parts[1] || '', count: 1, plan: 'T1' } };
+        }
+
+        case '!testcheer': {
+          const parts = String(args || '').split(/\s+/).filter(Boolean);
+          return {
+            changed: false,
+            effect: { kind: 'cheer', user: parts[0] || 'someone', bits: Math.max(1, parseInt(parts[1], 10) || 100) }
+          };
+        }
+
+        case '!testraid': {
+          const parts = String(args || '').split(/\s+/).filter(Boolean);
+          return {
+            changed: false,
+            effect: { kind: 'raid', user: parts[0] || 'someone', viewers: posInt(parts[1]) }
+          };
+        }
+
+        case '!testfollow': {
+          const who = String(args || '').split(/\s+/)[0] || 'someone';
+          return { changed: false, effect: { kind: 'follow', user: who } };
+        }
+
         case '!showname':
           state.show_name = args.slice(0, 20) || 'Live';
           return { changed: true };
@@ -3283,11 +5248,91 @@ try {
       };
     }
 
+    /* SLOP is effect-only like a zero vote: no state mutation, no history.
+       changed:false still broadcasts the effect to sibling sources via
+       publish({effect}) in processRequest, so every OBS source sloshes. */
+    if (slopHit(message) && Date.now() - lastSlop >= 2500) {
+      lastSlop = Date.now();
+
+      return {
+        changed: false,
+        effect: { kind: 'slop', user }
+      };
+    }
+
     return { changed: false };
   }
 
-  function processRequest(request) {
-    if (!isLeader && !demoState && !TESTMODE) return;
+  /* ------- Platform celebrations: cheers (bits tag) and USERNOTICE
+     subs / gifts / raids. Pure parsers (headless-testable); the socket
+     handler and the !test* commands feed them. ------- */
+  function cheerBits(tags) {
+    const bits = parseInt((tags && tags.bits) || '', 10);
+    return Number.isFinite(bits) && bits > 0 ? bits : 0;
+  }
+
+  function noticeDisplay(tags) {
+    const name = String((tags && (tags['display-name'] || tags.login)) || '').trim();
+    return name.slice(0, 40);
+  }
+
+  function posInt(value) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+
+  function subPlan(value) {
+    const plan = String(value || '');
+    if (/prime/i.test(plan)) return 'PRIME';
+    if (/^3000/.test(plan)) return 'T3';
+    if (/^2000/.test(plan)) return 'T2';
+    return 'T1';
+  }
+
+  /* noticeEvent(msgId, tags) → {kind:'sub'|'subgift'|'raid', ...} or null
+     when the notice is not a celebration. */
+  function noticeEvent(msgId, tags) {
+    tags = tags || {};
+    const id = String(msgId || '').toLowerCase();
+    if (id === 'sub') {
+      const user = noticeDisplay(tags);
+      if (!user) return null;
+      return { kind: 'sub', user, months: 1, plan: subPlan(tags['msg-param-sub-plan']) };
+    }
+    if (id === 'resub' || id === 'primepaidupgrade') {
+      const user = noticeDisplay(tags);
+      if (!user) return null;
+      return {
+        kind: 'sub',
+        user,
+        months: posInt(tags['msg-param-cumulative-months'] || tags['msg-param-months']),
+        plan: subPlan(tags['msg-param-sub-plan'])
+      };
+    }
+    if (id === 'subgift') {
+      const giver = noticeDisplay(tags);
+      if (!giver) return null;
+      const recipient = String(
+        tags['msg-param-recipient-display-name'] || tags['msg-param-recipient-user-name'] || ''
+      ).trim().slice(0, 40);
+      return { kind: 'subgift', user: giver, recipient, count: 1, plan: subPlan(tags['msg-param-sub-plan']) };
+    }
+    if (id === 'submysterygift') {
+      const giver = noticeDisplay(tags);
+      if (!giver) return null;
+      return { kind: 'subgift', user: giver, recipient: '', count: posInt(tags['msg-param-mass-gift-count']), plan: '' };
+    }
+    if (id === 'raid') {
+      const raider = String(
+        tags['msg-param-displayName'] || tags['display-name'] || tags.login || ''
+      ).trim().slice(0, 40);
+      if (!raider) return null;
+      return { kind: 'raid', user: raider, viewers: posInt(tags['msg-param-viewerCount']) };
+    }
+    return null;
+  }
+
+  function processRequest(request) {    if (!isLeader && !demoState && !TESTMODE) return;
 
     if (!demoState && request.msgid) {
       if (seenMessages.has(request.msgid)) return;
@@ -3457,6 +5502,7 @@ try {
 
     if (advanced.effect) emitEffect(advanced.effect);
     connect();
+    startAlerts();
   }
 
   function startCoordination() {
@@ -3509,6 +5555,102 @@ try {
         bus.postMessage({ type: 'hello', sender: CLIENT_ID });
       }
     }, 5000);
+  }
+
+  /* ----------------------- Follower alerts ------------------------ */
+
+  /* StreamElements Astro feed (leader-only, like IRC). URL secrets only —
+     never stored. TESTMODE never auto-connects: the lab drives follows
+     through __ratehiveFollow or its own manual AlertBus session. */
+  function startAlerts() {
+    if (!SE_JWT || !isLeader || TESTMODE || FULLPAGE || stopped) return;
+    if (!window.AlertBus) return;
+
+    /* Room falls back to the JWT payload ({channel}) like the lab deck —
+       ?seroom= is only needed when the token does not decode. */
+    let room = SE_ROOM;
+    if (!room && window.AlertBus.roomFromJwt) {
+      try { room = window.AlertBus.roomFromJwt(SE_JWT); } catch (error) {}
+    }
+    if (!room) return;
+
+    try {
+      window.AlertBus.connect({
+        jwt: SE_JWT,
+        room: room,
+        onFollow: user => emitEffect({ kind: 'follow', user: user || 'Someone' }),
+        onStatus: () => {}
+      });
+    } catch (error) {}
+  }
+
+  /* Optional broadcaster Alerts drawer (agoodpete.html): manual Astro
+     connect + genuine-path celebration previews. No-ops when the nodes
+     are absent so every other page is untouched. Secrets live in memory
+     only — never written to storage. */
+  function setupAlertsDrawer() {
+    if (!$('alConnect') && !$('alFollow')) return;
+    const status = msg => {
+      const el = $('alStatus');
+      if (el) el.textContent = msg;
+    };
+    try {
+      if ($('alJwt') && SE_JWT) $('alJwt').value = SE_JWT;
+      if ($('alRoom') && SE_ROOM) $('alRoom').value = SE_ROOM;
+    } catch (error) {}
+    if (SE_JWT) status('Alerts: URL credentials present — auto-connecting as controller…');
+    const on = (id, fn) => {
+      const el = $(id);
+      if (el) el.addEventListener('click', fn);
+    };
+    on('alConnect', () => {
+      if (!window.AlertBus) {
+        status('Alerts: engine missing (alerts.js not loaded).');
+        return;
+      }
+      let jwt = '', room = '';
+      try {
+        jwt = (($('alJwt') && $('alJwt').value) || '').trim();
+        room = (($('alRoom') && $('alRoom').value) || '').trim();
+      } catch (error) {}
+      if (!jwt) jwt = SE_JWT;
+      if (!room) {
+        room = SE_ROOM;
+        if (!room && window.AlertBus.roomFromJwt) {
+          try { room = window.AlertBus.roomFromJwt(jwt); } catch (error2) {}
+        }
+      }
+      if (!jwt || !room) {
+        status('Alerts: paste the JWT (room auto-decodes, or fill Room).');
+        return;
+      }
+      const ok = window.AlertBus.connect({
+        jwt: jwt,
+        room: room,
+        onFollow: user => {
+          const eff = { kind: 'follow', user: user || 'Someone' };
+          emitEffect(eff);
+          publish({ effect: eff });
+        },
+        onStatus: s => status('Alerts: ' + s)
+      });
+      status(ok ? 'Alerts: connecting…' : 'Alerts: need JWT (+ room if undecodable).');
+    });
+    on('alDrop', () => {
+      try { if (window.AlertBus) window.AlertBus.disconnect(); } catch (error) {}
+      status('Alerts: disconnected.');
+    });
+    /* Previews ride sendCommand (broadcaster-local like every drawer
+       action): mod-gated passes, effects publish to OBS sources. */
+    on('alFollow', () => {
+      let u = 'new_fan';
+      try { u = (($('alFollowUser') && $('alFollowUser').value) || u).trim() || u; } catch (error) {}
+      sendCommand('!testfollow ' + u);
+    });
+    on('alSub', () => sendCommand('!testsub test_subbie 6'));
+    on('alGift', () => sendCommand('!testgift test_gifter 3'));
+    on('alCheer', () => sendCommand('!testcheer test_fan 500'));
+    on('alRaid', () => sendCommand('!testraid test_raider 42'));
   }
 
   /* ----------------------- Twitch IRC ----------------------------- */
@@ -3660,6 +5802,22 @@ try {
         }
 
         if (
+          message.command === 'USERNOTICE' &&
+          message.params[0] === '#' + CHANNEL
+        ) {
+          health.lastMessage = Date.now();
+          const celebration = noticeEvent(message.tags['msg-id'], message.tags);
+          if (celebration) {
+            // Live platform input always applies to S, never a demo preview.
+            const savedDemo = demoState;
+            demoState = null;
+            try { emitEffect(celebration); } finally { demoState = savedDemo; }
+            render();
+          }
+          return;
+        }
+
+        if (
           message.command !== 'PRIVMSG' ||
           message.params[0] !== '#' + CHANNEL
         ) return;
@@ -3688,6 +5846,16 @@ try {
           });
         } finally {
           demoState = savedDemo;
+        }
+
+        // Cheers ride PRIVMSG as a bits tag alongside (or without) text.
+        const cheer = cheerBits(message.tags);
+        if (cheer > 0) {
+          emitEffect({
+            kind: 'cheer',
+            user: String(message.tags['display-name'] || user).trim().slice(0, 40) || user,
+            bits: cheer
+          });
         }
 
         render();
@@ -3849,7 +6017,7 @@ try {
     }, lifetime || 2900);
   }
 
-  function finalToast(avg, votes, trend) {
+  function finalToast(avg, votes, trend, hoomps) {
     if (!SHOWCO || FULLPAGE || !CHANNEL) return;
 
     const box = $('callouts');
@@ -3857,6 +6025,7 @@ try {
 
     while (box.children.length >= 4) box.firstElementChild.remove();
 
+    const hc = Math.max(0, Number(hoomps) || 0);
     const element = document.createElement('div');
     element.className = 'callout final' + (votes ? ' ' + band(avg) : '');
     element.setAttribute('role', 'status');
@@ -3894,7 +6063,8 @@ try {
 
       const count = document.createElement('span');
       count.className = 'co-n';
-      count.textContent = votes + (votes === 1 ? ' vote' : ' votes');
+      count.textContent = votes + (votes === 1 ? ' vote' : ' votes') +
+        (hc ? ` · ${hc} hoomp${hc === 1 ? '' : 's'}` : '');
       meta.appendChild(count);
 
       if (FEAT.trend && trend && trend.dir) {
@@ -3908,7 +6078,9 @@ try {
     } else {
       const label = document.createElement('span');
       label.className = 'co-t';
-      label.textContent = 'Closed with no votes';
+      label.textContent = hc
+        ? `Closed with no numeric votes — ${hc} hoomp${hc === 1 ? '' : 's'}`
+        : 'Closed with no votes';
       col.appendChild(label);
     }
 
@@ -3987,7 +6159,13 @@ try {
     }
 
     if (effect.kind === 'hoomp') {
+      /* Island owns the moment alone when it takes it; otherwise the
+         center-screen toast is the fallback (other layouts, pinned panel,
+         verdict reveal). */
+      const islandTook = MODE === 'island' ? islandHoomp(effect.user, 3400) : false;
+      if (islandTook) return;
       if (document.querySelectorAll('.hoomp-toast').length >= 2) return;
+
       const element = document.createElement('div');
       element.className = 'hoomp-toast';
       element.innerHTML =
@@ -3995,6 +6173,60 @@ try {
         '<span class="hoomp-who">' + esc(effect.user) + '</span>';
       document.body.appendChild(element);
       setTimeout(() => element.remove(), 3300);
+    }
+
+    if (effect.kind === 'slop') {
+      /* Island owns the moment alone when it takes it; otherwise a small
+         callout is the fallback (other layouts, pinned panel, verdict
+         reveal) so the moment is never silently lost. */
+      const islandTook = MODE === 'island' ? islandSlop(effect.user, 4000) : false;
+      if (islandTook) return;
+      callout((effect.user || 'Someone') + ' says SLOP', null, '', 4000);
+    }
+
+    if (effect.kind === 'follow') {
+      /* New follower: ascending two-note chime, island takeover in island
+         mode (callout fallback when the pill can't take it), plain callout
+         everywhere else. */
+      sound(660, 0.12);
+      setTimeout(() => sound(880, 0.18), 110);
+      const who = effect.user || 'Someone';
+      if (MODE === 'island') {
+        if (!islandFollow(who, 3600)) callout(who + ' just followed', null, '', 4000);
+      } else {
+        callout(who + ' just followed', null, '', 4000);
+      }
+    }
+
+    if (effect.kind === 'sub' || effect.kind === 'subgift') {
+      const gift = effect.kind === 'subgift';
+      const title = gift
+        ? (effect.count > 1 ? effect.count + '× GIFT SUBS' : 'GIFT SUB')
+        : (effect.months > 1 ? effect.months + ' MONTHS' : 'NEW SUB');
+      const sub = gift
+        ? (effect.recipient ? effect.user + ' → ' + effect.recipient : String(effect.user))
+        : (effect.user + (effect.plan ? ' · ' + effect.plan : ''));
+      sound(523, 0.12);
+      setTimeout(() => sound(659, 0.16), 100);
+      celebrate(title, sub, 'sub');
+    }
+
+    if (effect.kind === 'cheer') {
+      const bits = Math.max(1, Math.round(Number(effect.bits) || 0));
+      const title = bits >= 1000
+        ? (Math.round(bits / 100) / 10) + 'K BITS'
+        : bits + ' BITS';
+      sound(880, 0.1);
+      setTimeout(() => sound(1174, 0.14), 90);
+      celebrate(title, String(effect.user || 'Someone'), 'cheer');
+    }
+
+    if (effect.kind === 'raid') {
+      const viewers = Math.max(1, Math.round(Number(effect.viewers) || 0));
+      sound(392, 0.14, 0.05);
+      setTimeout(() => sound(523, 0.14, 0.05), 110);
+      setTimeout(() => sound(659, 0.2, 0.05), 220);
+      celebrate('RAID!', String(effect.user || 'Someone') + ' + ' + viewers, 'raid');
     }
 
     if (effect.kind === 'open') {
@@ -4005,7 +6237,7 @@ try {
     if (effect.kind === 'top5') islandShow('top5', 8200);
 
     if (effect.kind === 'final') {
-      finalToast(effect.avg, effect.votes, effect.trend);
+      finalToast(effect.avg, effect.votes, effect.trend, effect.hoomps);
 
       if (effect.votes && effect.avg >= 7.5) {
         confetti(effect.avg >= 8.5 ? 80 : 30);
@@ -4103,8 +6335,18 @@ try {
           esc(event.user) + '</span><span class="v ' + band(event.vote) + '">' +
           fmt(event.vote) + '</span></div>';
       }
+      if (event.kind === 'hoompvote') {
+        const color = readableColor(event.c);
+        return '<div class="e vote hoompv">' +
+          '<span class="u"' + (color ? ' style="color:' + color + '"' : '') + '>' +
+          esc(event.user) + '</span><span class="v hi">HOOMP</span></div>';
+      }
       return '<div class="e">' + esc(event.text) + '</div>';
     }).join('');
+  }
+
+  function hoompLabel(count) {
+    return count ? ` · ${count} hoomp${count === 1 ? '' : 's'}` : '';
   }
 
   /* ----------------------- Classic ------------------------------- */
@@ -4156,7 +6398,7 @@ try {
     panel.dataset.status = poll ? poll.status : 'idle';
 
     $('cshow').textContent = state.show_name;
-    $('cvoters').textContent = st.n + (st.n === 1 ? ' vote' : ' votes');
+    $('cvoters').textContent = st.n + (st.n === 1 ? ' vote' : ' votes') + hoompLabel(st.hoomps);
 
     const key = poll ? poll.id + ':' + poll.status : 'idle';
     if (key !== UI.classicKey) {
@@ -4184,7 +6426,7 @@ try {
     } else if (poll) {
       $('cquestion').textContent = poll.question;
       setNumber($('cavg'), st.n ? score(poll) : null);
-      $('ccnt').textContent = st.n + ' votes';
+      $('ccnt').textContent = st.n + ' votes' + hoompLabel(st.hoomps);
 
       Array.from($('cstars').children).forEach((star, index) => {
         star.classList.toggle('on', st.n > 0 && index < Math.round(score(poll)));
@@ -4217,11 +6459,12 @@ try {
         column.title = count + ' votes';
       });
 
-      $('cdcap').textContent = 'Votes · ' + st.n + ' cast';
+      $('cdcap').textContent = 'Votes · ' + st.n + ' cast' + hoompLabel(st.hoomps);
       $('cdstats').innerHTML =
         statCell('avg', st.n ? st.avg.toFixed(1) : '—') +
         statCell('top band', dist.mode) +
-        statCell('median', st.med == null ? '—' : fmt(st.med));
+        statCell('median', st.med == null ? '—' : fmt(st.med)) +
+        (st.hoomps ? statCell('hoomps', st.hoomps) : '');
     }
 
     if (SHOWFEED) setHTML($('cfeedbox'), feedHTML(state, MODE === 'slim' ? 4 : 6));
@@ -4280,7 +6523,7 @@ try {
 
     $('stopic').textContent = poll ? poll.question : 'Rate this';
     setNumber($('savg'), st.n ? score(poll) : null);
-    $('scount').textContent = st.n + ' votes';
+    $('scount').textContent = st.n + ' votes' + hoompLabel(st.hoomps);
     $('stimer').textContent = timerText(poll);
     $('sverdict').hidden = !FEAT.verdict || !st.n;
     $('sverdict').textContent = st.n ? verdictWord(score(poll)) : '';
@@ -4303,19 +6546,24 @@ try {
       ['High ≥8', st.hi],
       ['Mid 4–<8', st.mid],
       ['Low <4', st.lo]
-    ].map(([label, value]) =>
+    ].concat(st.hoomps ? [['Hoomps', st.hoomps]] : []).map(([label, value]) =>
       '<span>' + esc(label) + '<b>' + esc(value) + '</b></span>'
     ).join('');
 
     const votes = Object.entries(poll && poll.votes || {})
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 12);
+      .slice(0, 11);
+    const hoompUsers = poll && poll.hoomps ? Object.keys(poll.hoomps).slice(0, 12) : [];
+    const hoompChips = hoompUsers
+      .filter(user => !own(poll.votes, user))
+      .slice(0, Math.max(0, 12 - votes.length))
+      .map(user => '<span class="s-vchip hi">' + esc(user) + '<b>HOOMP</b></span>');
 
-    setHTML($('schips'), votes.length
+    setHTML($('schips'), (votes.length || hoompChips.length)
       ? votes.map(([user, value]) =>
           '<span class="s-vchip ' + band(value) + '">' +
           esc(user) + '<b>' + fmt(value) + '</b></span>'
-        ).join('')
+        ).join('') + hoompChips.join('')
       : '<span class="s-ghost">Votes appear here…</span>');
 
     const timerOn = !!(
@@ -4335,11 +6583,13 @@ try {
     pinned: false,
     hover: false,
     until: 0,
+    span: 0,
     pausedRemaining: 0,
     kind: '',
     snapshot: null,
     lastShow: Date.now(),
     lastAmbient: Date.now(),
+    ambientIdx: 0,
     lastPollId: '',
     lastStatus: ''
   };
@@ -4368,6 +6618,46 @@ try {
           <span class="di-pi info">●</span>
           <span class="di-pt" id="diPt"></span>
           <i class="di-pb" id="diPb"></i>
+        </div>
+
+        <div class="di-face" data-face="hoomp" inert aria-hidden="true">
+          <span class="di-hring" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="di-ht">
+            <strong class="di-rise" style="--i:0">HOOMP!</strong>
+            <em class="di-rise" style="--i:1" id="diHwho"></em>
+          </span>
+          <i class="di-hsheen" aria-hidden="true"></i>
+          <i class="di-hpb" id="diHpb"></i>
+        </div>
+
+        <div class="di-face" data-face="slop" inert aria-hidden="true">
+          <span class="di-slopfill" aria-hidden="true"><i class="di-slopwave"></i></span>
+          <span class="di-ht di-slopt">
+            <strong class="di-rise" style="--i:0">SLOP!</strong>
+            <em class="di-rise" style="--i:1" id="diSwho"></em>
+          </span>
+          <i class="di-hsheen di-slopsheen" aria-hidden="true"></i>
+          <i class="di-hpb" id="diSlopPb"></i>
+        </div>
+
+        <div class="di-face" data-face="follow" inert aria-hidden="true">
+          <span class="di-fring" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="di-ft2">
+            <strong class="di-rise" style="--i:0" id="diFwho"></strong>
+            <em class="di-rise" style="--i:1">just followed</em>
+          </span>
+          <i class="di-fsheen" aria-hidden="true"></i>
+          <i class="di-fpb" id="diFpb"></i>
+        </div>
+
+        <div class="di-face" data-face="event" inert aria-hidden="true">
+          <span class="di-ering" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="di-et">
+            <strong class="di-rise" style="--i:0" id="diETitle"></strong>
+            <em class="di-rise" style="--i:1" id="diESub"></em>
+          </span>
+          <i class="di-esheen" aria-hidden="true"></i>
+          <i class="di-epb" id="diEpb"></i>
         </div>
 
         <div class="di-face" data-face="panel" inert aria-hidden="true">
@@ -4554,6 +6844,7 @@ try {
     ISLAND.pinned = false;
     ISLAND.kind = '';
     ISLAND.until = 0;
+    ISLAND.span = 0;
     ISLAND.pausedRemaining = 0;
     ISLAND.snapshot = null;
     ISLAND.lastShow = Date.now();
@@ -4599,8 +6890,33 @@ try {
       : kind === 'result' ? 'Final rating results' : 'Live rating standings';
   }
 
-  function islandPeek(text, duration) {
-    if (
+  /* Idle glances: when no poll is live the island rotates three peeks from
+     real tonight-data — stored count, best rating, most active voter —
+     instead of repeating one line. */
+  function ambientLine(state) {
+    const results = (state && state.results) || [];
+    if (!results.length) return 'Ready for the first rating';
+    const slot = (ISLAND.ambientIdx || 0) % 3;
+    if (slot === 1) {
+      let best = null;
+      results.forEach(item => {
+        if (item.votes > 0 && (!best || item.avg > best.avg)) best = item;
+      });
+      if (best) {
+        return 'Tonight’s best: ' + String(best.question || '').slice(0, 40) +
+          ' — ' + best.avg.toFixed(1);
+      }
+    }
+    if (slot === 2) {
+      const board = voterSummary(results);
+      if (board.length && board[0].n > 1) {
+        return 'MVP: ' + board[0].user + ' · ' + board[0].n + ' votes';
+      }
+    }
+    return results.length + ' ratings stored — ready for the next';
+  }
+
+  function islandPeek(text, duration) {    if (
       MODE !== 'island' ||
       islandRate === 'off' ||
       ISLAND.pinned ||
@@ -4617,6 +6933,163 @@ try {
     islandSetState('peek');
   }
 
+  /* HOOMP takeover: the pill springs open into a green celebration face —
+     expanding rings, staggered wordmark, one-shot sheen and a dwell bar —
+     then settles back via the standard expiry path. Respects pinned/hover
+     like peek so a hand-held panel is never yanked away, and never steals
+     the final/result verdict reveal; auto-showcases are fair game.
+     Returns true when the pill takes the moment (caller skips the
+     center-screen toast so the island owns it alone). */
+  function islandHoomp(user, duration) {
+    if (
+      MODE !== 'island' ||
+      !FEAT.island ||
+      ISLAND.pinned ||
+      ISLAND.hover ||
+      FULLPAGE
+    ) return false;
+
+    initIsland();
+    if (ISLAND.kind === 'final' || ISLAND.kind === 'result') return false;
+
+    $('diHwho').textContent = (user || 'someone') + ' said the word';
+    ISLAND.kind = 'hoomp';
+    ISLAND.until = Date.now() + (duration || 3400);
+    ISLAND.span = Math.max(1, ISLAND.until - Date.now());
+    ISLAND.lastShow = Date.now();
+    islandSetState('hoomp');
+    $('diSr').textContent = 'Hoomp moment from ' + (user || 'chat');
+    return true;
+  }
+
+  /* SLOP takeover: the pill fills with brown liquid from the bottom, holds
+     full, then drains — driven by the .di-slopfill CSS animation, with the
+     standard expiry path collapsing the pill afterwards. Same guards as
+     HOOMP (pinned/hover respected, never steals the final/result verdict;
+     auto-showcases are fair game). Latest slop wins and extends the hold.
+     Returns true when the pill takes the moment (caller skips the callout
+     so the island owns it alone). */
+  function islandSlop(user, duration) {
+    if (
+      MODE !== 'island' ||
+      !FEAT.island ||
+      ISLAND.pinned ||
+      ISLAND.hover ||
+      FULLPAGE
+    ) return false;
+
+    initIsland();
+    if (ISLAND.kind === 'final' || ISLAND.kind === 'result') return false;
+
+    /* Restart the CSS fill animation on repeat slops: the fill runs once
+       per takeover (both fill and drain inside one keyframe pass), so a
+       re-taken moment must re-trigger it. */
+    const face = document.querySelector('.di-face[data-face="slop"]');
+    const fill = face ? face.querySelector('.di-slopfill') : null;
+    $('diSwho').textContent = (user || 'someone') + ' says slop';
+    ISLAND.kind = 'slop';
+    ISLAND.until = Date.now() + (duration || 4000);
+    ISLAND.span = Math.max(1, ISLAND.until - Date.now());
+    ISLAND.lastShow = Date.now();
+    islandSetState('slop');
+    if (fill) {
+      fill.classList.remove('run');
+      void fill.offsetWidth;
+      fill.classList.add('run');
+    }
+    $('diSr').textContent = 'Slop moment from ' + (user || 'chat');
+    return true;
+  }
+
+  /* New-follower takeover: same choreography as HOOMP in the channel
+     accent — pulsing rings, staggered name, sheen, dwell bar. Latest
+     follow wins and extends the hold. Respects pinned/hover and the
+     verdict reveal; returns true when the pill takes it. */
+  function islandFollow(user, duration) {
+    if (
+      MODE !== 'island' ||
+      !FEAT.island ||
+      ISLAND.pinned ||
+      ISLAND.hover ||
+      FULLPAGE
+    ) return false;
+
+    initIsland();
+    if (ISLAND.kind === 'final' || ISLAND.kind === 'result') return false;
+
+    $('diFwho').textContent = user || 'Someone';
+    ISLAND.kind = 'follow';
+    ISLAND.until = Date.now() + (duration || 3600);
+    ISLAND.span = Math.max(1, ISLAND.until - Date.now());
+    ISLAND.lastShow = Date.now();
+    islandSetState('follow');
+    $('diSr').textContent = (user || 'Someone') + ' just followed';
+    return true;
+  }
+
+  /* Per-kind accents for the parameterized event face (sub purple, cheer
+     ice, raid ember). Latest celebration wins and extends the hold. */
+  const EVENT_ACCENTS = {
+    sub: { c: '#bf5af2', g: 'rgba(191,90,242,.45)' },
+    cheer: { c: '#64d2ff', g: 'rgba(100,210,255,.45)' },
+    raid: { c: '#ff9f0a', g: 'rgba(255,159,10,.45)' }
+  };
+
+  /* Generic celebration takeover driving the single event face. Respects
+     pinned/hover and the verdict reveal like hoomp/follow; returns true
+     when the pill takes it (caller falls back to a callout). */
+  function islandEvent(title, sub, eKind, duration) {
+    if (
+      MODE !== 'island' ||
+      !FEAT.island ||
+      ISLAND.pinned ||
+      ISLAND.hover ||
+      FULLPAGE
+    ) return false;
+
+    initIsland();
+    if (ISLAND.kind === 'final' || ISLAND.kind === 'result') return false;
+
+    const acc = EVENT_ACCENTS[eKind] || EVENT_ACCENTS.sub;
+    const box = $('diBox');
+    $('diETitle').textContent = title;
+    $('diESub').textContent = sub;
+    box.style.setProperty('--ev', acc.c);
+    box.style.setProperty('--evg', acc.g);
+    ISLAND.kind = 'event';
+    ISLAND.until = Date.now() + (duration || 3800);
+    ISLAND.span = Math.max(1, ISLAND.until - Date.now());
+    ISLAND.lastShow = Date.now();
+    islandSetState('event');
+    $('diSr').textContent = title + ' — ' + sub;
+    return true;
+  }
+
+  /* One call for every celebration: island takeover in island mode,
+     plain callout everywhere (and whenever the pill can't take it). */
+  function celebrate(title, sub, eKind) {
+    if (MODE === 'island') {
+      if (!islandEvent(title, sub, eKind)) callout(title + ' — ' + sub, null, '', 4000);
+    } else {
+      callout(title + ' — ' + sub, null, '', 4000);
+    }
+  }
+
+  /* Focus reveal for celebration copy, BlurText in spirit: the copy snaps
+     to its final string immediately, then eases from frosted blur to
+     sharp — a lens finding focus. Reduced-motion snaps with no sweep. */
+  function blurReveal(el, text) {
+    text = String(text == null ? '' : text);
+    if (!el) return;
+    el.textContent = text;
+    if (reducedMotion || !text) return;
+    try {
+      el.classList.remove('blur-in');
+      void el.offsetWidth;
+      el.classList.add('blur-in');
+    } catch (e) {}
+  }
+
   function islandFinal() {
     if (MODE !== 'island' || islandRate === 'off' || FULLPAGE) return;
     initIsland();
@@ -4625,9 +7098,9 @@ try {
     if (!poll || poll.status !== 'closed') return;
 
     const st = stats(poll);
-    $('diFt1').textContent = st.n
+    blurReveal($('diFt1'), st.n
       ? 'Final: ' + score(poll).toFixed(1) + ' — ' + verdictWord(score(poll))
-      : 'Closed with no votes';
+      : 'Closed with no votes');
     $('diFt2').textContent = st.n + ' votes';
 
     if (ISLAND.pinned || ISLAND.hover) return;
@@ -4696,81 +7169,114 @@ try {
     $('diTopic2').textContent = poll ? poll.question : 'Waiting for the next rating';
     $('diTimer').textContent = timerText(poll);
     $('diTimer').hidden = !poll || poll.status !== 'open';
-    $('diCnt').textContent = st.n + 'v';
-    $('diCnt').hidden = !st.n;
+    $('diCnt').textContent = st.n + 'v' + (st.hoomps ? ` · ${st.hoomps}h` : '');
+    $('diCnt').hidden = !st.n && !st.hoomps;
 
-    $('diTopic').textContent = poll ? poll.question : 'Waiting for the next rating';
-    $('diSub').textContent = demoState ? 'LOCAL DEMO — NOT SAVED' : '#' + CHANNEL;
-    $('diChip').textContent = $('diLab').textContent;
-    $('diChip').className = 'di-chip ' + status;
-    $('diN').textContent = st.n + ' votes';
+    /* Panel internals only render while the panel can be seen. Rebuilding
+       heat bars, voter lists and the sparkline 4×/second behind a
+       celebration face is pure main-thread churn that starves the
+       takeover animations — hover/pin pre-warm it before it opens. */
+    const panelLive = ISLAND.state === 'panel' || ISLAND.hover || ISLAND.pinned;
+    if (panelLive) {
+      $('diTopic').textContent = poll ? poll.question : 'Waiting for the next rating';
+      $('diSub').textContent = demoState ? 'LOCAL DEMO — NOT SAVED' : '#' + CHANNEL;
+      $('diChip').textContent = $('diLab').textContent;
+      $('diChip').className = 'di-chip ' + status;
+      $('diN').textContent = st.n + ' votes' + hoompLabel(st.hoomps);
 
-    const isTop = poll && poll.status === 'top5';
-    const entry = isTop ? poll.top5[poll.top5_idx] : null;
-    const average = entry ? entry.avg : st.n ? score(poll) : null;
+      const isTop = poll && poll.status === 'top5';
+      const entry = isTop ? poll.top5[poll.top5_idx] : null;
+      const average = entry ? entry.avg : st.n ? score(poll) : null;
 
-    setNumber($('diAvgN'), average);
-    setNumber($('diBig'), average);
-    $('diAvg').hidden = average == null;
-    $('diWord').textContent = entry ? 'TOP 5'
-      : st.n ? verdictWord(score(poll))
-      : poll ? 'VOTE NOW' : 'STANDBY';
+      setNumber($('diAvgN'), average);
+      setNumber($('diBig'), average);
+      $('diAvg').hidden = average == null;
+      $('diWord').textContent = entry ? 'TOP 5'
+        : st.n ? verdictWord(score(poll))
+        : poll ? 'VOTE NOW' : 'STANDBY';
 
-    $('diWord').className = 'di-word ' +
-      (st.n && score(poll) < 4 ? 'rough'
-        : st.n && score(poll) >= 8.5 ? 'banger' : 'mixed');
+      $('diWord').className = 'di-word ' +
+        (st.n && score(poll) < 4 ? 'rough'
+          : st.n && score(poll) >= 8.5 ? 'banger' : 'mixed');
 
-    const dist = distribution(poll);
+      const dist = distribution(poll);
 
-    Array.from($('diHbars').children).forEach((column, index) => {
-      const count = dist.counts[index];
-      const bar = column.firstElementChild;
-      bar.style.height = (count ? Math.max(7, count / dist.max * 100) : 0) + '%';
-      bar.className = index < 3 ? 'h-rust' : index < 7 ? 'h-amber' : 'h-sage';
-    });
+      Array.from($('diHbars').children).forEach((column, index) => {
+        const count = dist.counts[index];
+        const bar = column.firstElementChild;
+        bar.style.height = (count ? Math.max(7, count / dist.max * 100) : 0) + '%';
+        bar.className = index < 3 ? 'h-rust' : index < 7 ? 'h-amber' : 'h-sage';
+      });
 
-    const recent = recentVotes(state, poll, 4);
-    setHTML($('diVoters'), recent.map(event =>
-      '<div class="di-v"><span class="u">' + esc(event.user) +
-      '</span><span class="s ' + band(event.vote) + '">' +
-      fmt(event.vote) + '</span></div>'
-    ).join(''));
+      const recent = recentVotes(state, poll, 4);
+      setHTML($('diVoters'), recent.map(event =>
+        '<div class="di-v"><span class="u">' + esc(event.user) +
+        '</span><span class="s ' + band(event.vote) + '">' +
+        fmt(event.vote) + '</span></div>'
+      ).join(''));
 
-    $('diStats').innerHTML =
-      'median <b>' + (st.med == null ? '—' : fmt(st.med)) + '</b><br>' +
-      'top band <b>' + esc(dist.mode) + '</b><br>' +
-      (st.n < 5 ? 'early result' :
-        st.sd < 1.2 ? 'strong consensus' :
-        st.sd >= 2.2 ? 'split crowd' : 'mixed crowd');
+      $('diStats').innerHTML =
+        'median <b>' + (st.med == null ? '—' : fmt(st.med)) + '</b><br>' +
+        'top band <b>' + esc(dist.mode) + '</b><br>' +
+        (st.n < 5 ? 'early result' :
+          st.sd < 1.2 ? 'strong consensus' :
+          st.sd >= 2.2 ? 'split crowd' : 'mixed crowd');
 
-    const values = poll && poll.series
-      ? poll.series.filter(point => point.n > 0).map(point => point.avg)
-      : [];
+      const values = poll && poll.series
+        ? poll.series.filter(point => point.n > 0).map(point => point.avg)
+        : [];
 
-    $('diSpark').hidden = isTop || values.length < 2;
-    if (!$('diSpark').hidden) {
-      setHTML($('diSpark'),
-        '<div class="di-spark-hd"><span class="lab">Crowd trajectory · −10 to +10</span></div>' +
-        sparkSvg(values)
-      );
+      $('diSpark').hidden = isTop || values.length < 2;
+      if (!$('diSpark').hidden) {
+        setHTML($('diSpark'),
+          '<div class="di-spark-hd"><span class="lab">Crowd trajectory · −10 to +10</span></div>' +
+          sparkSvg(values)
+        );
+      }
+
+      $('diTop5').hidden = !isTop;
+
+      if (isTop) {
+        $('diTop5').innerHTML = poll.top5.map((item, index) =>
+          '<div class="di-t5' + (index === poll.top5_idx ? ' cur' : '') + '">' +
+          '<span class="rk">#' + (poll.top5.length - index) + '</span>' +
+          '<span class="qq">' + esc(item.question) + '</span>' +
+          '<span class="aa">' + item.avg.toFixed(1) + '</span></div>'
+        ).join('');
+      }
     }
 
-    $('diTop5').hidden = !isTop;
-
-    if (isTop) {
-      $('diTop5').innerHTML = poll.top5.map((item, index) =>
-        '<div class="di-t5' + (index === poll.top5_idx ? ' cur' : '') + '">' +
-        '<span class="rk">#' + (poll.top5.length - index) + '</span>' +
-        '<span class="qq">' + esc(item.question) + '</span>' +
-        '<span class="aa">' + item.avg.toFixed(1) + '</span></div>'
-      ).join('');
+    /* Takeover dwell bars: drain as the moment expires (transform-only,
+       interpolated in CSS so the 4 Hz tick reads continuous). */
+    const hpb = $('diHpb');
+    if (hpb) {
+      hpb.style.transform = ISLAND.state === 'hoomp' && ISLAND.until && ISLAND.span
+        ? 'scaleX(' + Math.max(0, Math.min(1, (ISLAND.until - now) / ISLAND.span)).toFixed(3) + ')'
+        : 'scaleX(1)';
+    }
+    const slopPb = $('diSlopPb');
+    if (slopPb) {
+      slopPb.style.transform = ISLAND.state === 'slop' && ISLAND.until && ISLAND.span
+        ? 'scaleX(' + Math.max(0, Math.min(1, (ISLAND.until - now) / ISLAND.span)).toFixed(3) + ')'
+        : 'scaleX(1)';
+    }
+    const fpb = $('diFpb');
+    if (fpb) {
+      fpb.style.transform = ISLAND.state === 'follow' && ISLAND.until && ISLAND.span
+        ? 'scaleX(' + Math.max(0, Math.min(1, (ISLAND.until - now) / ISLAND.span)).toFixed(3) + ')'
+        : 'scaleX(1)';
+    }
+    const epb = $('diEpb');
+    if (epb) {
+      epb.style.transform = ISLAND.state === 'event' && ISLAND.until && ISLAND.span
+        ? 'scaleX(' + Math.max(0, Math.min(1, (ISLAND.until - now) / ISLAND.span)).toFixed(3) + ')'
+        : 'scaleX(1)';
     }
 
     const open = !!(poll && poll.status === 'open');
     document.querySelector('[data-island="pause"]').disabled = !open;
     document.querySelector('[data-island="pause"]').textContent =
-      poll && poll.paused ? 'Resume' : 'Pause';
-    document.querySelector('[data-island="extend"]').disabled =
+      poll && poll.paused ? 'Resume' : 'Pause';    document.querySelector('[data-island="extend"]').disabled =
       !open || !!poll.paused;
     document.querySelector('[data-island="end"]').disabled = !open;
 
@@ -4798,12 +7304,8 @@ try {
         now - ISLAND.lastAmbient >= PACE[islandRate].ambient
       ) {
         ISLAND.lastAmbient = now;
-        islandPeek(
-          state.results.length
-            ? state.results.length + ' ratings stored — ready for the next'
-            : 'Ready for the first rating',
-          3200
-        );
+        ISLAND.ambientIdx = ((ISLAND.ambientIdx || 0) + 1) % 3;
+        islandPeek(ambientLine(state), 3200);
       }
     }
   }
@@ -4816,12 +7318,14 @@ try {
     );
 
     return results.map(item => {
+      const hc = Math.max(0, Number(item.hoomps) || 0);
+      const hsuffix = hc ? ` + ${hc}h` : '';
       if (mini) {
         return '<div class="mv-row' + (item.avg === best ? ' best' : '') + '">' +
           '<span class="mv-a">' + (item.votes ? item.avg.toFixed(1) : '—') +
           '</span><span class="mv-q" title="' + esc(item.question) + '">' +
           esc(item.question) + '</span><span class="mv-votes">' +
-          item.votes + 'v</span></div>';
+          item.votes + 'v' + hsuffix + '</span></div>';
       }
 
       return '<div class="hp-row' + (item.avg === best ? ' best' : '') + '">' +
@@ -4829,7 +7333,8 @@ try {
         '<span class="q" title="' + esc(item.question) + '">' +
         esc(item.question) + '</span><span class="a">' +
         (item.votes ? item.avg.toFixed(1) : '—') +
-        '</span><span class="n">' + item.votes + ' votes</span></div>';
+        '</span><span class="n">' + item.votes + ' votes' +
+        (hc ? ` · ${hc} hoomp${hc === 1 ? '' : 's'}` : '') + '</span></div>';
     }).join('');
   }
 
@@ -4981,6 +7486,7 @@ try {
         question: poll.question,
         avg: stats(poll).avg,
         votes: stats(poll).n,
+        hoomps: stats(poll).hoomps,
         voteMap: poll.votes
       });
     }
@@ -5016,7 +7522,9 @@ try {
         '</span><span class="n">' + esc(timerText(poll)) +
         '</span></div><div class="hp-row"><span class="q">Current score</span>' +
         '<span class="a">' + (stats(poll).n ? score(poll).toFixed(1) : '—') +
-        '</span><span class="n">' + stats(poll).n + ' votes</span></div></div>'
+        '</span><span class="n">' + stats(poll).n + ' votes' +
+        (stats(poll).hoomps ? ` · ${stats(poll).hoomps} hoomp${stats(poll).hoomps === 1 ? '' : 's'}` : '') +
+        '</span></div></div>'
       : '';
 
     setHTML($('recappage'),
@@ -5070,13 +7578,14 @@ try {
       return '"' + text.replace(/"/g, '""') + '"';
     }
 
-    const rows = ['when,question,average,votes'];
+    const rows = ['when,question,average,votes,hoomps'];
     results.forEach(item => {
       rows.push([
         cell(item.ts),
         cell(item.question),
         item.avg.toFixed(1),
-        item.votes
+        item.votes,
+        Math.max(0, Number(item.hoomps) || 0)
       ].join(','));
     });
 
@@ -5674,6 +8183,19 @@ try {
       renderDrawer();
     });
 
+    /* Local HOOMP preview for the Controls drawer (mirrors the test
+       console's Fire HOOMP): visual + sound on this screen only, never
+       counted in hoompLog, never broadcast to OBS. */
+    $('drhoomp').addEventListener('click', () => {
+      emitEffect({ kind: 'hoomp', user: CHANNEL || 'test_user' });
+    });
+
+    /* Local SLOP preview — same deal: this screen only. Guarded: only
+       pages shipping the #drslop button (agoodpete) wire it. */
+    if ($('drslop')) $('drslop').addEventListener('click', () => {
+      emitEffect({ kind: 'slop', user: CHANNEL || 'test_user' });
+    });
+
     document.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button) return;
@@ -5903,6 +8425,10 @@ try {
         case 'hoomp':
           emitEffect({ kind: 'hoomp', user: 'test_user' });
           break;
+
+        case 'slop':
+          emitEffect({ kind: 'slop', user: 'test_user' });
+          break;
       }
     });
 
@@ -6019,6 +8545,28 @@ try {
     document.body.classList.add('browser-stage');
   }
 
+  /* ── staged preview backdrops (?bg=softaurora|dotgrid|lightrays|faulty).
+     Browser previews only: OBS never sets browser-stage, so every canvas
+     is pruned there and transparency is preserved no matter the URL.
+     Default is none — the overlay composites over gameplay. Runs here at
+     parse time, before the engines' DOMContentLoaded mount. */
+  try {
+    var BGB = String(q.get('bg') || '').toLowerCase();
+    if (['softaurora', 'dotgrid', 'lightrays', 'faulty'].indexOf(BGB) < 0) BGB = '';
+    var BGSTAGED = false;
+    try { BGSTAGED = document.body.classList.contains('browser-stage'); } catch (eBG) {}
+    ['softaurora', 'dotgrid', 'lightrays', 'faulty'].forEach(function (id) {
+      var bel = $(id);
+      if (!bel) return;
+      if (!BGSTAGED || BGB !== id) { bel.parentNode.removeChild(bel); }
+      else {
+        if (LITE) bel.setAttribute('data-static', '1');
+        try { document.body.setAttribute('data-bgstage', id); } catch (eBG2) {}
+      }
+    });
+    if (!BGB || !BGSTAGED) { try { document.body.removeAttribute('data-bgstage'); } catch (eBG3) {} }
+  } catch (eBG4) {}
+
   document.body.classList.toggle('clean', CLEAN);
   document.body.classList.toggle('testmode', TESTMODE);
   document.body.classList.toggle('history', HISTMODE);
@@ -6049,6 +8597,7 @@ try {
 
   setupDrawer();
   bindControls();
+  setupAlertsDrawer();
   setupViewLinks();
   setupTestConsole();
   syncGapInput();
@@ -6091,6 +8640,21 @@ try {
     render();
   };
 
+  /* Follower simulator for the lab (mirrors __ratehiveInject's guard).
+     Production follows arrive via the alerts socket, never this hook. */
+  window.__ratehiveFollow = function (user) {
+    if (!TESTMODE && !demoState) {
+      console.warn(
+        'Direct follow injection is disabled outside test/demo mode. ' +
+        'Use ?test=1 or the StreamElements feed.'
+      );
+      return;
+    }
+
+    emitEffect({ kind: 'follow', user: String(user || '').trim() || 'Someone' });
+    render();
+  };
+
   window.__islDbg = () => ({
     state: ISLAND.state,
     pinned: ISLAND.pinned,
@@ -6112,6 +8676,7 @@ try {
     clearInterval(demoTimer);
     if (ws) ws.close();
     if (bus) bus.close();
+    try { if (window.AlertBus) window.AlertBus.disconnect(); } catch (error) {}
   });
 
   // Reload after restoring a cached document whose connections were closed.
@@ -6595,6 +9160,135 @@ try {
     });
     obs.observe(drawer, { attributes: true, attributeFilter: ['class'] });
     setTimeout(function () { hide(false); obs.disconnect(); }, 9000);
+  } catch (e) {}
+})();
+
+/* Split-text takeover wordmarks (PROTOTYPE 5): the engine injects the island
+   faces, so split the static HOOMP! / SLOP! wordmarks lazily — per-char
+   spans riding --i for the agoodpete.css cascade. agoodpete-only. */
+(function () {
+  'use strict';
+  function split(el) {
+    if (!el || el.getAttribute('data-split')) return true;
+    var text = el.textContent;
+    if (!text) return false;
+    el.setAttribute('data-split', '1');
+    el.setAttribute('aria-label', text);
+    var html = '';
+    for (var k = 0; k < text.length; k++) {
+      var c = text[k];
+      if (c === ' ') html += '<span class="ch" aria-hidden="true">&nbsp;</span>';
+      else html += '<span class="ch" aria-hidden="true" style="--i:' + k + '">' +
+        c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+    }
+    el.innerHTML = html;
+    return true;
+  }
+  var doneH = false, doneS = false, obs = null;
+  function sweep() {
+    try {
+      if (!doneH) {
+        var h = document.querySelector('.di-face[data-face="hoomp"] strong');
+        if (h) doneH = split(h);
+      }
+      if (!doneS) {
+        var s = document.querySelector('.di-face[data-face="slop"] strong');
+        if (s) doneS = split(s);
+      }
+      if (doneH && doneS && obs) obs.disconnect();
+    } catch (e) {}
+  }
+  sweep();
+  try {
+    obs = new MutationObserver(sweep);
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+})();
+
+/* HOOMP train-whistle steam (PROTOTYPE 9): a puff layer over the island
+   pill; each HOOMP takeover blows a staggered stack of six soft puffs up
+   past the pill's top edge. agoodpete-only. */
+(function () {
+  'use strict';
+  try {
+    var diland = document.getElementById('diland');
+    if (!diland) return;
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var steam = document.createElement('div');
+    steam.className = 'pete-steam';
+    steam.setAttribute('aria-hidden', 'true');
+    diland.appendChild(steam);
+    var wasActive = false;
+    function burst() {
+      if (reduced) return;
+      try {
+        while (steam.firstChild) steam.removeChild(steam.firstChild);
+        var dxs = [-26, -14, -5, 6, 16, 28];
+        for (var k = 0; k < dxs.length; k++) {
+          var s = document.createElement('i');
+          s.style.setProperty('--dx', dxs[k] + 'px');
+          s.style.animationDelay = (k * 0.12) + 's';
+          var sz = 12 + ((k * 7) % 10);
+          s.style.width = sz + 'px';
+          s.style.height = sz + 'px';
+          steam.appendChild(s);
+        }
+        setTimeout(function () {
+          try { while (steam.firstChild) steam.removeChild(steam.firstChild); } catch (e2) {}
+        }, 2600);
+      } catch (e) {}
+    }
+    var obs = new MutationObserver(function () {
+      try {
+        var face = diland.querySelector('.di-face[data-face="hoomp"]');
+        var active = !!(face && face.classList.contains('active'));
+        if (active && !wasActive) burst();
+        wasActive = active;
+      } catch (e) {}
+    });
+    obs.observe(diland, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  } catch (e) {}
+})();
+
+/* Liquid-gauge sine surface for slop (PROTOTYPE 10): retire the stock
+   scallop dots by injecting two real sine waves into the wave strip —
+   front light / back dark and low for depth, each scrolling by its own
+   wavelength so loops are seamless. agoodpete-only. */
+(function () {
+  'use strict';
+  function waveD(amp, lambda, phase, yOff) {
+    var d = 'M0,14 L0,' + (7 + yOff + amp * Math.sin(phase)).toFixed(2);
+    for (var x = 4; x <= 200; x += 4) {
+      d += ' L' + x + ',' + (7 + yOff + amp * Math.sin((x / lambda) * 2 * Math.PI + phase)).toFixed(2);
+    }
+    return d + ' L200,14 Z';
+  }
+  var done = false, obs = null;
+  function sweep() {
+    if (done) return;
+    try {
+      var strip = document.querySelector('.di-face[data-face="slop"] .di-slopwave');
+      if (!strip || strip.getAttribute('data-liquid')) return;
+      strip.setAttribute('data-liquid', '1');
+      strip.innerHTML = '<svg class="pete-liquid" viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true">' +
+        '<defs><filter id="peteSlopTurb" x="-20%" y="-60%" width="140%" height="220%" color-interpolation-filters="sRGB">' +
+        '<feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="7" result="n">' +
+        '<animate attributeName="baseFrequency" values="0.012 0.03;0.016 0.022;0.010 0.036;0.012 0.03" dur="7s" repeatCount="indefinite"/>' +
+        '</feTurbulence>' +
+        '<feDisplacementMap in="SourceGraphic" in2="n" scale="8" xChannelSelector="R" yChannelSelector="G"/>' +
+        '</filter></defs>' +
+        '<g class="wl-back"><path d="' + waveD(2.2, 40, 1.3, 2.5) + '" fill="#7a4e22" opacity="0.9"/></g>' +
+        '<g class="wl-front"><path d="' + waveD(3, 50, 0, 0) + '" fill="#9a6831"/></g>' +
+        '</svg>';
+      done = true;
+      if (obs) obs.disconnect();
+    } catch (e) {}
+  }
+  sweep();
+  try {
+    obs = new MutationObserver(sweep);
+    obs.observe(document.documentElement, { childList: true, subtree: true });
   } catch (e) {}
 })();
 
