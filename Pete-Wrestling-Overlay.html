@@ -2171,6 +2171,67 @@ body.no-fx .di-face[data-face="hoomp"]::before { display: none !important; }
    hint line and viewer CTA are untouched; no material changed. */
 body.clean .di-acts, body.clean .di-x, body.clean .di-coach { display: none !important; }
 
+/* ═══════ SHIMMER KICKERS (agoodpete only) ═════════════════════════════
+   Gold eyebrow labels carry a slow light sweep, kin to the island's LIVE
+   shimmer. Solid gold where background-clip:text is unsupported. */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .kicker {
+    background: linear-gradient(100deg, var(--amber) 30%, #fff3d6 50%, var(--amber) 70%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: peteKickerShine 8s linear infinite;
+  }
+}
+@keyframes peteKickerShine { to { background-position: -220% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .kicker { animation: none; }
+}
+
+/* ═══════ MERCH CARD SWAP (agoodpete only, class driven by agoodpete.js) ═
+   Outgoing lifts away, incoming settles from below — rotation and manual
+   Next feel produced instead of hard-cutting. Content swaps mid-flight
+   while opacity is zero. */
+.merch-inner.pete-swap { animation: peteMerchSwap .48s cubic-bezier(.22,.61,.36,1); }
+@keyframes peteMerchSwap {
+  0% { opacity: 1; transform: none; filter: blur(0); }
+  35% { opacity: 0; transform: translateY(-8px) scale(.98); filter: blur(4px); }
+  36% { opacity: 0; transform: translateY(8px) scale(.98); filter: blur(4px); }
+  100% { opacity: 1; transform: none; filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .merch-inner.pete-swap { animation: none; }
+}
+
+/* ═══════ LIQUID DWELL BARS (agoodpete only) ═══════════════════════════
+   Takeover countdown bars graduate from flat fills to directional flow
+   with a soft glow, voiced per moment. JS still drives them via scaleX;
+   only the paint changes. */
+.di-hpb { background: linear-gradient(90deg, rgba(48,209,88,0.4), var(--ok)); box-shadow: 0 0 10px rgba(48,209,88,0.45); }
+.di-fpb, .di-pb { background: linear-gradient(90deg, rgba(212,168,83,0.35), var(--amber)); box-shadow: 0 0 10px rgba(212,168,83,0.45); }
+.di-epb { background: linear-gradient(90deg, var(--evg, rgba(0,113,227,0.4)), var(--ev, var(--amber))); box-shadow: 0 0 10px var(--evg, rgba(0,113,227,0.45)); }
+#diSlopPb { background: linear-gradient(90deg, rgba(122,78,34,0.5), #9a6831); box-shadow: 0 0 10px rgba(154,104,49,0.5); }
+
+/* ═══════ CREAMY FACE SWAPS (agoodpete only) ═══════════════════════════
+   Island faces used to crossfade on opacity alone; now they drift up and
+   deblur into place, matching the blur-reveal language everywhere else.
+   Composes with the existing .di-rise child cascade. Reduced-motion keeps
+   the engine's near-zero durations, so this degrades to a snap there. */
+.di-face { transition: opacity .22s ease, transform .32s cubic-bezier(.22,.61,.36,1), filter .32s ease; transform: translateY(5px); filter: blur(3px); }
+.di-face.active { opacity: 1; transform: none; filter: blur(0); }
+
+/* ═══════ TAKEOVER FLARE ON THE PILL (agoodpete only) ══════════════════
+   Same idea up close: each celebration pill gets a hot core layer plus a
+   wider bloom (was a single soft glow). Accent-aware follow/event rules
+   are preserved via the color-mix overrides. */
+.di[data-state="hoomp"] { box-shadow: var(--sh-chip), 0 0 12px rgba(48,209,88,0.5), 0 0 48px rgba(48,209,88,0.28); }
+.di[data-state="follow"] { box-shadow: var(--sh-chip), 0 0 14px rgba(0,113,227,0.5), 0 0 48px rgba(0,113,227,0.3); }
+.di[data-state="event"] { box-shadow: var(--sh-chip), 0 0 14px rgba(0,113,227,0.5), 0 0 48px rgba(0,113,227,0.3); }
+.di[data-state="slop"] { box-shadow: var(--sh-chip), 0 0 12px rgba(200,140,70,0.55), 0 0 48px rgba(138,90,43,0.35); }
+@supports (border-color: color-mix(in srgb, red 50%, blue)) {
+  .di[data-state="follow"] { box-shadow: var(--sh-chip), 0 0 14px color-mix(in srgb, var(--amber) 55%, transparent), 0 0 48px color-mix(in srgb, var(--amber) 30%, transparent); }
+  .di[data-state="event"] { box-shadow: var(--sh-chip), 0 0 14px color-mix(in srgb, var(--ev, #0a84ff) 60%, transparent), 0 0 48px color-mix(in srgb, var(--ev, #0a84ff) 32%, transparent); }
+}
+
 /* ═══════ PROTOTYPE 11 · living surface: animated turbulence-displacement
    on the slop waves (ReactBits GlassSurface's SVG-displacement recipe,
    pointed at liquid instead of glass — agoodpete only) ═════════════════
@@ -8736,7 +8797,7 @@ if (document.readyState === 'loading') {
     $('.ticker-track').style.animationDuration = $('#speed').value + 's';
   }
 
-  function showProduct(p) {
+  function paintProduct(p) {
     if (!p) return;
     $('#merchNameOut').textContent = (p.name || '').toUpperCase();
     $('#merchCollOut').textContent = p.collection || '';
@@ -8752,6 +8813,25 @@ if (document.readyState === 'loading') {
     }
     merchBox.onclick = function () { if (p.url) window.open(p.url, '_blank'); };
     merchBox.style.cursor = p.url ? 'pointer' : 'default';
+  }
+
+  /* Card-swap merch transition: outgoing lifts away, incoming settles.
+     First paint + silent enrichment refreshes apply instantly; rotation
+     and manual Next play the swap. */
+  var reduceMotion = false;
+  try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function showProduct(p, instant) {
+    if (!p) return;
+    var inner = null;
+    try { inner = merchBox.querySelector('.merch-inner'); } catch (e) {}
+    if (instant || reduceMotion || !inner) { paintProduct(p); return; }
+    try {
+      inner.classList.remove('pete-swap');
+      void inner.offsetWidth;
+      inner.classList.add('pete-swap');
+    } catch (e) {}
+    clearTimeout(window.__peteSwap);
+    window.__peteSwap = setTimeout(function () { paintProduct(p); }, 170);
   }
 
   function fetchTextWithProxy(url) {
@@ -9033,7 +9113,7 @@ if (document.readyState === 'loading') {
             }
             if (updated) {
               enrichedCount++;
-              if (products.indexOf(item) === currentIndex) showProduct(item);
+              if (products.indexOf(item) === currentIndex) showProduct(item, true);
             }
           } catch (e) {}
         }
@@ -9056,7 +9136,7 @@ if (document.readyState === 'loading') {
     statusEl.textContent = 'Loading store...';
     tryAPIMethod().then(function (result) {
       if (result && result.length) {
-        products = result; currentIndex = 0; showProduct(products[0]);
+        products = result; currentIndex = 0; showProduct(products[0], true);
         statusEl.textContent = products.length + ' products (API)';
         say('Loaded ' + products.length + ' products');
         startRotate(); return;
@@ -9064,14 +9144,14 @@ if (document.readyState === 'loading') {
       statusEl.textContent = 'API failed, trying sitemap...';
       return trySitemapMethod().then(function (r2) {
         if (r2 && r2.length) {
-          products = r2; currentIndex = 0; showProduct(products[0]);
+          products = r2; currentIndex = 0; showProduct(products[0], true);
           statusEl.textContent = products.length + ' products (sitemap)';
           say('Store via sitemap'); startRotate(); enrichMissingData(); return;
         }
         statusEl.textContent = 'Trying scrape...';
         return tryScrapeMethod().then(function (r3) {
           if (r3 && r3.length) {
-            products = r3; currentIndex = 0; showProduct(products[0]);
+            products = r3; currentIndex = 0; showProduct(products[0], true);
             statusEl.textContent = products.length + ' products (scraped)';
             say('Store scraped'); startRotate(); enrichMissingData(); return;
           }
@@ -9082,7 +9162,7 @@ if (document.readyState === 'loading') {
             { name: "Dr Harry Hardy's Bellend Workshop Shirt", collection: '', price: '£25.54', image: '', url: STORE_URL + '/en-gbp/products/dr-harry-hardys-bellend-workshop-shirt', slug: 'dr-harry-hardys-bellend-workshop-shirt' },
             { name: 'Harry Hardy Bellend Party Mug', collection: '', price: '£10.21', image: '', url: STORE_URL + '/en-gbp/products/harry-hardy-bellend-party-mug', slug: 'harry-hardy-bellend-party-mug' }
           ];
-          currentIndex = 0; showProduct(products[0]); enrichMissingData(); startRotate();
+          currentIndex = 0; showProduct(products[0], true); enrichMissingData(); startRotate();
         });
       });
     });
