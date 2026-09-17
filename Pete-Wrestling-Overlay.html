@@ -2950,13 +2950,13 @@ try {
   </section>
   <section class="dr-sec">
   <div class="dr-lab">Chatbox <span style="opacity:.6">(bottom only — top is cropped)</span></div>
-  <div class="dr-presets" id="drchatbox"><button data-ch="1" class="on">Show</button><button data-ch="0">Hide</button></div>
+  <div class="dr-presets" id="drchatbox"><button data-ch="1">Show</button><button data-ch="0" class="on">Hide</button></div>
   <div class="dr-lab" style="margin-top:8px">Position</div>
   <div class="dr-presets" id="drchatpos"><button data-cp="bc" class="on">Bottom-c</button><button data-cp="bl">B-left</button><button data-cp="br">B-right</button></div>
   <div class="dr-row" style="margin-top:8px">
     <button class="dr-ghost" id="chatTest" style="flex:1" title="Drop a sample message (this screen only)">Test message</button>
   </div>
-  <div class="dr-stat">Read-only Twitch chat for stream. URL: <b>&amp;chat=0</b> hides · <b>&amp;chatpos=bl|br</b> moves · <b>&amp;chatn=15</b> count · <b>&amp;chatfade=0</b> pins messages.</div>
+  <div class="dr-stat">Read-only Twitch chat for stream (hidden by default). URL: <b>&amp;chat=1</b> shows · <b>&amp;chatpos=bl|br</b> moves · <b>&amp;chatn=15</b> count · <b>&amp;chatfade=0</b> pins messages.</div>
   </section>
   <section class="dr-sec">
   <div class="dr-lab">Chat — Bubbles <span style="opacity:.6">(collapsed pill only)</span></div>
@@ -2983,7 +2983,7 @@ try {
     <a class="dr-link" id="lnk-scene" target="_blank" rel="noopener" title="End-of-stream dashboard — add it as a browser source in your Ending scene">End scene</a>
   </div>
   </section>
-  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling size: <b>?stack=0.5–2.5</b> (default 1). Wrestling overlay: <b>?wrestling=0</b> hides the stack. Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center, <b>?chatpos=bl|br</b> moves it, <b>?chat=0</b> hides it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
+  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = hate toast. Say <b>hoomp</b> anywhere in chat for the HOOMP moment.<br>Mods: <b>!rateopen</b> / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling size: <b>?stack=0.5–2.5</b> (default 1). Wrestling overlay: <b>?wrestling=0</b> hides the stack. Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -3039,7 +3039,7 @@ try {
 </main>
 
 <div class="wr-toast" id="wrToast"></div>
-<div id="chatbox" data-pos="bc" data-hidden="0" role="log" aria-live="off" aria-label="Twitch chat"></div>
+<div id="chatbox" data-pos="bc" data-hidden="1" role="log" aria-live="off" aria-label="Twitch chat"></div>
 
 <script>
 /* ==== inlined: assets/alerts.js ==== */
@@ -9360,12 +9360,13 @@ try {
     POS = choice(sp, ['bc', 'bl', 'br'], 'bc');
   }
 } catch (e) { if (POS == null) POS = 'bc'; }
-var visible = true;
+var visible = false;
 try {
-  var sv = localStorage.getItem(LS_VIS);
-  visible = CHAT_OFF ? false : sv !== '0';
-  if (CHAT_OFF) localStorage.setItem(LS_VIS, '0');
-} catch (e) { visible = !CHAT_OFF; }
+  /* Hidden by default; ?chat=1 shows, ?chat=0 hides, drawer choice persists. */
+  if (q.get('chat') === '0') { visible = false; localStorage.setItem(LS_VIS, '0'); }
+  else if (q.get('chat') === '1') { visible = true; localStorage.setItem(LS_VIS, '1'); }
+  else visible = localStorage.getItem(LS_VIS) === '1';
+} catch (e) { try { visible = q.get('chat') === '1'; } catch (e2) {} }
 
 var box = null;
 function ensureBox() {
@@ -9981,9 +9982,11 @@ else ready();
       if (document.documentElement.getAttribute('data-wr') === 'hidden') u += '&wrestling=0';
       if (document.documentElement.getAttribute('data-phring') === 'on') u += '&phring=1';
       var cb = document.getElementById('chatbox');
-      if (cb && cb.getAttribute('data-hidden') === '1') u += '&chat=0';
-      else if (cb && cb.getAttribute('data-pos') && cb.getAttribute('data-pos') !== 'bc') {
-        u += '&chatpos=' + encodeURIComponent(cb.getAttribute('data-pos'));
+      if (cb && cb.getAttribute('data-hidden') === '0') {
+        u += '&chat=1';
+        if (cb.getAttribute('data-pos') && cb.getAttribute('data-pos') !== 'bc') {
+          u += '&chatpos=' + encodeURIComponent(cb.getAttribute('data-pos'));
+        }
       }
       if (localStorage.getItem('pete-bubbles') === '0') u += '&bubble=0';
       try {
