@@ -10,6 +10,7 @@
   drawer switch. ?channel= still overrides; first run defaults to agoodpete.) -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="rh-build" content="2026-09-28 23:18+aa62052fca">
 <title>AGoodPete — Wrestling Rater</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-3 -3 30 30%22><rect x=%22-3%22 y=%22-3%22 width=%2230%22 height=%2230%22 rx=%227%22 fill=%22%23d4a853%22/><g fill=%22%23FFFFFF%22 fill-opacity=%220.45%22><rect x=%222%22 y=%2215.5%22 width=%222.6%22 height=%226.5%22 rx=%221.3%22/><rect x=%226.5%22 y=%2212%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/><rect x=%2211%22 y=%228.5%22 width=%222.6%22 height=%2213.5%22 rx=%221.3%22/><rect x=%2215.5%22 y=%225%22 width=%222.6%22 height=%2217%22 rx=%221.3%22/></g><rect x=%2220%22 y=%221.5%22 width=%222.6%22 height=%2220.5%22 rx=%221.3%22 fill=%22%23FFFFFF%22/></svg>" />
 <style>
@@ -228,7 +229,7 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .di[data-state="collapsed"]:hover { border-color: rgba(255,255,255,0.2); }
 .di[data-state="peek"] { width: 392px; height: 52px; background: #000; border-radius: var(--r-full); }
 .di[data-state="final"] { width: 396px; height: 84px; border-radius: 28px; background: #000; cursor: default; }
-.di[data-state="panel"] { width: 404px; height: min(412px, calc(100vh - 40px)); border-radius: 26px; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(calc(36px * var(--blur-mul, 1))); backdrop-filter: saturate(180%) blur(calc(36px * var(--blur-mul, 1))); border-color: var(--line); cursor: default; box-shadow: var(--sh-panel); }
+.di[data-state="panel"] { width: 404px; height: min(412px, calc(100vh - 40px)); border-radius: 26px; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(calc(36px * var(--blur-mul, 1) * var(--elev, 1))); backdrop-filter: saturate(180%) blur(calc(36px * var(--blur-mul, 1) * var(--elev, 1))); border-color: var(--line); cursor: default; box-shadow: var(--sh-panel); }
 @supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
   .di[data-state="panel"] { background: rgba(24,24,27,0.97); }
 }
@@ -934,7 +935,7 @@ body.no-fx .callout::before { display: none !important; }
 body.no-fx .callout, body.no-fx .vpop { -webkit-backdrop-filter: blur(10px) saturate(150%); backdrop-filter: blur(10px) saturate(150%); }
 body.no-fx .callout.final .co-sheen { display: none !important; }
 body.no-fx .callout.final .co-react span { animation: none !important; }
-body.no-liquid .callout, body.no-liquid .vpop { background: rgba(56,56,66,calc(.62 * var(--milk-mul, 1))); border-color: rgba(255,255,255,0.22); -webkit-backdrop-filter: blur(calc(32px * var(--blur-mul, 1))) saturate(170%) brightness(1.12); backdrop-filter: blur(calc(32px * var(--blur-mul, 1))) saturate(170%) brightness(1.12); box-shadow: var(--sh-float), 0 0 22px rgba(255,255,255,0.06); }
+body.no-liquid .callout, body.no-liquid .vpop { background: rgba(56,56,66,calc(.62 * var(--milk-mul, 1))); border-color: rgba(255,255,255,0.22); -webkit-backdrop-filter: blur(calc(32px * var(--blur-mul, 1) * var(--elev, 1))) saturate(170%) brightness(1.12); backdrop-filter: blur(calc(32px * var(--blur-mul, 1) * var(--elev, 1))) saturate(170%) brightness(1.12); box-shadow: var(--sh-float), 0 0 22px rgba(255,255,255,0.06); }
 body.no-liquid .callout.final { box-shadow: var(--sh-panel), 0 0 30px rgba(255,255,255,0.07); }
 body.no-liquid .callout.final.hi { border-color: rgba(48,209,88,0.5); }
 @media (prefers-reduced-transparency: reduce) {
@@ -1027,6 +1028,16 @@ body.rh-glide .dr-presets button.on { border-color: transparent; background: tra
 
 /* beUI magnetic drawer buttons — pointer-proximity translate; disabled under no-fx / reduced-motion */
 .drawer .dr-presets button, .drawer .dr-ghost, .drawer .dr-go, .drawer .dr-demo, .drawer .dr-link, .drawer .dr-sw { transition: transform .28s var(--ease-spring, cubic-bezier(.32,.72,0,1)), color .18s, border-color .18s, background .18s; will-change: transform; }
+/* iOS press dip: controls physically acknowledge the tap — including
+   through the OBS Interact window, where hover never happens. Rides the
+   spring transition above; magnetic buttons keep JS positioning (inline
+   style wins while magnetized). */
+.drawer button:active, #dswitch button:active, .di-ab:active, .corner-btn:active {
+  transform: scale(.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer button:active, #dswitch button:active, .di-ab:active, .corner-btn:active { transform: none; }
+}
 body.no-fx .drawer .dr-presets button, body.no-fx .drawer .dr-ghost, body.no-fx .drawer .dr-go, body.no-fx .drawer .dr-demo, body.no-fx .drawer .dr-link, body.no-fx .drawer .dr-sw { transition: none; transform: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .drawer .dr-presets button, .drawer .dr-ghost, .drawer .dr-go, .drawer .dr-demo, .drawer .dr-link, .drawer .dr-sw { transition: none; transform: none !important; }
@@ -1540,7 +1551,7 @@ b, strong { font-weight: 600; }
 
 /* ── tokens: the material recipe, one place to tune ── */
 :root {
-  --mat: saturate(180%) blur(calc(22px * var(--blur-mul, 1))) brightness(1.06) contrast(1.05); /* every glass surface; global Blur slider scales it */
+  --mat: saturate(180%) blur(calc(22px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.06) contrast(1.05); /* every glass surface; global Blur slider scales it, --elev grades depth */
   /* Scrim tints, scaled by --tint-mul (1 at stock, so these are byte-identical
      to the previous flat values until the Tint slider moves).
      Why this axis exists: the reference recipe — LastWave's LiquidGlass.kt on
@@ -1588,13 +1599,13 @@ body.browser-stage:not(.history):not(.voters):not(.archive):not(.recapscene) {
 .rh-pr-in:focus { background: rgba(255,255,255,0.10); }
 .rh-pr-card {
   background: var(--lg-pr-tint);
-  -webkit-backdrop-filter: blur(calc(26px * var(--blur-mul, 1))) saturate(190%) brightness(1.08);
-  backdrop-filter: blur(calc(26px * var(--blur-mul, 1))) saturate(190%) brightness(1.08);
+  -webkit-backdrop-filter: blur(calc(26px * var(--blur-mul, 1) * var(--elev, 1))) saturate(190%) brightness(1.08);
+  backdrop-filter: blur(calc(26px * var(--blur-mul, 1) * var(--elev, 1))) saturate(190%) brightness(1.08);
   border-color: rgba(255,255,255,0.14);
   overflow: hidden; /* clip the sheen sweep + rim to the squircle */
 }
-/* specular rim — top light catch, bottom return, hairline ring + mouse-followed
-   highlight (v21: --mx/--my shift the travelling light; static without JS) */
+/* specular rim — top light catch, bottom return, hairline ring + drifting
+   highlight (v21: --mx/--my drift the travelling light on a timer; static when drift is off) */
 .rh-pr-card::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
   background:
@@ -1636,8 +1647,8 @@ body.browser-stage:not(.history):not(.voters):not(.archive):not(.recapscene) {
 .di[data-state="final"] { background: rgba(10,10,12,0.66); }
 .di[data-state="panel"] { background: var(--lg-isl-open); }
 .di {
-  -webkit-backdrop-filter: saturate(172%) blur(calc(14px * var(--blur-mul, 1))) brightness(1.05);
-  backdrop-filter: saturate(172%) blur(calc(14px * var(--blur-mul, 1))) brightness(1.05);
+  -webkit-backdrop-filter: saturate(172%) blur(calc(14px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.05);
+  backdrop-filter: saturate(172%) blur(calc(14px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.05);
   border-color: rgba(255,255,255,0.15);
 }
 /* lens-edge refraction + aberration on the pill (subtler filter: #lgAberS, v21) */
@@ -1651,8 +1662,8 @@ body.browser-stage:not(.history):not(.voters):not(.archive):not(.recapscene) {
 @supports not ((backdrop-filter: url(#lgAberS)) or (-webkit-backdrop-filter: url(#lgAberS))) {
   .di::before { display: none; }
 }
-/* specular rim riding the morph + mouse-followed light (v21 vanilla rdev port:
-   --mx/--my from overlay.js shift the travelling highlight; static without JS).
+/* specular rim riding the morph + drifting light (v21 vanilla rdev port:
+   --mx/--my from overlay.js drift the travelling highlight; static when drift is off).
    The bottom return is DARK, not a white lift: the reference draws its edge as
    Highlight(width = 1.dp) — a light catch on the top lip and a shadow on the
    underside — which is what gives the slab thickness. A white bottom edge reads
@@ -1706,29 +1717,98 @@ body.browser-stage:not(.history):not(.voters):not(.archive):not(.recapscene) {
    stay live. Its own milky identity on top: lifted translucent-white tint
    (Milk slider scales it), luminous edge with a soft frost glow, dimmed
    speculars, stronger diffusion — per surface below, plus --mat token. */
-body.no-liquid { --mat: saturate(150%) blur(calc(32px * var(--blur-mul, 1))) brightness(1.12); --spec-o: .55; }
+body.no-liquid { --mat: saturate(150%) blur(calc(32px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.12); --spec-o: .55; }
 body.no-liquid .rh-pr-card {
   background: rgba(56,56,66,calc(.62 * var(--milk-mul, 1)));
   border-color: rgba(255,255,255,.24);
-  -webkit-backdrop-filter: blur(calc(38px * var(--blur-mul, 1))) saturate(170%) brightness(1.12);
-  backdrop-filter: blur(calc(38px * var(--blur-mul, 1))) saturate(170%) brightness(1.12);
+  -webkit-backdrop-filter: blur(calc(38px * var(--blur-mul, 1) * var(--elev, 1))) saturate(170%) brightness(1.12);
+  backdrop-filter: blur(calc(38px * var(--blur-mul, 1) * var(--elev, 1))) saturate(170%) brightness(1.12);
   box-shadow: var(--sh-panel), 0 0 30px rgba(255,255,255,.07);
 }
 body.no-liquid .di {
   background: rgba(42,42,52,calc(.60 * var(--milk-mul, 1)));
   border-color: rgba(255,255,255,.22);
-  -webkit-backdrop-filter: saturate(160%) blur(calc(26px * var(--blur-mul, 1))) brightness(1.10);
-  backdrop-filter: saturate(160%) blur(calc(26px * var(--blur-mul, 1))) brightness(1.10);
+  -webkit-backdrop-filter: saturate(160%) blur(calc(26px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.10);
+  backdrop-filter: saturate(160%) blur(calc(26px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.10);
   box-shadow: var(--sh-chip), 0 0 22px rgba(255,255,255,.06);
 }
 body.no-liquid .di[data-state="panel"] {
   background: rgba(48,48,58,calc(.66 * var(--milk-mul, 1)));
-  -webkit-backdrop-filter: saturate(170%) blur(calc(44px * var(--blur-mul, 1))) brightness(1.10);
-  backdrop-filter: saturate(170%) blur(calc(44px * var(--blur-mul, 1))) brightness(1.10);
+  -webkit-backdrop-filter: saturate(170%) blur(calc(44px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.10);
+  backdrop-filter: saturate(170%) blur(calc(44px * var(--blur-mul, 1) * var(--elev, 1))) brightness(1.10);
+}
+
+/* ═══════ ELEVATION SCALE ═══════
+   Deeper blur higher up the stack, so pill / panel / popovers read as
+   layered glass instead of one flat frost. --elev multiplies every blur
+   via --mat and the bespoke declarations above (default 1 = unchanged).
+   The collapsed pill is solid black, so its depth comes from shadow, not
+   blur — nothing to grade there. */
+.di { --elev: 1.12; }
+.di[data-state="panel"] { --elev: 1.04; }
+#cpanel, .s-card { --elev: .94; }
+.vpop, .callout { --elev: .84; }
+#dswitch, .sidebtn, .drawer, .di-coach, .copy-toast, .verdict { --elev: 1.08; }
+
+/* ═══════ EVENT-DRIVEN SHEEN ═══════
+   overlay.js kickSheen() appends one .ev-sheen per moment (votes, finals,
+   celebrations) so the light answers the stream. Transform-only sweep;
+   throttled in JS; hidden wherever glass is off. */
+.ev-sheen { position: absolute !important; top: -30%; bottom: -30%; left: 0; width: 40%; margin: 0; background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.16) 50%, rgba(255,255,255,0) 100%); transform: translateX(-160%) skewX(-9deg); pointer-events: none; z-index: 5; animation: evSheen .8s var(--ease-spring) both; }
+@keyframes evSheen { to { transform: translateX(360%) skewX(-9deg); } }
+body.no-fx .ev-sheen, body.no-liquid .ev-sheen, body[data-theme="ledger"] .ev-sheen { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .ev-sheen { display: none !important; } }
+@media (prefers-reduced-transparency: reduce) { .ev-sheen { display: none !important; } }
+
+/* ═══════ PORTED MICRO-MOTION ═══════
+   Word-stagger blur (Aceternity TextGenerateEffect): islandEvent copy
+   rises word by word; no-JS fallback is the plain string. */
+.blur-word { display: inline-block; animation: blurWordIn .5s var(--ease-spring) both; }
+@keyframes blurWordIn { from { opacity: 0; filter: blur(6px); transform: translateY(4px); } }
+
+/* Beam borders (Aceternity MovingBorder / StarBorder in spirit): a slow
+   travelling light riding the LIVE pill rim and celebration faces.
+   @property makes --beam-a animatable (Chrome 85+); older engines hold a
+   static arc, which still reads as a highlight. Hidden wherever glass,
+   motion, or transparency opts out. */
+@property --beam-a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.di[data-st="open"]::after, .di[data-state="event"]::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px;
+  background: conic-gradient(from var(--beam-a), transparent 0%, rgba(255,255,255,0) 68%, var(--beam-c, rgba(48,209,88,.85)) 82%, transparent 94%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; z-index: 6;
+  animation: beamSpin 3.2s linear infinite;
+}
+.di[data-state="event"]::after { --beam-c: var(--ev, rgba(212,168,83,.9)); }
+@keyframes beamSpin { to { --beam-a: 360deg; } }
+
+/* Celebration meteors: three CSS-only streaks falling behind the event
+   face while it is active (S-tier sky). Transform/opacity only. */
+.di-mets { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.di-mets i { position: absolute; top: -12%; left: 30%; width: 2px; height: 36%; background: linear-gradient(180deg, transparent, var(--ev, #d4a853)); opacity: 0; }
+.di-mets i:nth-child(2) { left: 62%; }
+.di-mets i:nth-child(3) { left: 79%; }
+.di-face.active .di-mets i { animation: metFall 2.2s ease-in infinite; }
+.di-face.active .di-mets i:nth-child(2) { animation-delay: .7s; }
+.di-face.active .di-mets i:nth-child(3) { animation-delay: 1.3s; }
+@keyframes metFall {
+  0% { transform: translateY(-120%) rotate(24deg); opacity: 0; }
+  15% { opacity: .8; }
+  60% { opacity: .5; }
+  100% { transform: translateY(340%) rotate(24deg); opacity: 0; }
+}
+body.no-fx .di[data-st="open"]::after, body.no-fx .di[data-state="event"]::after,
+body.no-liquid .di[data-st="open"]::after, body.no-liquid .di[data-state="event"]::after,
+body[data-theme="ledger"] .di[data-st="open"]::after, body[data-theme="ledger"] .di[data-state="event"]::after,
+body[data-theme="ledger"] .di-mets { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .di[data-st="open"]::after, .di[data-state="event"]::after { display: none !important; }
+  .di-face .di-mets i, .blur-word { animation: none !important; }
 }
 
 /* ═══════ GUARDS ═══════ */
-/* v21 · mouse-light defaults (overridden by overlay.js pointermove) */
+/* v21 · drift-light defaults (animated by overlay.js when drift is on) */
 :root { --mx: 0; --my: 0; }
 /* ?fx=lite — streamer escape hatch: same design, cheaper optics */
 body.no-fx {
@@ -1892,6 +1972,7 @@ html[data-wr="hidden"] .stack > *:nth-child(1) { transition-delay: 0s, .18s, 0s;
 html[data-wr="hidden"] .stack > *:nth-child(2) { transition-delay: 0s, .12s, 0s; }
 html[data-wr="hidden"] .stack > *:nth-child(3) { transition-delay: 0s, .06s, 0s; }
 html[data-wr="hidden"] .stack > *:nth-child(4) { transition-delay: 0s, 0s, 0s; }
+.episode, .merch, .ticker, .tierstack { --elev: .9; }
 .episode {
   order: 1;
   background: var(--glass);
@@ -2133,6 +2214,8 @@ html[data-islift="off"] .pete-idle { bottom: 78px; }
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line-soft);
 }
+/* Build stamp under Controls — answers "same version?" at a glance. */
+.dr-build { flex: 0 0 auto; font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .06em; color: var(--t3); padding: 6px 0 0; }
 .drawer > *:not(:last-child) { border-bottom: 1px solid var(--line-soft); padding-bottom: 12px; }
 .dr-sec {
   flex: 0 0 auto;
@@ -2991,6 +3074,7 @@ html[data-phring="on"] .pete-portrait { border-radius: 50%; border-color: var(--
 .di-chatbubble { width: max-content; max-width: 100%; }
 .cb-pop {
   position: relative;
+  --elev: .72;
   background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0) 32%), var(--glass);
   -webkit-backdrop-filter: var(--mat);
   backdrop-filter: var(--mat);
@@ -3052,22 +3136,45 @@ html[data-bnames="gold"] .cb-user { color: var(--amber-hi); }
 .cb-user .tbadge { width: 1.1em; height: 1.1em; margin: 0 .3em 0 0; vertical-align: -0.16em; }
 .cb-text { font-family: var(--body); font-size: 1em; line-height: 1.35; color: var(--t1); }
 .cb-text .cemote { height: 1.7em; vertical-align: -0.4em; margin: 0 0.05em; }
-.di-chatbubble.show .cb-pop { animation: bubbleJelly .65s cubic-bezier(.22,.61,.36,1) both; }
-@keyframes bubbleJelly {
-  0% { opacity: 0; transform: translateY(14px) scale(.3, .15); }
-  22% { opacity: 1; transform: translateY(-3px) scale(1.12, .86); }
-  38% { transform: translateY(1px) scale(.93, 1.08); }
-  55% { transform: translateY(0) scale(1.03, .97); }
-  70% { transform: translateY(0) scale(.99, 1.01); }
+.di-chatbubble.show .cb-pop { animation: bubbleEmerge .7s cubic-bezier(.22,.61,.36,1) both; }
+/* Droplet birth: squeezed out of the pill edge (bottom tucked 26px into the
+   pill at 0%), stretching clear, then the familiar jelly settle. */
+@keyframes bubbleEmerge {
+  0% { opacity: 0; transform: translateY(26px) scale(.25, .12); }
+  30% { opacity: 1; transform: translateY(6px) scale(.85, 1.3); }
+  48% { transform: translateY(-2px) scale(1.12, .88); }
+  64% { transform: translateY(1px) scale(.95, 1.06); }
+  80% { transform: translateY(0) scale(1.01, .99); }
   100% { opacity: 1; transform: none; }
+}
+#diland:not(.ipos-bl):not(.ipos-br) .di-chatbubble.show .cb-pop { animation-name: bubbleEmergeTop; }
+@keyframes bubbleEmergeTop {
+  0% { opacity: 0; transform: translateY(-26px) scale(.25, .12); }
+  30% { opacity: 1; transform: translateY(-6px) scale(.85, 1.3); }
+  48% { transform: translateY(2px) scale(1.12, .88); }
+  64% { transform: translateY(-1px) scale(.95, 1.06); }
+  80% { transform: translateY(0) scale(1.01, .99); }
+  100% { opacity: 1; transform: none; }
+}
+/* Same-chatter refresh replays a nudge, not another birth. */
+.di-chatbubble.bump .cb-pop { animation: bubbleBump .32s ease-out; }
+@keyframes bubbleBump {
+  0% { transform: none; }
+  40% { transform: scale(1.07, .94); }
+  100% { transform: none; }
 }
 .di-chatbubble.out { opacity: 0; transition: opacity .22s ease; }
 .di-chatbubble.out .cb-pop { animation: bubbleOut .26s ease-in both; }
+/* Retire sinks back into the pill it came out of. */
 @keyframes bubbleOut {
-  to { opacity: 0; transform: translateY(9px) scale(.55, .35); }
+  to { opacity: 0; transform: translateY(22px) scale(.45, .25); }
+}
+#diland:not(.ipos-bl):not(.ipos-br) .di-chatbubble.out .cb-pop { animation-name: bubbleOutTop; }
+@keyframes bubbleOutTop {
+  to { opacity: 0; transform: translateY(-22px) scale(.45, .25); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .di-chatbubble.show .cb-pop, .di-chatbubble.out .cb-pop { animation: none; }
+  .di-chatbubble.show .cb-pop, .di-chatbubble.bump .cb-pop, .di-chatbubble.out .cb-pop { animation: none; }
   .di-chatbubble.out { transition: none; }
 }
 
@@ -3714,6 +3821,7 @@ try {
 <button class="sidebtn" id="sidebtn">Controls</button>
 <div class="drawer" id="drawer">
   <div class="dr-hd"><span class="dr-t">Controls</span><button class="dr-x" id="drx" title="Close">&#10005;</button></div>
+  <div class="dr-build" id="drbuild">build …</div>
   <section class="dr-sec">
   <div class="dr-lab">Design</div>
   <div class="dr-presets" id="drdesign"><button data-d="classic">Classic</button><button data-d="studio">Studio</button></div>
@@ -3730,6 +3838,11 @@ try {
     <button class="dr-ghost" id="drtiernext" style="flex:1" title="Load item + start a tier rating">Load + start</button>
   </div>
   <div class="dr-stat" id="drtierstat">Tier list: not linked.</div>
+  <div class="dr-lab" style="margin-top:6px">Auto-advance on close</div>
+  <div class="dr-presets" id="drtieradv"><button data-ta="off">Off</button><button data-ta="load" class="on">Load next</button><button data-ta="start">Load + start</button></div>
+  <div class="dr-row" style="margin-top:6px">
+    <button class="dr-ghost" id="drtiercopy" style="flex:1" title="Copy tier-list results for Discord">Copy results</button>
+  </div>
   <div class="dr-lab">Time limit presets</div>
   <div class="dr-presets" id="drpresets">
     <button data-s="30">30s</button><button data-s="60">1m</button><button data-s="90">90s</button><button data-s="120" class="on">2m</button><button data-s="180">3m</button><button data-s="300">5m</button><button data-s="0">no timer</button>
@@ -3746,7 +3859,7 @@ try {
   <div class="dr-lab">Visual &amp; motion</div>
   <div class="dr-feats" id="drfeats">
     <div class="dr-feat dr-glass-row"><span class="dr-fl">Glass material</span><div class="dr-presets"><button data-f="liquid" data-v="1" class="on">liquid</button><button data-f="liquid" data-v="0">frosted</button></div></div>
-    <div class="dr-feat dr-glass-row"><span class="dr-fl">Specular sweep</span><div class="dr-presets"><button data-f="specauto" data-v="1" class="on">auto</button><button data-f="specauto" data-v="0">mouse</button></div></div>
+    <div class="dr-feat dr-glass-row"><span class="dr-fl">Light drift</span><div class="dr-presets"><button data-f="specauto" data-v="1" class="on">on</button><button data-f="specauto" data-v="0">still</button></div></div>
     <div class="dr-feat"><span class="dr-fl">Heat bars</span><div class="dr-presets"><button data-f="heat" data-v="1">on</button><button data-f="heat" data-v="0">off</button></div></div>
     <div class="dr-feat"><span class="dr-fl">Ambient halo</span><div class="dr-presets"><button data-f="halo" data-v="1">on</button><button data-f="halo" data-v="0" class="on">off</button></div></div>
     <div class="dr-feat"><span class="dr-fl">Open sweep</span><div class="dr-presets"><button data-f="sweep" data-v="1">on</button><button data-f="sweep" data-v="0">off</button></div></div>
@@ -3956,7 +4069,7 @@ try {
     <a class="dr-link" id="lnk-scene" target="_blank" rel="noopener" title="End-of-stream dashboard — add it as a browser source in your Ending scene">End scene</a>
   </div>
   </section>
-  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = scored + hate toast. Say <b>hoomp</b> or <b>plop</b> anywhere in chat for the HOOMP / PLOP moments.<br>Mods: <b>!rateopen</b> / <b>!rateopen tier 120 Topic</b> (tier board for this poll) / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>V</b> vote mode (Score / Tier list) · <b>T</b> theme (Ledger / Glass) · <b>B</b> stack content (Auto / Cards / Tier board) · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Theme (drawer, <b>T</b>, or <b>?theme=glass</b> in the OBS URL): <b>Ledger</b> is the flat spreadsheet skin with no liquid glass anywhere — <b>Glass</b> restores the liquid-glass recipe. Glass tuning dims while ledger is on.<br>Vote mode (drawer default, per-poll <b>!rateopen tier …</b>, or <b>?votemode=tier</b> in the OBS URL): same <b>!vote -10 to 10</b> votes, shown as a flat spreadsheet tier board (S ≥9 · A ≥7 · B ≥5 · C ≥3 · D ≥1.5 · F &lt;1.5 score bands — final S–F is percentile across the sheet list) — no liquid glass on the board.<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling + island size: <b>?stack=0.5–2.5</b> (default 1) or the <b>Portion size</b> slider — the lifted island scales with the column. Wrestling overlay: <b>?wrestling=0</b> hides the stack. Bottom-right slot: <b>Stack content</b> (drawer, <b>B</b>, or <b>?stackmode=auto/cards/tiers</b>) follows the vote style by default — Tier list swaps the episode / merch / ticker cards for the live tier board — same votes, camera window stays. <b>Scene preset</b> sets overlay + slot together: <b>Wrestling</b> (shown + cards), <b>Tier board</b> (shown + tiers), <b>Rater only</b> (stack hidden). Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
+  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = scored + hate toast. Say <b>hoomp</b> or <b>plop</b> anywhere in chat for the HOOMP / PLOP moments.<br>Mods: <b>!rateopen</b> / <b>!rateopen tier 120 Topic</b> (tier board for this poll) / <b>!tiernext [sheet]</b> (next sheet item → tier poll) / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>V</b> vote mode (Score / Tier list) · <b>T</b> theme (Ledger / Glass) · <b>B</b> stack content (Auto / Cards / Tier board) · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Theme (drawer, <b>T</b>, or <b>?theme=glass</b> in the OBS URL): <b>Ledger</b> is the flat spreadsheet skin with no liquid glass anywhere — <b>Glass</b> restores the liquid-glass recipe. Glass tuning dims while ledger is on.<br>Vote mode (drawer default, per-poll <b>!rateopen tier …</b>, or <b>?votemode=tier</b> in the OBS URL): same <b>!vote -10 to 10</b> votes, shown as a flat spreadsheet tier board (S ≥9 · A ≥7 · B ≥5 · C ≥3 · D ≥1.5 · F &lt;1.5 score bands — final S–F is percentile across the sheet list) — no liquid glass on the board. Picking a vote style also switches the skin just after the swap — Tier list → Ledger, Score → Glass (T overrides until the next switch).<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling + island size: <b>?stack=0.5–2.5</b> (default 1) or the <b>Portion size</b> slider — the lifted island scales with the column. Wrestling overlay: <b>?wrestling=0</b> hides the stack. Bottom-right slot: <b>Stack content</b> (drawer, <b>B</b>, or <b>?stackmode=auto/cards/tiers</b>) follows the vote style by default — Tier list swaps the episode / merch / ticker cards for the live tier board — same votes, camera window stays. <b>Scene preset</b> sets overlay + slot together: <b>Wrestling</b> (shown + cards), <b>Tier board</b> (shown + tiers), <b>Rater only</b> (stack hidden). Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -5555,7 +5668,8 @@ if (document.readyState === 'loading') {
     callouts: profileKey('ratehive-callouts-v1'),
     autohide: profileKey('ratehive-autohide-v1'),
     config: profileKey('ratehive-cfg-v1'),
-    tiersheet: profileKey('ratehive-tiersheet-v1')
+    tiersheet: profileKey('ratehive-tiersheet-v1'),
+    tieradv: profileKey('ratehive-tieradv-v1')
   };
 
   function choice(value, allowed, fallback) {
@@ -5596,12 +5710,22 @@ if (document.readyState === 'loading') {
     'score'
   );
 
+  /* Tier auto-advance: off | load (fill next topic on close) | start
+     (fill + open the next tier poll). Drawer default for tier streams. */
+  let TIERADV = choice(
+    readStorage(KEYS.tieradv, 'load'),
+    ['off', 'load', 'start'],
+    'load'
+  );
+
   /* Skin theme: ledger (flat spreadsheet voice, no glass) vs glass (liquid
-     material). ?theme= wins on load; the drawer switch persists. Only pages
-     shipping ledger styles (agoodpete) render differently — elsewhere the
-     dataset is a harmless hook. */
+     material). An explicit ?theme= wins on load; otherwise the theme
+     follows the vote style (tier → ledger, score → glass). Manual picks
+     (drawer, T) apply immediately but the next vote-style switch
+     re-follows. Only pages shipping ledger styles (agoodpete) render
+     differently — elsewhere the dataset is a harmless hook. */
   let THEME = choice(
-    q.get('theme') || readStorage(KEYS.theme, 'ledger'),
+    q.get('theme') || (VOTEMODE === 'tier' ? 'ledger' : 'glass'),
     ['glass', 'ledger'],
     'ledger'
   );
@@ -6570,6 +6694,18 @@ if (document.readyState === 'loading') {
           : 'Rating closed with no votes'
     );
 
+    /* Tier auto-advance: a closed tier poll pulls the next sheet item —
+       Load fills the topic (clearing the finished one first), Load + start
+       opens it. Live state only; the fetch resolves through the standard
+       paths, never mid-return. */
+    try {
+      if (state === S && pollTier(poll) === 'tier' && TIERADV !== 'off' &&
+          (TIERLIST.sheetId || ($('drsheet') && $('drsheet').value.trim()))) {
+        if (TIERADV === 'load' && $('drtopic')) $('drtopic').value = '';
+        fetchTierItem({ start: TIERADV === 'start' });
+      }
+    } catch (e) {}
+
     return {
       changed: true,
       effect: {
@@ -6918,6 +7054,10 @@ if (document.readyState === 'loading') {
         case '!rateopen':
         case '!poll':
           return openPoll(state, args, { demo: state === demoState });
+
+        case '!tiernext':
+          tierNext(args);
+          return { changed: false };
 
         case '!rateend':
         case '!pollend':
@@ -7942,22 +8082,84 @@ if (document.readyState === 'loading') {
     return false;
   }
 
+  /* Event-driven sheen: one-shot light sweep across the rater glass when
+     moments land. Throttled per surface so vote bursts shimmer instead of
+     strobing; CSS hides the layer under reduced-motion, no-fx, frosted
+     and ledger (which has no glass at all). */
+  const SHEEN_GAP = 800;
+  const sheenLast = new Map();
+  function kickSheen(el) {
+    if (!el || reducedMotion || LITE) return;
+    try {
+      if (!el.isConnected) return;
+      const now = Date.now();
+      if (now - (sheenLast.get(el) || 0) < SHEEN_GAP) return;
+      sheenLast.set(el, now);
+      const s = document.createElement('i');
+      s.className = 'ev-sheen';
+      s.setAttribute('aria-hidden', 'true');
+      el.appendChild(s);
+      setTimeout(() => {
+        try { s.remove(); } catch (e) {}
+        sheenLast.delete(el);
+      }, 950);
+    } catch (e) {}
+  }
+  function kickRater() {
+    try {
+      if (MODE === 'island') kickSheen($('diBox'));
+      else if (DESIGN === 'studio') {
+        const card = document.querySelector('.s-card');
+        if (card) kickSheen(card);
+      } else if ($('cpanel')) kickSheen($('cpanel'));
+    } catch (e) {}
+  }
+
+  /* Vote copy with character: score-reactive verbs plus first-vote honors.
+     Returns [peekText, headText] — the numeric value rides separately in
+     callouts. The ledger-voiced feed keeps its plain wording. */
+  function voteCopy(user, vote, revote, first) {
+    const who = user || 'Someone';
+    const score = fmt(vote);
+    if (revote) return [who + ' flips to ' + score, who + ' flips to'];
+    if (first) return [who + ' opens the scoring with ' + score, who + ' opens the scoring'];
+    if (vote === 10) return [who + ' drops a PERFECT ' + score, who + ' drops a PERFECT'];
+    if (vote >= 8.5) return [who + ' goes big: ' + score, who + ' goes big'];
+    if (vote > 0 && vote <= 2) return [who + ' goes harsh: ' + score, who + ' goes harsh'];
+    return [who + ' voted ' + score, who + ' voted'];
+  }
+
+  /* Pitch-mapped vote tick: a soft blip that rises with the score. Only
+     when master sound is on, throttled so bursts don't chatter, silent on
+     hate-zeroes (the toast owns those). */
+  let lastVoteTick = 0;
+  function tickVote(vote) {
+    if (!SOUND || FULLPAGE || reducedMotion) return;
+    const now = Date.now();
+    if (now - lastVoteTick < 700) return;
+    lastVoteTick = now;
+    sound(520 + clamp(vote, -10, 10) * 32, 0.07, 0.03);
+  }
+
   function emitEffect(effect) {
     if (!effect || FULLPAGE) return;
 
     if (effect.kind === 'vote') {
+      const vPoll = activeState().poll;
+      const vCount = vPoll && vPoll.votes ? Object.keys(vPoll.votes).length : 0;
+      const [peekText, headText] = voteCopy(effect.user, effect.vote, effect.revote, vCount <= 1);
       const islandTook = MODE === 'island'
-        ? islandPeek(
-          `${effect.user} ${effect.revote ? 'changed to' : 'voted'} ${fmt(effect.vote)}`,
-          2600
-        )
+        ? islandPeek(peekText, 2600)
         : false;
       if (!islandTook) {
-        callout(
-          effect.user + (effect.revote ? ' changed to' : ' voted'),
-          effect.vote
-        );
+        callout(headText, effect.vote);
       }
+
+      if (vCount > 0 && vCount % 10 === 0) {
+        callout(vCount + ' votes in — keep them coming', null, '', 2600);
+      }
+
+      if (!effect.hate) tickVote(effect.vote);
 
       /* Opt-in score bubbles over the collapsed pill (drawer → Chat —
          Bubbles → Vote scores, or ?votebubbles=1). The bubble module gates
@@ -7971,6 +8173,8 @@ if (document.readyState === 'loading') {
           );
         }
       } catch (e2) {}
+
+      kickRater();
 
       if (FEAT.ripple && !reducedMotion) {
         const index = clamp(Math.round(effect.vote), 1, 10);
@@ -8086,6 +8290,8 @@ if (document.readyState === 'loading') {
       [523, 659, 784].forEach((frequency, index) => {
         setTimeout(() => sound(frequency, 0.25), index * 90);
       });
+
+      kickRater();
 
       /* S-tier lock: a final average in the S band earns the gold
          celebration. On the island it fires after the verdict has had its
@@ -8569,6 +8775,7 @@ if (document.readyState === 'loading') {
             <em class="di-rise" style="--i:1" id="diESub"></em>
           </span>
           <i class="di-esheen" aria-hidden="true"></i>
+          <span class="di-mets" aria-hidden="true"><i></i><i></i><i></i></span>
           <i class="di-epb" id="diEpb"></i>
         </div>
 
@@ -8989,8 +9196,8 @@ if (document.readyState === 'loading') {
 
     const acc = EVENT_ACCENTS[eKind] || EVENT_ACCENTS.sub;
     const box = $('diBox');
-    $('diETitle').textContent = title;
-    $('diESub').textContent = sub;
+    staggerReveal($('diETitle'), title, 110);
+    staggerReveal($('diESub'), sub, 110);
     box.style.setProperty('--ev', acc.c);
     box.style.setProperty('--evg', acc.g);
     ISLAND.kind = 'event';
@@ -9006,6 +9213,7 @@ if (document.readyState === 'loading') {
      plain callout everywhere (and whenever the pill can't take it). */
   function celebrate(title, sub, eKind) {
     if (MODE === 'island') {
+      kickSheen($('diBox'));
       if (!islandEvent(title, sub, eKind)) callout(title + ' — ' + sub, null, '', 4000);
     } else {
       callout(title + ' — ' + sub, null, '', 4000);
@@ -9027,6 +9235,69 @@ if (document.readyState === 'loading') {
     } catch (e) {}
   }
 
+  /* Decrypt-scramble reveal (ReactBits DecryptedText in spirit): the copy
+     lands immediately, then digits cycle glyphs and lock left-to-right
+     while words pass through untouched — the final average unscrambles
+     itself. Reduced-motion sets instantly. One timer per element, so a
+     re-reveal restarts cleanly instead of double-driving. */
+  const scrambleTimers = new Map();
+  const SCRAMBLE_GLYPHS = '0123456789';
+  function scrambleReveal(el, text, dur) {
+    text = String(text == null ? '' : text);
+    if (!el) return;
+    try {
+      const prev = scrambleTimers.get(el);
+      if (prev) clearInterval(prev);
+      scrambleTimers.delete(el);
+    } catch (e) {}
+    el.textContent = text;
+    if (reducedMotion || !text) return;
+    try {
+      const chars = text.split('');
+      const span = dur || 700;
+      const lockAt = chars.map((_, i) => span * (i + 1) / (chars.length + 1));
+      const t0 = Date.now();
+      const timer = setInterval(() => {
+        const t = Date.now() - t0;
+        let done = true, out = '';
+        for (let i = 0; i < chars.length; i++) {
+          if (t >= lockAt[i] || chars[i] === ' ') out += chars[i];
+          else if (/[0-9.]/.test(chars[i])) {
+            done = false;
+            out += SCRAMBLE_GLYPHS[(Math.random() * SCRAMBLE_GLYPHS.length) | 0];
+          } else out += chars[i];
+        }
+        el.textContent = out;
+        if (done) { clearInterval(timer); scrambleTimers.delete(el); el.textContent = text; }
+      }, 34);
+      scrambleTimers.set(el, timer);
+    } catch (e2) {}
+  }
+
+  /* Word-stagger blur reveal (Aceternity TextGenerateEffect in spirit):
+     words rise out of blur one after another. XSS-safe (textContent per
+     word); reduced-motion shows the plain string. */
+  function staggerReveal(el, text, step) {
+    text = String(text == null ? '' : text);
+    if (!el) return;
+    el.textContent = text;
+    if (reducedMotion || !text) return;
+    try {
+      el.innerHTML = '';
+      let wi = 0;
+      text.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { el.appendChild(document.createTextNode(part)); return; }
+        const s = document.createElement('span');
+        s.className = 'blur-word';
+        s.style.animationDelay = (wi * (step || 90)) + 'ms';
+        s.textContent = part;
+        el.appendChild(s);
+        wi++;
+      });
+    } catch (e) {}
+  }
+
   function islandFinal() {
     if (MODE !== 'island' || islandRate === 'off' || FULLPAGE) return false;
     initIsland();
@@ -9035,9 +9306,9 @@ if (document.readyState === 'loading') {
     if (!poll || poll.status !== 'closed') return false;
 
     const st = stats(poll);
-    blurReveal($('diFt1'), st.n
+    scrambleReveal($('diFt1'), st.n
       ? 'Final: ' + score(poll).toFixed(1) + ' — ' + verdictWord(score(poll))
-      : 'Closed with no votes');
+      : 'Closed with no votes', 750);
     $('diFt2').textContent = st.n ? st.n + (st.n === 1 ? ' vote' : ' votes') : 'No votes';
 
     if (ISLAND.pinned || ISLAND.hover) return false;
@@ -9717,6 +9988,42 @@ if (document.readyState === 'loading') {
     });
   }
 
+  /* Pete-owned rows (bubbles, stack, tier tools…) toggle .on directly in
+     agoodpete.js without calling selected()/glideTo(), so the glider pill
+     froze on the old button while the classes moved — highlights that
+     never transfer. One class observer over the drawer re-glides every
+     row on any .on change (engine rows keep their direct calls; both are
+     idempotent). The glider spans' own class churn is ignored. */
+  var glideQueued = false;
+  function queueGlidePlace() {
+    if (glideQueued) return;
+    glideQueued = true;
+    var run = function () {
+      glideQueued = false;
+      if (!GLIDE) return;
+      try {
+        document.querySelectorAll('.vbar, .dr-presets').forEach(function (row) {
+          if (row.__glider) glidePlace(row, true);
+        });
+      } catch (e) {}
+    };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+    else run();
+  }
+  function watchGlide() {
+    if (!GLIDE) return;
+    try {
+      var drawer = document.getElementById('drawer');
+      if (!drawer || !window.MutationObserver) return;
+      new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var t = muts[i].target;
+          if (t && t.classList && !t.classList.contains('rh-glider')) { queueGlidePlace(); return; }
+        }
+      }).observe(drawer, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    } catch (e) {}
+  }
+
   function selected(button, on) {
     button.classList.toggle('on', on);
     button.setAttribute('aria-pressed', String(on));
@@ -9740,11 +10047,26 @@ if (document.readyState === 'loading') {
 
   /* Vote-mode switch: sets the drawer default for the next !rateopen and
      retargets the open poll live, so Pete can flip score ⇄ tier board
-     mid-rating. Stored + carried into OBS URLs as &votemode=. */  function setVoteMode(next) {
+     mid-rating with the original swap animation — the skin follows half a
+     beat later (tier → ledger, score → glass) instead of stomping the
+     swap. T still overrides until the next flip. Stored + carried
+     into OBS URLs as &votemode=. */
+  let themeTimer = 0;
+  function followTheme() {
+    try { clearTimeout(themeTimer); } catch (e) {}
+    const want = VOTEMODE === 'tier' ? 'ledger' : 'glass';
+    if (THEME === want) return;
+    const mode = VOTEMODE;
+    themeTimer = setTimeout(() => {
+      try { if (VOTEMODE === mode && THEME !== want) setTheme(want); } catch (e2) {}
+    }, 500);
+  }
+  function setVoteMode(next) {
     const mode = choice(next, ['score', 'tier'], VOTEMODE);
     const changed = mode !== VOTEMODE;
     VOTEMODE = mode;
     writeStorage(KEYS.votemode, VOTEMODE);
+    followTheme();
 
     const live = S && S.poll && S.poll.status === 'open' ? S : null;
     const demo = demoState && demoState.poll && demoState.poll.status === 'open'
@@ -9840,6 +10162,49 @@ if (document.readyState === 'loading') {
       .then(result => { TIERLIST.loading = false; renderDrawer(); return result; });
   }
 
+  /* !tiernext [sheetId]: mods pull the next sheet item straight into a
+     tier poll. Fire-and-forget: the fetch resolves through the standard
+     Load + start path (topic fill + !rateopen tier). */
+  function tierNext(args) {
+    const sid = String(args || '').trim().split(/\s+/).filter(Boolean)[0] || '';
+    const id = sid || TIERLIST.sheetId || ($('drsheet') && $('drsheet').value.trim()) || '';
+    if (!id) { tierListStatus('Tier list: paste a spreadsheet ID first.'); return; }
+    fetchTierItem({ sheetId: id, start: true });
+  }
+
+  /* Auto-advance preference for tier closes (drawer default Load next). */
+  function setTierAdv(next) {
+    TIERADV = choice(next, ['off', 'load', 'start'], TIERADV);
+    writeStorage(KEYS.tieradv, TIERADV);
+    paintTierAdv();
+  }
+
+  function paintTierAdv() {
+    document.querySelectorAll('#drtieradv [data-ta]').forEach(button => {
+      const on = button.dataset.ta === TIERADV;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-pressed', String(on));
+    });
+  }
+
+  /* Tier results export: ranked item → avg → votes lines for Discord. */
+  function copyTierResults() {
+    const items = activeState().results
+      .filter(result => result.votemode === 'tier' && result.votes > 0)
+      .slice()
+      .sort((a, b) => b.avg - a.avg);
+    if (!items.length) { tierListStatus('Tier list: no tier results yet.'); return; }
+    const head = (TIERLIST.list ? TIERLIST.list + ' — ' : '') + 'tier results (' +
+      new Date().toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) + ')';
+    copyText(
+      head + '\n' + items.map((result, index) =>
+        (index + 1) + '. ' + result.question + ' — ' + result.avg.toFixed(1) +
+        ' · ' + result.votes + (result.votes === 1 ? ' vote' : ' votes')
+      ).join('\n'),
+      'Tier results copied'
+    );
+  }
+
   function initTierList() {
     const saved = readJSON(KEYS.tiersheet, null) || {};
     const fromUrl = String(q.get('sheet') || '').trim();
@@ -9855,6 +10220,11 @@ if (document.readyState === 'loading') {
     }
     if ($('drtierload')) $('drtierload').addEventListener('click', () => fetchTierItem({}));
     if ($('drtiernext')) $('drtiernext').addEventListener('click', () => fetchTierItem({ start: true }));
+    paintTierAdv();
+    document.querySelectorAll('#drtieradv [data-ta]').forEach(button =>
+      button.addEventListener('click', () => setTierAdv(button.dataset.ta))
+    );
+    if ($('drtiercopy')) $('drtiercopy').addEventListener('click', copyTierResults);
     // Follow the sheet on load so every source (control + OBS) names the
     // list in its captions even before the next item is pushed through.
     if (id) fetchTierItem({ sheetId: id });
@@ -9864,6 +10234,9 @@ if (document.readyState === 'loading') {
   /* Skin-theme switch: ledger ⇄ glass everywhere the page styles it.
      Global (no per-poll concept) — stored + carried as &theme=. */
   function setTheme(next) {
+    /* A manual pick cancels any pending vote-follow so the highlight
+       always lands where Pete clicked. */
+    try { clearTimeout(themeTimer); } catch (e) {}
     THEME = choice(next, ['glass', 'ledger'], THEME);
     writeStorage(KEYS.theme, THEME);
     applyLayout();
@@ -10414,38 +10787,16 @@ if (document.readyState === 'loading') {
   }
 
   function setupSpecular() {
-    let lastPointer = 0;
-    let pointerFrame = 0;
-    let pointerX = 0;
-    let pointerY = 0;
-
+    /* Streams have no cursor, so the light always drifts on its own —
+       mouse tracking was removed (OBS never fires pointermove). The
+       pointer listener below only feeds the drawer's magnetic buttons. */
     window.addEventListener('pointermove', event => {
-      lastPointer = Date.now();
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-
-      if (!LITE && !reducedMotion && !pointerFrame) magneticDrawerButtons(pointerX, pointerY);
-
-      if (LITE || reducedMotion || pointerFrame) return;
-
-      pointerFrame = requestAnimationFrame(() => {
-        pointerFrame = 0;
-        const x = clamp(pointerX / Math.max(1, innerWidth) * 2 - 1, -1, 1);
-        const y = clamp(pointerY / Math.max(1, innerHeight) * 2 - 1, -1, 1);
-        document.documentElement.style.setProperty('--mx', x.toFixed(3));
-        document.documentElement.style.setProperty('--my', y.toFixed(3));
-      });
+      if (!LITE && !reducedMotion) magneticDrawerButtons(event.clientX, event.clientY);
     }, { passive: true });
 
     // 20 Hz is enough for a slow decorative highlight.
     setInterval(() => {
-      if (
-        LITE ||
-        reducedMotion ||
-        !FEAT.specauto ||
-        document.hidden ||
-        Date.now() - lastPointer < 4000
-      ) return;
+      if (LITE || reducedMotion || !FEAT.specauto || document.hidden) return;
 
       const t = performance.now() / 1000;
       document.documentElement.style.setProperty('--mx', (Math.sin(t * 0.35) * 0.9).toFixed(3));
@@ -10945,6 +11296,7 @@ if (document.readyState === 'loading') {
   installCSSFixes();
   installGlassFilters();
   initGlide();
+  watchGlide();
 
   if (!INOBS && q.get('stage') !== '0') {
     document.body.classList.add('browser-stage');
@@ -12926,7 +13278,7 @@ else ready();
     var found = new Map(), page = 0;
     function next() {
       if (page >= 10) return Promise.resolve(found);
-      statusEl.textContent = 'API: Fetching all products (p' + (page + 1) + ')...';
+      merchStep('api', 'p' + (page + 1));
       return fetchJSONWithProxy('https://storefront-api.fourthwall.com/v1/collections/all/products?storefront_token=' + token + '&page=' + page + '&size=50')
         .then(function (res) {
           if (!res) return null;
@@ -12949,7 +13301,7 @@ else ready();
         return fetchAllProducts(token).then(function (found) {
           if (found && found.size) return Array.from(found.values()).map(mapProduct);
           var fb = new Map();
-          statusEl.textContent = 'API: Fetching collections...';
+          merchStep('api', 'collections');
           return fetchJSONWithProxy('https://storefront-api.fourthwall.com/v1/collections?storefront_token=' + token)
             .then(function (collRes) {
               if (!collRes) return null;
@@ -13106,36 +13458,53 @@ else ready();
     }, 25000);
   }
 
+  /* Stepped sync readout (Aceternity MultiStepLoader in spirit): the API →
+     sitemap → scrape chain reports each stage (✓ done, … active, ·
+     pending) instead of a bare text line, so Pete can see where a slow
+     store load is sitting. */
+  var MERCH_STAGES = ['API', 'SITEMAP', 'SCRAPE'];
+  var MERCH_ORDER = { api: 0, sitemap: 1, scrape: 2 };
+  function merchStep(active, note) {
+    var ai = Object.prototype.hasOwnProperty.call(MERCH_ORDER, active) ? MERCH_ORDER[active] : -1;
+    statusEl.textContent = 'SYNC ' + MERCH_STAGES.map(function (name) {
+      var key = name.toLowerCase();
+      return name + ' ' + (key === active ? '…' : (MERCH_ORDER[key] < ai ? '✓' : '·'));
+    }).join('  ') + (note ? ' · ' + note : '');
+  }
+  function merchDone(src, n) {
+    statusEl.textContent = 'SYNC ' + src + ' ✓ · ' + n + ' products' + fxTag();
+  }
+
   function fetchFourthwallLive() {
     productSource = 'loading';
     merchBox.setAttribute('data-merch-state', productSource);
     merchBox.setAttribute('aria-busy', 'true');
-    statusEl.textContent = 'Loading store...';
+    merchStep('', 'store');
     tryAPIMethod().then(function (result) {
       if (result && result.length) {
         productSource = 'live';
         products = result; currentIndex = 0; showProduct(products[0], true);
-        statusEl.textContent = products.length + ' products (API)' + fxTag();
+        merchDone('API', products.length);
         say('Loaded ' + products.length + ' products');
         startRotate(); return;
       }
-      statusEl.textContent = 'API failed, trying sitemap...';
+      merchStep('sitemap', '');
       return trySitemapMethod().then(function (r2) {
         if (r2 && r2.length) {
           productSource = 'live';
           products = r2; currentIndex = 0; showProduct(products[0], true);
-          statusEl.textContent = products.length + ' products (sitemap)' + fxTag();
+          merchDone('SITEMAP', products.length);
           say('Store via sitemap'); startRotate(); enrichMissingData(); return;
         }
-        statusEl.textContent = 'Trying scrape...';
+        merchStep('scrape', '');
         return tryScrapeMethod().then(function (r3) {
           if (r3 && r3.length) {
             productSource = 'live';
             products = r3; currentIndex = 0; showProduct(products[0], true);
-            statusEl.textContent = products.length + ' products (scraped)' + fxTag();
+            merchDone('SCRAPE', products.length);
             say('Store scraped'); startRotate(); enrichMissingData(); return;
           }
-          statusEl.textContent = 'Using cached';
+          statusEl.textContent = 'SYNC API · SITEMAP · SCRAPE · cached fallback';
           productSource = 'cached';
           products = [
             { name: 'Strength Shirt', collection: '', price: '£25.54', image: '', url: STORE_URL + '/en-gbp/products/strength-shirt', slug: 'strength-shirt' },
@@ -13688,6 +14057,21 @@ else ready();
   else ready();
 })();
 
+/* Build stamp: the bundler injects rh-build (date + content hash); shown
+   under Controls so "same version?" questions die instantly. */
+(function () {
+  'use strict';
+  function ready() {
+    try {
+      var meta = document.querySelector('meta[name="rh-build"]');
+      var el = document.getElementById('drbuild');
+      if (meta && el) el.textContent = 'build ' + meta.getAttribute('content');
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready);
+  else ready();
+})();
+
 /* Scene presets — one tap over both stack axes (overlay visibility +
    slot content). Wrestling = shown + cards; Tier board = shown + tiers;
    Rater only = stack hidden. Drives the two setters above so persistence,
@@ -14118,6 +14502,23 @@ else ready();
     return out;
   }
 
+  /* Emergence bridge: while a fresh bubble is still welded to the pill
+     (first ~450ms), the goo stage stretches a synthetic tendril between
+     them that thins and snaps as the bubble pulls free. Pure geometry
+     ( Rects in the same space, t = 0 attached → 1 detached ); the pump
+     calls it only while GOO runs, and never under reduced-motion. */
+  var emergeEl = null, emergeBorn = 0;
+  var BRIDGE_MS = 450, BRIDGE_W0 = 30, BRIDGE_W1 = 6, BRIDGE_MAXGAP = 64;
+  function bridgeRect(pill, bub, t, below) {
+    var gap = below ? bub.top - pill.bottom : pill.top - bub.bottom;
+    if (!(gap >= 0) || gap > BRIDGE_MAXGAP || t < 0 || t >= 1) return null;
+    var w = BRIDGE_W0 + (BRIDGE_W1 - BRIDGE_W0) * t;
+    var cx = (bub.left + bub.right) / 2;
+    cx = Math.max(pill.left + 14, Math.min(pill.right - 14, cx));
+    var top = below ? bub.top - 2 : pill.top - 2;
+    return { left: cx - w / 2, top: top, width: w, height: gap + 4 };
+  }
+
   /* Mirrored geometry only tracks what the pump happens to cover, so the
      shapes themselves are watched instead: the width the stack-lift writes
      (--isl-w) and a webfont swap both resize the pill without a bubble
@@ -14166,6 +14567,34 @@ else ready();
     }
     // Sized to the placed set only: a bubble caught mid-jelly has no box to
     // mirror, and leaving its old rect behind would paint a loose black blob.
+    // The emergence tendril joins the set first so it gets its own mirror:
+    // one extra capsule between pill and fresh bubble that the blur welds
+    // to both shapes while it lasts (drawn in union space, hence the clip
+    // offset below).
+    if (GOO && !reduced && emergeEl && emergeEl.parentNode) {
+      var bt = (Date.now() - emergeBorn) / BRIDGE_MS;
+      if (bt >= 0 && bt < 1) {
+        var bdi = host.querySelector('.di');
+        var bpop = emergeEl.querySelector ? emergeEl.querySelector('.cb-pop') : null;
+        if (bdi && bpop) {
+          var bh = host.getBoundingClientRect();
+          var bk = host.offsetWidth ? bh.width / host.offsetWidth : 1;
+          var bpr = bdi.getBoundingClientRect();
+          var bpop_rect = bpop.getBoundingClientRect();
+          var below = !(host.classList.contains('ipos-bl') || host.classList.contains('ipos-br'));
+          var bg = bridgeRect(
+            { left: (bpr.left - bh.left) / bk, top: (bpr.top - bh.top) / bk, right: (bpr.right - bh.left) / bk, bottom: (bpr.bottom - bh.top) / bk },
+            { left: (bpop_rect.left - bh.left) / bk, top: (bpop_rect.top - bh.top) / bk, right: (bpop_rect.right - bh.left) / bk, bottom: (bpop_rect.bottom - bh.top) / bk },
+            bt, below);
+          if (bg) pairs.push(['bridge', {
+            left: bh.left + (u0 + bg.left - GOO_CLIP) * bk,
+            top: bh.top + (v0 + bg.top - GOO_CLIP) * bk,
+            width: bg.width * bk, height: bg.height * bk,
+            round: Math.max(3, bg.width / 2)
+          }]);
+        }
+      }
+    }
     while (gooIn.children.length < pairs.length) gooIn.appendChild(document.createElement('i'));
     while (gooIn.children.length > pairs.length) gooIn.removeChild(gooIn.lastChild);
     if (!pairs.length) {
@@ -14183,7 +14612,7 @@ else ready();
       sh.style.top = (rr.top - h.top) / k - GOO_PAD - v0 + 'px';
       sh.style.width = rr.width / k + GOO_PAD * 2 + 'px';
       sh.style.height = rr.height / k + GOO_PAD * 2 + 'px';
-      sh.style.borderRadius = getComputedStyle(el).borderTopLeftRadius;
+      sh.style.borderRadius = rr.round ? rr.round + 'px' : getComputedStyle(el).borderTopLeftRadius;
     }
   }
 
@@ -14284,9 +14713,10 @@ else ready();
         fillText(last.textEl, text, tags);
         clearTimeout(last.timer);
         last.timer = setTimeout(function () { retire(last); }, DWELL);
-        last.el.classList.remove('show');
+        /* A refresh replays a nudge, not another birth out of the pill. */
+        last.el.classList.remove('bump');
         void last.el.offsetWidth;
-        last.el.classList.add('show');
+        last.el.classList.add('bump');
         pumpGoo();
         return;
       }
@@ -14313,6 +14743,8 @@ else ready();
       var rec = { el: item, timer: 0, dead: false, user: userKey, textEl: t };
       rec.timer = setTimeout(function () { retire(rec); }, DWELL);
       items.push(rec);
+      emergeEl = item;
+      emergeBorn = Date.now();
       pumpGoo();
     } catch (e) {}
   }
