@@ -704,15 +704,47 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .tr-row[data-tier="F"] .tr-bar i { background: #757575; }
 .tr-row.top { background: rgba(127,127,127,0.1); }
 .tr-row.top .tr-chip { outline: 1px solid rgba(255,255,255,0.55); outline-offset: 1px; }
+.tr-foot { grid-column: 1 / -1; padding: 6px 10px 7px; font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .04em; color: var(--t3); border-top: 1px solid var(--line-soft); white-space: normal; line-height: 1.5; }
+.tr-foot b { color: var(--t2); font-weight: 600; }
 /* Studio: the board replaces the stat grid + heat strip in tier mode. */
 #spanel[data-votemode="tier"] .s-heat { display: none; }
 #spanel[data-votemode="tier"] .s-stats { display: block; }
 #spanel[data-votemode="tier"] .s-stats .tier-table { margin: 0; border: none; border-radius: 0; }
 /* Island: the board replaces the heat bars + side column in tier mode. */
 .di[data-votemode="tier"] .di-main { display: none; }
+/* Tier latest strip: the score-style info (who just voted what) under the
+   board — one line. The trajectory + scale-note hide in tier mode to make
+   room for it; the CTA already carries the vote instructions. */
+.di-latest { margin: 8px 2px 0; font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .02em; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.di-latest .ll-lab { font-weight: 600; letter-spacing: .1em; }
+.di-latest .ll-s { color: var(--t1); font-weight: 700; font-variant-numeric: tabular-nums; }
+.di-latest .ll-u { color: var(--amber-hi); }
+.di[data-votemode="tier"] .rh-scale-note { display: none; }
+/* Tier trajectory graph: back on when the stack owns the board (room), in
+   compact form — the island board case stays hidden for space (see JS). */
+.di[data-votemode="tier"] .di-spark { padding: 6px 8px 5px; margin-top: 6px; }
+.di[data-votemode="tier"] .di-spark-hd { margin-bottom: 2px; }
+.di[data-votemode="tier"] .di-sparksvg { height: 32px; }
 .di-tier { margin: 10px 0 4px; }
-.di-tier .tr-head, .di-tier .tr-row { padding: 3px 8px; }
+.di-tier .tr-head, .di-tier .tr-row { padding: 2px 8px; }
 .di-tier.tier-table { margin: 10px 0 4px; }
+/* Tier meta line: list + score-style stats (median, leading tier, trend vs
+   the last item, scored count) under the hero. The panel caps at 412px, so
+   tier mode also tightens the hero + island board rows to pay for it. */
+.di-tiermeta { flex: 0 0 auto; margin: 0 2px 8px; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--amber-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.di[data-votemode="tier"] .di-hero { margin: 10px 0 8px; }
+.di-tier .tr-foot { padding: 4px 10px 5px; font-size: 8.5px; }
+/* Tier full-info blocks: stats grid + recent-votes list. Rendered only when
+   the stack owns the board (room exists); when the board lives in the
+   island, the one-line strip above is all that fits. */
+.di-tierstats { display: flex; gap: 6px; margin: 10px 2px 0; }
+.di-ts { flex: 1 1 0; min-width: 0; background: var(--cell); border: none; border-radius: var(--r-sm); padding: 6px 8px 5px; }
+.di-ts .k { display: block; font-family: var(--mono); font-size: 8px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--t3); }
+.di-ts .v { display: block; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--t1); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.di-tiervotes { margin: 8px 2px 0; border-top: 1px solid var(--line-soft); }
+.di-tiervotes .tv { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--line-soft); font-size: 11px; }
+.di-tiervotes .tv span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--amber-hi); font-weight: 500; }
+.di-tiervotes .tv b { flex: 0 0 auto; font-family: var(--display); font-variant-numeric: tabular-nums; color: var(--t1); }
 @media (prefers-reduced-motion: reduce) {
   .tr-bar i { transition: none; }
 }
@@ -3558,9 +3590,10 @@ try {
   }
   document.documentElement.setAttribute('data-wr', __wv === false ? 'hidden' : 'visible');
 } catch (e) {}
-/* Tier stack slot: ?stackmode=tiers swaps the bottom-right wrestling cards
-   for the live tier board (?stackmode=cards restores). Stored fallback,
-   pre-painted so OBS never flashes the wrong slot. */
+/* Tier stack slot: ?stackmode=tiers pins the live tier board,
+   ?stackmode=cards pins the wrestling cards, ?stackmode=auto (default)
+   follows the Tier list vote style. Stored fallback, pre-painted so OBS
+   never flashes the wrong slot; the engine corrects auto within a frame. */
 try {
   var __sm = new URLSearchParams(location.search).get('stackmode');
   var __smv = null;
@@ -3568,11 +3601,23 @@ try {
     __sm = String(__sm).toLowerCase();
     if (['tiers', 'tier', 'board', 'list'].indexOf(__sm) !== -1) __smv = 'tiers';
     else if (['cards', 'card', 'wrestling'].indexOf(__sm) !== -1) __smv = 'cards';
+    else if (['auto', 'follow'].indexOf(__sm) !== -1) __smv = 'auto';
   }
   if (__smv == null) {
-    try { __smv = __pget('pete-stackmode') === 'tiers' ? 'tiers' : 'cards'; } catch (e) {}
+    try {
+      var __stored = __pget('pete-stackmode');
+      __smv = (__stored === 'tiers' || __stored === 'cards' || __stored === 'auto') ? __stored : 'auto';
+    } catch (e) { __smv = 'auto'; }
   }
-  document.documentElement.setAttribute('data-stackmode', __smv === 'tiers' ? 'tiers' : 'cards');
+  var __eff = __smv;
+  if (__smv === 'auto') {
+    /* Pre-engine guess from the vote-style default; corrected on load. */
+    var __vm = null;
+    try { __vm = new URLSearchParams(location.search).get('votemode'); } catch (e2) {}
+    if (__vm == null) { try { __vm = __pget('ratehive-votemode-v1'); } catch (e3) {} }
+    __eff = (__vm === 'tier') ? 'tiers' : 'cards';
+  }
+  document.documentElement.setAttribute('data-stackmode', __eff);
 } catch (e) {}
 /* Pete head ring: ?phring=1 restores the circular crop + gold ring on
    the island avatar, celebration pop-out and episode portrait. Default
@@ -3678,6 +3723,13 @@ try {
   <div class="dr-presets" id="drtheme"><button data-th="ledger" class="on">Ledger</button><button data-th="glass">Glass</button></div>
   <div class="dr-lab">Card / topic</div>
   <input class="dr-in" id="drtopic" maxlength="80" placeholder="Rate this match" spellcheck="false">
+  <div class="dr-lab" style="margin-top:10px">Tier list source <span style="opacity:.6">(Sheets)</span></div>
+  <input class="dr-in" id="drsheet" maxlength="120" placeholder="Spreadsheet ID" spellcheck="false" autocomplete="off">
+  <div class="dr-row" style="margin-top:6px">
+    <button class="dr-ghost" id="drtierload" style="flex:1" title="Fetch the current list + item from the sheet macro">Load item</button>
+    <button class="dr-ghost" id="drtiernext" style="flex:1" title="Load item + start a tier rating">Load + start</button>
+  </div>
+  <div class="dr-stat" id="drtierstat">Tier list: not linked.</div>
   <div class="dr-lab">Time limit presets</div>
   <div class="dr-presets" id="drpresets">
     <button data-s="30">30s</button><button data-s="60">1m</button><button data-s="90">90s</button><button data-s="120" class="on">2m</button><button data-s="180">3m</button><button data-s="300">5m</button><button data-s="0">no timer</button>
@@ -3815,8 +3867,8 @@ try {
   <section class="dr-sec">
   <div class="dr-lab">Wrestling — Overlay <span style="opacity:.6">(w)</span></div>
   <div class="dr-presets" id="drwrestling"><button data-wr="1" class="on">Show</button><button data-wr="0">Hide</button></div>
-  <div class="dr-lab" style="margin-top:8px">Stack content <span style="opacity:.6">(b · cards or live tier board)</span></div>
-  <div class="dr-presets" id="drstackmode"><button data-sm="cards" class="on">Cards</button><button data-sm="tiers">Tier board</button></div>
+  <div class="dr-lab" style="margin-top:8px">Stack content <span style="opacity:.6">(b · auto-follows vote style)</span></div>
+  <div class="dr-presets" id="drstackmode"><button data-sm="auto" class="on">Auto</button><button data-sm="cards">Cards</button><button data-sm="tiers">Tier board</button></div>
   <div class="dr-lab" style="margin-top:8px">Scene preset <span style="opacity:.6">(overlay + slot together)</span></div>
   <div class="dr-presets" id="drscene"><button data-scene="wrestling" class="on">Wrestling</button><button data-scene="tiers">Tier board</button><button data-scene="rater">Rater only</button></div>
   <div class="dr-lab" style="margin-top:8px">Head circle <span style="opacity:.6">(raw cutout when off)</span></div>
@@ -3876,12 +3928,14 @@ try {
   <div class="dr-presets" id="drbglass"><button data-bg="1" class="on">On</button><button data-bg="0">Off</button></div>
   <div class="dr-lab" style="margin-top:8px">Dwell time</div>
   <div class="dr-presets" id="drbubbledwell"><button data-bd="3">3s</button><button data-bd="4.5" class="on">4.5s</button><button data-bd="6">6s</button><button data-bd="9">9s</button></div>
+  <div class="dr-lab" style="margin-top:8px">Vote scores</div>
+  <div class="dr-presets" id="drbvotes"><button data-vb="1">On</button><button data-vb="0" class="on">Off</button></div>
   <div class="dr-lab" style="margin-top:8px">Coalesce <span style="opacity:.6">(goo)</span></div>
   <div class="dr-presets" id="drgoo"><button data-goo="1">On</button><button data-goo="0" class="on">Off</button></div>
   <div class="dr-row" style="margin-top:8px">
     <button class="dr-ghost" id="bubbleTest" style="flex:1" title="Pop sample bubbles (this screen only)">Test bubbles</button>
   </div>
-  <div class="dr-stat">Stacked bubbles over the island, newest nearest the pill. URL: <b>&amp;bubble=0</b> off · <b>&amp;bubblemax=2</b> · <b>&amp;bubblenames=gold</b> · <b>&amp;bglass=0</b> flat · <b>&amp;bubblescale=1.2</b> · <b>&amp;bubbledwell=6</b> · <b>&amp;goo=1</b> welds pill + bubbles into one droplet body.</div>
+  <div class="dr-stat">Stacked bubbles over the island, newest nearest the pill. URL: <b>&amp;bubble=0</b> off · <b>&amp;bubblemax=2</b> · <b>&amp;bubblenames=gold</b> · <b>&amp;bglass=0</b> flat · <b>&amp;bubblescale=1.2</b> · <b>&amp;bubbledwell=6</b> · <b>&amp;votebubbles=1</b> score bubbles · <b>&amp;goo=1</b> welds pill + bubbles into one droplet body.</div>
   </section>
   <section class="dr-sec">
   <div class="dr-lab">Island — Final scribble</div>
@@ -3902,7 +3956,7 @@ try {
     <a class="dr-link" id="lnk-scene" target="_blank" rel="noopener" title="End-of-stream dashboard — add it as a browser source in your Ending scene">End scene</a>
   </div>
   </section>
-  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = scored + hate toast. Say <b>hoomp</b> or <b>plop</b> anywhere in chat for the HOOMP / PLOP moments.<br>Mods: <b>!rateopen</b> / <b>!rateopen tier 120 Topic</b> (tier board for this poll) / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>V</b> vote mode (Score / Tier list) · <b>T</b> theme (Ledger / Glass) · <b>B</b> stack content (Cards / Tier board) · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Theme (drawer, <b>T</b>, or <b>?theme=glass</b> in the OBS URL): <b>Ledger</b> is the flat spreadsheet skin with no liquid glass anywhere — <b>Glass</b> restores the liquid-glass recipe. Glass tuning dims while ledger is on.<br>Vote mode (drawer default, per-poll <b>!rateopen tier …</b>, or <b>?votemode=tier</b> in the OBS URL): same <b>!vote -10 to 10</b> votes, shown as a flat spreadsheet tier board (S ≥9 · A ≥7 · B ≥5 · C ≥3 · D ≥1.5 · F &lt;1.5) — no liquid glass on the board.<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling + island size: <b>?stack=0.5–2.5</b> (default 1) or the <b>Portion size</b> slider — the lifted island scales with the column. Wrestling overlay: <b>?wrestling=0</b> hides the stack. Bottom-right slot: <b>Stack content</b> (drawer, <b>B</b>, or <b>?stackmode=tiers</b>) swaps the episode / merch / ticker cards for the live S–F tier board — same votes, camera window stays. <b>Scene preset</b> sets overlay + slot together: <b>Wrestling</b> (shown + cards), <b>Tier board</b> (shown + tiers), <b>Rater only</b> (stack hidden). Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
+  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = scored + hate toast. Say <b>hoomp</b> or <b>plop</b> anywhere in chat for the HOOMP / PLOP moments.<br>Mods: <b>!rateopen</b> / <b>!rateopen tier 120 Topic</b> (tier board for this poll) / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>V</b> vote mode (Score / Tier list) · <b>T</b> theme (Ledger / Glass) · <b>B</b> stack content (Auto / Cards / Tier board) · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Theme (drawer, <b>T</b>, or <b>?theme=glass</b> in the OBS URL): <b>Ledger</b> is the flat spreadsheet skin with no liquid glass anywhere — <b>Glass</b> restores the liquid-glass recipe. Glass tuning dims while ledger is on.<br>Vote mode (drawer default, per-poll <b>!rateopen tier …</b>, or <b>?votemode=tier</b> in the OBS URL): same <b>!vote -10 to 10</b> votes, shown as a flat spreadsheet tier board (S ≥9 · A ≥7 · B ≥5 · C ≥3 · D ≥1.5 · F &lt;1.5 score bands — final S–F is percentile across the sheet list) — no liquid glass on the board.<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling + island size: <b>?stack=0.5–2.5</b> (default 1) or the <b>Portion size</b> slider — the lifted island scales with the column. Wrestling overlay: <b>?wrestling=0</b> hides the stack. Bottom-right slot: <b>Stack content</b> (drawer, <b>B</b>, or <b>?stackmode=auto/cards/tiers</b>) follows the vote style by default — Tier list swaps the episode / merch / ticker cards for the live tier board — same votes, camera window stays. <b>Scene preset</b> sets overlay + slot together: <b>Wrestling</b> (shown + cards), <b>Tier board</b> (shown + tiers), <b>Rater only</b> (stack hidden). Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -5500,7 +5554,8 @@ if (document.readyState === 'loading') {
     sound: profileKey('ratehive-sound-v1'),
     callouts: profileKey('ratehive-callouts-v1'),
     autohide: profileKey('ratehive-autohide-v1'),
-    config: profileKey('ratehive-cfg-v1')
+    config: profileKey('ratehive-cfg-v1'),
+    tiersheet: profileKey('ratehive-tiersheet-v1')
   };
 
   function choice(value, allowed, fallback) {
@@ -6239,7 +6294,10 @@ if (document.readyState === 'loading') {
 
   /* Tier board: the same numeric votes bucketed into spreadsheet rows.
      Cut at 9 / 7 / 5 / 3 / 1.5 — S/A/B/C/D/F, F catching 0s, 1s and
-     negatives. Presentation only; vote() stays numeric. */
+     negatives. Presentation only; vote() stays numeric. The labels are
+     live score bands, NOT final tiers: Pete assigns final S–F by
+     percentile across the whole sheet list, so a band is only where a
+     vote landed, never a promise of the final tier. */
   const TIER_ROWS = [
     { t: 'S', min: 9, label: '9 – 10' },
     { t: 'A', min: 7, label: '7 – 8.9' },
@@ -6285,7 +6343,9 @@ if (document.readyState === 'loading') {
   }
 
   function tierTableHTML(buckets) {
-    return '<div class="tr-head"><span>Tier</span><span>Range</span>' +
+    var listName = '';
+    try { listName = (typeof TIERLIST !== 'undefined' && TIERLIST && TIERLIST.list) || ''; } catch (e) {}
+    return '<div class="tr-head"><span>Tier</span><span>Score</span>' +
       '<span class="tr-num">Votes</span><span class="tr-num">Share</span></div>' +
       buckets.rows.map(row =>
         '<div class="tr-row' + (row.top ? ' top' : '') + '" data-tier="' + row.t + '">' +
@@ -6297,7 +6357,9 @@ if (document.readyState === 'loading') {
         (buckets.total ? Math.max(row.count ? 4 : 0, row.count / buckets.max * 100) : 0) +
         '%"></i></span>' +
         '</div>'
-      ).join('');
+      ).join('') +
+      '<div class="tr-foot">Score bands, not final tiers — final S–F is percentile across ' +
+      esc(listName || 'the list') + '.</div>';
   }
 
   function readableColor(hex) {
@@ -7867,6 +7929,19 @@ if (document.readyState === 'loading') {
     }
   }
 
+  /* Vote-score bubbles flag: ?votebubbles= wins, otherwise Pete's stored
+     drawer toggle (same page family shares the profile store). */
+  function voteBubblesOn() {
+    try {
+      const param = q.get('votebubbles');
+      if (param === '1') return true;
+      if (param === '0') return false;
+      if (typeof window.__peteProfileGet === 'function' &&
+          window.__peteProfileGet('pete-votebubbles') === '1') return true;
+    } catch (e) {}
+    return false;
+  }
+
   function emitEffect(effect) {
     if (!effect || FULLPAGE) return;
 
@@ -7883,6 +7958,19 @@ if (document.readyState === 'loading') {
           effect.vote
         );
       }
+
+      /* Opt-in score bubbles over the collapsed pill (drawer → Chat —
+         Bubbles → Vote scores, or ?votebubbles=1). The bubble module gates
+         on collapsed itself, so this is fire-and-forget. */
+      try {
+        if (voteBubblesOn() && typeof window.__islandChatBubble === 'function') {
+          window.__islandChatBubble(
+            effect.user,
+            effect.color ? { color: effect.color } : null,
+            fmt(effect.vote) + ' / 10'
+          );
+        }
+      } catch (e2) {}
 
       if (FEAT.ripple && !reducedMotion) {
         const index = clamp(Math.round(effect.vote), 1, 10);
@@ -7998,6 +8086,33 @@ if (document.readyState === 'loading') {
       [523, 659, 784].forEach((frequency, index) => {
         setTimeout(() => sound(frequency, 0.25), index * 90);
       });
+
+      /* S-tier lock: a final average in the S band earns the gold
+         celebration. On the island it fires after the verdict has had its
+         moment; everywhere else (or if the pill can't take it) celebrate()
+         falls back to a callout. The timer is guarded by poll id +
+         still-closed so a stale fire after the next poll opens is dropped. */
+      if (effect.votes && effect.avg >= 9) {
+        const sPoll = effect.pollId;
+        const sSub = effect.avg.toFixed(1) + ' · ' + effect.votes +
+          (effect.votes === 1 ? ' vote' : ' votes');
+        let sDelay = 0;
+        try {
+          if (ISLAND.until && ISLAND.until > Date.now() &&
+            (ISLAND.kind === 'final' || ISLAND.kind === 'result')) {
+            sDelay = ISLAND.until - Date.now() + 200;
+          }
+        } catch (e) {}
+        setTimeout(() => {
+          try {
+            const live = activeState().poll;
+            if (!live || live.id !== sPoll || live.status !== 'closed') return;
+            celebrate('S TIER', sSub, 'stier');
+            sound(1046, 0.16, 0.05);
+            setTimeout(() => sound(1318, 0.22, 0.05), 120);
+          } catch (e2) {}
+        }, sDelay);
+      }
     }
 
     if (effect.kind === 'clear') {
@@ -8227,7 +8342,7 @@ if (document.readyState === 'loading') {
         const buckets = tierBuckets(poll);
         setHTML($('ctiers'), tierTableHTML(buckets));
 
-        $('cdcap').textContent = 'Tier board · ' + st.n + ' cast' + hoompLabel(st.hoomps);
+        $('cdcap').textContent = (TIERLIST.list ? TIERLIST.list + ' · ' : '') + 'Tier board · ' + st.n + ' cast' + hoompLabel(st.hoomps);
         $('cdstats').innerHTML =
           statCell('avg', st.n ? st.avg.toFixed(1) : '—') +
           statCell('top tier', buckets.winner) +
@@ -8487,7 +8602,15 @@ if (document.readyState === 'loading') {
             </div>
           </div>
 
+          <div class="di-tiermeta" id="diTierMeta" hidden></div>
+
           <div class="di-tier tier-table" id="diTier" hidden></div>
+
+          <div class="di-latest" id="diLatest" hidden></div>
+
+          <div class="di-tierstats" id="diTierStats" hidden></div>
+
+          <div class="di-tiervotes" id="diTierVotes" hidden></div>
 
           <div class="di-spark" id="diSpark" hidden></div>
           <div class="di-top5" id="diTop5" hidden></div>
@@ -8845,7 +8968,8 @@ if (document.readyState === 'loading') {
   const EVENT_ACCENTS = {
     sub: { c: '#bf5af2', g: 'rgba(191,90,242,.45)' },
     cheer: { c: '#64d2ff', g: 'rgba(100,210,255,.45)' },
-    raid: { c: '#ff9f0a', g: 'rgba(255,159,10,.45)' }
+    raid: { c: '#ff9f0a', g: 'rgba(255,159,10,.45)' },
+    stier: { c: '#d4a853', g: 'rgba(212,168,83,.45)' }
   };
 
   /* Generic celebration takeover driving the single event face. Respects
@@ -9044,10 +9168,68 @@ if (document.readyState === 'loading') {
       ).join(''));
 
       /* Tier board swaps the heat bars + side column for the spreadsheet
-         table (top-5 countdown keeps its own list either way). */
+         table (top-5 countdown keeps its own list either way). De-dup: when
+         the wrestling stack already shows this board, the island keeps its
+         hero (avg + verdict + votes) instead of a second copy. */
       const tierOn = pollTier(poll) === 'tier' && !isTop;
-      if (tierOn) setHTML($('diTier'), tierTableHTML(tierBuckets(poll)));
-      $('diTier').hidden = !tierOn;
+      let boardHere = tierOn;
+      try {
+        const rootEl = document.documentElement;
+        if (rootEl.getAttribute('data-wr') !== 'hidden' &&
+            rootEl.getAttribute('data-stackmode') === 'tiers') boardHere = false;
+      } catch (e) {}
+      const buckets = tierOn ? tierBuckets(poll) : null;
+      /* Room check: when the stack owns the board, the island has space for
+         the full info blocks below; when the board lives here, only the
+         one-line strip fits. */
+      const fullTier = tierOn && !boardHere && st.n > 0;
+      if (boardHere) setHTML($('diTier'), tierTableHTML(buckets));
+      $('diTier').hidden = !boardHere;
+
+      /* Tier meta line: list + score-style stats (median, leading tier,
+         trend vs the last item, scored count) under the hero. */
+      const tmeta = [];
+      if (tierOn) {
+        if (TIERLIST.list) tmeta.push(TIERLIST.list.toUpperCase().slice(0, 24));
+        if (st.med != null) tmeta.push('MED ' + fmt(st.med));
+        if (buckets.winner === 'tie') tmeta.push('TIED');
+        else if (buckets.winner !== '—') tmeta.push('TOP ' + buckets.winner);
+        if (poll.trend && poll.status === 'closed') tmeta.push(trendText(poll.trend) + ' VS LAST');
+        if (TIERLIST.count > 0) tmeta.push(TIERLIST.count + ' SCORED');
+        if (TIERLIST.list) $('diSub').textContent = demoState ? $('diSub').textContent : TIERLIST.list + ' · #' + CHANNEL;
+      }
+      if (tmeta.length) $('diTierMeta').textContent = tmeta.join(' · ');
+      $('diTierMeta').hidden = !tmeta.length;
+
+      /* Tier latest strip: score-style info (who just voted what) under the
+         board — the trajectory + scale-note hide in tier mode to make room. */
+      const latest = tierOn ? recentVotes(state, poll, 4) : [];
+      if (latest.length) {
+        setHTML($('diLatest'),
+          '<span class="ll-lab">LATEST</span> ' + latest.map(event =>
+            '<span class="ll-s">' + fmt(event.vote) + '</span> ' +
+            '<span class="ll-u">' + esc(String(event.user).slice(0, 18)) + '</span>'
+          ).join(' · '));
+      }
+      $('diLatest').hidden = !latest.length || fullTier;
+
+      /* Tier full-info blocks: stats grid + recent-votes list for the room
+         the missing board leaves behind. */
+      if (fullTier) {
+        const consensus = st.n < 5 ? 'early'
+          : st.sd < 1.2 ? 'united'
+          : st.sd >= 2.2 ? 'split' : 'mixed';
+        setHTML($('diTierStats'),
+          '<div class="di-ts"><span class="k">Median</span><span class="v">' + fmt(st.med) + '</span></div>' +
+          '<div class="di-ts"><span class="k">Top tier</span><span class="v">' + esc(buckets.winner) + '</span></div>' +
+          '<div class="di-ts"><span class="k">Votes</span><span class="v">' + st.n + '</span></div>' +
+          '<div class="di-ts"><span class="k">Crowd</span><span class="v">' + consensus + '</span></div>');
+        setHTML($('diTierVotes'), recentVotes(state, poll, 4).map(event =>
+          '<div class="tv"><span>' + esc(String(event.user).slice(0, 24)) + '</span><b>' + fmt(event.vote) + '</b></div>'
+        ).join(''));
+      }
+      $('diTierStats').hidden = !fullTier;
+      $('diTierVotes').hidden = !fullTier;
 
       const cta = document.querySelector('#diland .di-cta');
       if (cta) {
@@ -9077,7 +9259,10 @@ if (document.readyState === 'loading') {
         ? poll.series.filter(point => point.n > 0).map(point => point.avg)
         : [];
 
-      $('diSpark').hidden = isTop || values.length < 2;
+      /* Tier room check (see fullTier above): the trajectory graph returns
+         when the stack owns the board; when the board lives in the island
+         there is no room for it. */
+      $('diSpark').hidden = isTop || values.length < 2 || (tierOn && boardHere);
       if (!$('diSpark').hidden) {
         setHTML($('diSpark'),
           '<div class="di-spark-hd"><span class="lab">Crowd trajectory · −10 to +10</span></div>' +
@@ -9576,6 +9761,106 @@ if (document.readyState === 'loading') {
     applyLayout();
   }
 
+  /* Tier list source: Pete's sheet macro returns the list + next item.
+     Paste a spreadsheet ID, Load fills Card/topic, Load + start opens a
+     tier poll on it. ?sheet= wins on load and rides the OBS URL; the ID
+     + last fetched pair persist so captions survive reloads. Macro shape:
+     { "list": "Pie", "item": "steak pie" } — extra fields are ignored, so
+     the macro can grow (e.g. an items[] standings array) without
+     breaking this. */
+  const TIERLIST_MACRO = 'https://script.google.com/macros/s/AKfycbxHzL5MpdJnYB2Xh0CvzFnG2u8bedwewxH5aUOBNO1W4jEu2Af9sXMe3ENWsTZ6lRB3/exec?sheet=';
+  const TIERLIST = { sheetId: '', list: '', item: '', count: 0, updatedAt: 0, loading: false };
+
+  function tierListStatus(text) {
+    if ($('drtierstat')) $('drtierstat').textContent = text;
+  }
+
+  function tierListPersist() {
+    saveJSON(KEYS.tiersheet, {
+      id: TIERLIST.sheetId, list: TIERLIST.list,
+      item: TIERLIST.item, count: TIERLIST.count,
+      updatedAt: TIERLIST.updatedAt
+    });
+  }
+
+  function tierListDescribe() {
+    if (!TIERLIST.list && !TIERLIST.item) return 'Tier list: not linked.';
+    const when = TIERLIST.updatedAt
+      ? ' · ' + new Date(TIERLIST.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const n = TIERLIST.count > 0 ? ' · ' + TIERLIST.count + ' scored' : '';
+    return 'Tier list: ' + (TIERLIST.list || '—') + ' → ' + (TIERLIST.item || '—') + n + when + '.';
+  }
+
+  function fetchTierItem(opts) {
+    opts = opts || {};
+    const input = $('drsheet');
+    const id = String(opts.sheetId != null ? opts.sheetId : input && input.value || '').trim();
+    if (!id) { tierListStatus('Tier list: paste a spreadsheet ID first.'); return Promise.resolve(null); }
+    if (TIERLIST.loading) return Promise.resolve(null);
+    TIERLIST.loading = true;
+    TIERLIST.sheetId = id;
+    tierListStatus('Tier list: loading…');
+    renderDrawer();
+    return fetch(TIERLIST_MACRO + encodeURIComponent(id), { cache: 'no-store' })
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        TIERLIST.list = String((data && data.list) || '').slice(0, 60);
+        TIERLIST.item = String((data && data.item) || '').slice(0, 80);
+        TIERLIST.count = Array.isArray(data && data.items) ? data.items.length : 0;
+        TIERLIST.updatedAt = Date.now();
+        if (!TIERLIST.list && !TIERLIST.item) throw new Error('empty response');
+        if (input) input.value = id;
+        tierListPersist();
+        tierListStatus(tierListDescribe());
+        const live = S && S.poll && S.poll.status === 'open';
+        if (opts.start && TIERLIST.item && !live) {
+          const seconds = clamp(Math.floor(Number($('drsecs').value) || 0), 0, 3600);
+          saveJSON(KEYS.config, { topic: TIERLIST.item.slice(0, 80), secs: seconds });
+          if ($('drtopic')) $('drtopic').value = TIERLIST.item.slice(0, 80);
+          sendCommand('!rateopen ' + seconds + ' tier ' + TIERLIST.item.slice(0, 80));
+        } else if (TIERLIST.item && !live && $('drtopic') && !$('drtopic').value.trim()) {
+          // Plain Load only fills an empty topic box — never clobbers Pete's text.
+          $('drtopic').value = TIERLIST.item;
+          saveJSON(KEYS.config, {
+            topic: $('drtopic').value.slice(0, 80),
+            secs: clamp(Math.floor(Number($('drsecs').value) || 0), 0, 3600)
+          });
+        }
+        render();
+        return data;
+      })
+      .catch(err => {
+        tierListStatus('Tier list: load failed (' + String((err && err.message) || err) + ').');
+        return null;
+      })
+      .then(result => { TIERLIST.loading = false; renderDrawer(); return result; });
+  }
+
+  function initTierList() {
+    const saved = readJSON(KEYS.tiersheet, null) || {};
+    const fromUrl = String(q.get('sheet') || '').trim();
+    const id = fromUrl || String(saved.id || '');
+    if (id && $('drsheet')) $('drsheet').value = id;
+    if (saved.list || saved.item) {
+      TIERLIST.sheetId = id || String(saved.id || '');
+      TIERLIST.list = String(saved.list || '');
+      TIERLIST.item = String(saved.item || '');
+      TIERLIST.count = Number(saved.count) || 0;
+      TIERLIST.updatedAt = Number(saved.updatedAt) || 0;
+      tierListStatus(tierListDescribe());
+    }
+    if ($('drtierload')) $('drtierload').addEventListener('click', () => fetchTierItem({}));
+    if ($('drtiernext')) $('drtiernext').addEventListener('click', () => fetchTierItem({ start: true }));
+    // Follow the sheet on load so every source (control + OBS) names the
+    // list in its captions even before the next item is pushed through.
+    if (id) fetchTierItem({ sheetId: id });
+  }
+  initTierList();
+
   /* Skin-theme switch: ledger ⇄ glass everywhere the page styles it.
      Global (no per-poll concept) — stored + carried as &theme=. */
   function setTheme(next) {
@@ -9718,6 +10003,9 @@ if (document.readyState === 'loading') {
     $('drtopic').disabled = open;
     $('drsecs').disabled = open;
     $('drgo').disabled = open;
+    if ($('drtierload')) $('drtierload').disabled = open || TIERLIST.loading;
+    if ($('drtiernext')) $('drtiernext').disabled = open || TIERLIST.loading;
+    if ($('drsheet')) $('drsheet').disabled = TIERLIST.loading;
     $('drgo').textContent = open ? 'Rating open' : 'Start rating';
     $('drclose').disabled = !open;
     $('drclear').disabled = !poll;
@@ -9926,7 +10214,8 @@ if (document.readyState === 'loading') {
     if ($('tsFoot')) {
       $('tsFoot').textContent = st.n + (st.n === 1 ? ' vote' : ' votes') +
         hoompLabel(st.hoomps) +
-        (poll && poll.status === 'closed' ? ' · final' : '');
+        (poll && poll.status === 'closed' ? ' · final' : '') +
+        (TIERLIST.list ? ' · ' + TIERLIST.list : '');
     }
   }
 
@@ -9934,6 +10223,19 @@ if (document.readyState === 'loading') {
     if (!S) return;
 
     const state = activeState();
+
+    /* Tier-stack follow: publish the effective vote mode so the wrestling
+       stack (assets/agoodpete.js) can auto-swap cards ⇄ tier board when
+       Pete picks the Tier list vote style. The live poll wins, otherwise
+       the drawer default. Written only on change — per-render assignment
+       would spam the stack module's MutationObserver. */
+    try {
+      const tierLive = (state.poll && pollTier(state.poll) === 'tier') ||
+        (!state.poll && VOTEMODE === 'tier') ? '1' : '0';
+      if (document.documentElement.dataset.tierlive !== tierLive) {
+        document.documentElement.dataset.tierlive = tierLive;
+      }
+    } catch (e) {}
 
     if (!FULLPAGE) {
       if (DESIGN === 'studio') renderStudio(state);
@@ -12492,15 +12794,69 @@ else ready();
     });
   }
 
+  /* Pounds everywhere: the shopper sees GBP. Fourthwall's API prices in
+     the store default (often USD), so USD/EUR convert at a cached live
+     rate (open.er-api.com, no key) with a stored fallback. The rate
+     refreshes at most every 6h; merch loads wait for it (3.5s cap) so
+     first paint is already £. */
+  var FX_KEY = 'pete-fx-usdgbp';
+  var FX = { gbp: 0.79, eurPerUsd: 0.92, live: false, when: 0 };
+  try {
+    var fxSaved = JSON.parse(window.__peteProfileGet(FX_KEY) || 'null');
+    if (fxSaved && isFinite(fxSaved.gbp)) {
+      FX.gbp = Number(fxSaved.gbp); FX.when = Number(fxSaved.when) || 0;
+      if (isFinite(fxSaved.eurPerUsd)) FX.eurPerUsd = Number(fxSaved.eurPerUsd);
+      FX.live = FX.when > 0;
+    }
+  } catch (e) {}
+  function refreshFx() {
+    if (FX.when && (Date.now() - FX.when) < 6 * 3600 * 1000) return Promise.resolve(FX);
+    return new Promise(function (resolve) {
+      var timer = setTimeout(function () { resolve(FX); }, 3500);
+      fetchJSONWithProxy('https://open.er-api.com/v6/latest/USD').then(function (res) {
+        try {
+          if (res && (res.result === 'ok' || res.result === 'success') && res.rates && isFinite(res.rates.GBP)) {
+            FX.gbp = Number(res.rates.GBP);
+            if (isFinite(res.rates.EUR)) FX.eurPerUsd = Number(res.rates.EUR);
+            FX.when = Date.now(); FX.live = true;
+            try { window.__peteProfileSet(FX_KEY, JSON.stringify({ gbp: FX.gbp, eurPerUsd: FX.eurPerUsd, when: FX.when })); } catch (e) {}
+          }
+        } catch (e2) {}
+        clearTimeout(timer);
+        resolve(FX);
+      }).catch(function () { clearTimeout(timer); resolve(FX); });
+    });
+  }
+  function fxTag() { return ' · $→£ ' + FX.gbp.toFixed(3); }
+
   function money(value, currency) {
     var n = Number(value);
     if (!isFinite(n)) return '';
     var c = String(currency || '').toUpperCase();
-    var two = n.toFixed(2);
-    if (c === 'GBP' || c === '£') return '£' + two;
-    if (c === 'USD' || c === '$') return '$' + two;
-    if (c === 'EUR' || c === '€') return '€' + two;
-    return c ? two + ' ' + c : two;
+    if (c === 'GBP' || c === '£') return '£' + n.toFixed(2);
+    if (c === 'USD' || c === '$') return '£' + (n * FX.gbp).toFixed(2);
+    if (c === 'EUR' || c === '€') {
+      var perEur = FX.eurPerUsd > 0 ? FX.gbp / FX.eurPerUsd : 0.85;
+      return '£' + (n * perEur).toFixed(2);
+    }
+    return c ? n.toFixed(2) + ' ' + c : n.toFixed(2);
+  }
+
+  /* Scrape prices arrive with their page symbol (£ on /en-gbp pages, $ on
+     .com pages) — parse the number and route through the same GBP
+     conversion as the API path instead of swapping the symbol. */
+  function scrapePrice(sym, num) {
+    var raw = String(num || '').trim();
+    if (/^\d+,\d{2}$/.test(raw)) raw = raw.replace(',', '.');
+    else raw = raw.replace(/,/g, '');
+    var n = Number(raw);
+    if (!isFinite(n)) return '';
+    if (sym === '£') return '£' + n.toFixed(2);
+    if (sym === '€') {
+      var perEur = FX.eurPerUsd > 0 ? FX.gbp / FX.eurPerUsd : 0.85;
+      return '£' + (n * perEur).toFixed(2);
+    }
+    return '£' + (n * FX.gbp).toFixed(2);
   }
 
   function pickImage(pr) {
@@ -12677,11 +13033,8 @@ else ready();
               var titleEl = card.querySelector('h2,h3,[class*="title"],[class*="name"]') || a;
               if (titleEl) title = titleEl.textContent.trim().split('\n')[0].trim();
               if (!title || title.length < 3) title = href.split('/').pop().replace(/-/g, ' ');
-              var priceMatch = (card.textContent || '').match(/(£|\$)\s*\d+([\.,]\d{2})?/);
-              if (priceMatch) {
-                price = priceMatch[0].replace('$', '£').replace('USD', '').trim();
-                if (price.indexOf('£') === -1) price = '£' + price.replace(/[^\d.,]/g, '');
-              }
+              var priceMatch = (card.textContent || '').match(/(£|\$|€)\s*(\d+([\.,]\d{2})?)/);
+              if (priceMatch) price = scrapePrice(priceMatch[1], priceMatch[2]);
               var imgEl = card.querySelector('img') || a.querySelector('img');
               if (imgEl) {
                 img = imgEl.getAttribute('src') || imgEl.getAttribute('data-src') || '';
@@ -12726,11 +13079,10 @@ else ready();
               if (ogImg) { item.image = ogImg.getAttribute('content'); updated = true; }
             }
             if (!item.price) {
-              var m = doc.body.textContent.match(/(£|\$)\s*\d+([\.,]\d{2})?/);
+              var m = doc.body.textContent.match(/(£|\$|€)\s*(\d+([\.,]\d{2})?)/);
               if (m) {
-                item.price = m[0].replace('$', '£').replace('USD', '').trim();
-                if (item.price.indexOf('£') === -1) item.price = '£' + item.price.replace(/[^\d.,]/g, '');
-                updated = true;
+                item.price = scrapePrice(m[1], m[2]);
+                if (item.price) updated = true;
               }
             }
             if (updated) {
@@ -12763,7 +13115,7 @@ else ready();
       if (result && result.length) {
         productSource = 'live';
         products = result; currentIndex = 0; showProduct(products[0], true);
-        statusEl.textContent = products.length + ' products (API)';
+        statusEl.textContent = products.length + ' products (API)' + fxTag();
         say('Loaded ' + products.length + ' products');
         startRotate(); return;
       }
@@ -12772,7 +13124,7 @@ else ready();
         if (r2 && r2.length) {
           productSource = 'live';
           products = r2; currentIndex = 0; showProduct(products[0], true);
-          statusEl.textContent = products.length + ' products (sitemap)';
+          statusEl.textContent = products.length + ' products (sitemap)' + fxTag();
           say('Store via sitemap'); startRotate(); enrichMissingData(); return;
         }
         statusEl.textContent = 'Trying scrape...';
@@ -12780,7 +13132,7 @@ else ready();
           if (r3 && r3.length) {
             productSource = 'live';
             products = r3; currentIndex = 0; showProduct(products[0], true);
-            statusEl.textContent = products.length + ' products (scraped)';
+            statusEl.textContent = products.length + ' products (scraped)' + fxTag();
             say('Store scraped'); startRotate(); enrichMissingData(); return;
           }
           statusEl.textContent = 'Using cached';
@@ -12803,7 +13155,7 @@ else ready();
   $('#pause').onchange = renderStatic;
   $('#speed').oninput = renderStatic;
   $('#autoRotate').onchange = startRotate;
-  $('#fetchMerch').onclick = fetchFourthwallLive;
+  $('#fetchMerch').onclick = function () { refreshFx().then(fetchFourthwallLive); };
   $('#nextMerch').onclick = function () {
     if (products.length) { currentIndex = (currentIndex + 1) % products.length; showProduct(products[currentIndex]); }
   };
@@ -12872,7 +13224,9 @@ else ready();
 
     var root = document.documentElement;
     flag('wrestling', root.getAttribute('data-wr') !== 'hidden');
-    put('stackmode', root.getAttribute('data-stackmode') || 'cards');
+    var stackChoice = null;
+    try { stackChoice = window.__wrStackMode ? window.__wrStackMode() : null; } catch (e) {}
+    put('stackmode', stackChoice || root.getAttribute('data-stackmode') || 'cards');
     flag('phring', root.getAttribute('data-phring') === 'on');
     var chat = document.getElementById('chatbox');
     flag('chat', !!chat && chat.getAttribute('data-hidden') === '0');
@@ -12888,6 +13242,7 @@ else ready();
     put('bubblenames', selected('#drbubblenames', 'data-bn', 'twitch'));
     flag('bglass', selected('#drbglass', 'data-bg', '1') === '1');
     put('bubbledwell', selected('#drbubbledwell', 'data-bd', '4.5'));
+    flag('votebubbles', selected('#drbvotes', 'data-vb', '0') === '1');
     put('bubblescale', current.get('bubblescale') || '1');
     flag('goo', selected('#drgoo', 'data-goo', '0') === '1');
     flag('islift', selected('#drislift', 'data-isl', '1') === '1');
@@ -12901,6 +13256,9 @@ else ready();
     put('wpromo', $('#promo').value);
     put('wrules', $('#rules').value);
     put('wspeed', $('#speed').value);
+    var tierSheetEl = document.getElementById('drsheet');
+    if (tierSheetEl && tierSheetEl.value.trim()) put('sheet', tierSheetEl.value.trim());
+    else if (current.has('sheet')) put('sheet', current.get('sheet'));
 
     ['feed', 'pops', 'fx', 'stage', 'bg', 'tb', 'itop'].forEach(function (key) {
       if (current.has(key)) put(key, current.get(key));
@@ -12944,7 +13302,7 @@ else ready();
 
   applyContentParams();
   renderStatic();
-  setTimeout(fetchFourthwallLive, 500);
+  setTimeout(function () { refreshFx().then(fetchFourthwallLive); }, 500);
 })();
 
 (function () {
@@ -13226,11 +13584,14 @@ else ready();
 })();
 
 /* Bottom-right stack content — drawer control (Stack content), B key,
-   ?stackmode= URL param and stored choice. Cards (episode / merch /
-   ticker) or the live S-F tier board; the camera window stays in both.
-   The end state lives on <html data-stackmode> (set pre-paint in
-   agoodpete.html so OBS never flashes); this module syncs the drawer
-   buttons, persists the choice and re-measures the island lift.
+   ?stackmode= URL param and stored choice. Three choices: auto (default —
+   the slot follows the Tier list vote style via the engine's
+   <html data-tierlive> signal), cards (episode / merch / ticker) or tiers
+   (the live S-F tier board, pinned); the camera window stays in all of
+   them. Only the resolved cards|tiers value is written to
+   <html data-stackmode> (set pre-paint in agoodpete.html so OBS never
+   flashes); this module syncs the drawer buttons, persists the choice
+   and re-measures the island lift.
    Engine (assets/overlay.js) renders the board into #tierstack. */
 (function () {
   'use strict';
@@ -13242,6 +13603,7 @@ else ready();
     v = String(v).toLowerCase();
     if (['tiers', 'tier', 'board', 'list'].indexOf(v) !== -1) return 'tiers';
     if (['cards', 'card', 'wrestling'].indexOf(v) !== -1) return 'cards';
+    if (v === 'auto' || v === 'follow') return 'auto';
     return null;
   }
 
@@ -13251,14 +13613,27 @@ else ready();
   }
 
   function fromStore() {
-    try { return window.__peteProfileGet(KEY) === 'tiers' ? 'tiers' : 'cards'; }
-    catch (e) { return 'cards'; }
+    try {
+      var saved = window.__peteProfileGet(KEY);
+      if (saved === 'tiers' || saved === 'cards' || saved === 'auto') return saved;
+    } catch (e) {}
+    return 'auto';
+  }
+
+  /* Effective slot: manual pins win; auto tracks the engine signal
+     (tier poll open, or Tier list drawer default with no poll). */
+  function resolve(choice) {
+    if (choice === 'tiers' || choice === 'cards') return choice;
+    try {
+      if (root.dataset && root.dataset.tierlive === '1') return 'tiers';
+    } catch (e) {}
+    return 'cards';
   }
 
   var param = fromParam();
   var mode = param != null ? param : fromStore();
   try {
-    root.setAttribute('data-stackmode', mode);
+    root.setAttribute('data-stackmode', resolve(mode));
     window.__peteProfileSet(KEY, mode);
   } catch (e) {}
 
@@ -13272,8 +13647,8 @@ else ready();
   }
 
   function apply(next, save) {
-    mode = next === 'tiers' ? 'tiers' : 'cards';
-    try { root.setAttribute('data-stackmode', mode); } catch (e) {}
+    mode = parse(next) || 'auto';
+    try { root.setAttribute('data-stackmode', resolve(mode)); } catch (e) {}
     if (save !== false) { try { window.__peteProfileSet(KEY, mode); } catch (e2) {} }
     paint();
     try { if (window.__wrMeasure) window.__wrMeasure(); } catch (e3) {}
@@ -13284,18 +13659,28 @@ else ready();
     document.addEventListener('click', function (ev) {
       var b = ev.target && ev.target.closest ? ev.target.closest('#drstackmode [data-sm]') : null;
       if (!b) return;
-      apply(parse(b.getAttribute('data-sm')) || 'cards');
+      apply(parse(b.getAttribute('data-sm')) || 'auto');
     });
     document.addEventListener('keydown', function (ev) {
       if (!ev || ev.defaultPrevented || ev.isComposing || ev.repeat) return;
       var t = ev.target;
       if (t && ((t.closest && t.closest('input,textarea,select,[contenteditable="true"]')) || t.isContentEditable)) return;
       if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
-      if (String(ev.key || '').toLowerCase() === 'b') apply(mode === 'tiers' ? 'cards' : 'tiers');
+      /* B cycles auto → tiers → cards → auto (pins on the way through). */
+      if (String(ev.key || '').toLowerCase() === 'b') {
+        apply(mode === 'auto' ? 'tiers' : mode === 'tiers' ? 'cards' : 'auto');
+      }
     });
+    /* Engine vote-style flips re-resolve auto slots without a click. */
+    try {
+      var obs = new MutationObserver(function () {
+        if (mode === 'auto') apply('auto', false);
+      });
+      obs.observe(root, { attributes: true, attributeFilter: ['data-tierlive'] });
+    } catch (e) {}
     try {
       window.__wrStackMode = function () { return mode; };
-      window.__wrSetStackMode = function (v) { apply(parse(v) || 'cards'); };
+      window.__wrSetStackMode = function (v) { apply(parse(v) || 'auto'); };
     } catch (e) {}
   }
 
@@ -13607,9 +13992,10 @@ else ready();
   'use strict';
   var KEY = 'pete-bubbles', KEYMAX = 'pete-bubblemax',
       KEYNAMES = 'pete-bubblenames', KEYGLASS = 'pete-bglass',
-      KEYDWELL = 'pete-bubbledwell', KEYGOO = 'pete-goo';
+      KEYDWELL = 'pete-bubbledwell', KEYGOO = 'pete-goo',
+      KEYVB = 'pete-votebubbles';
   var DWELL = 4500, MAX = 3, NAMES = 'twitch', SCALE = 1,
-      GLASS = true, GOO = false, reduced = false, on = true;
+      GLASS = true, GOO = false, reduced = false, on = true, VB = false;
   try {
     var q = new URLSearchParams(location.search);
     var dw = parseFloat(String(q.get('bubbledwell') || '').replace(',', '.'));
@@ -13633,6 +14019,9 @@ else ready();
     if (q.get('goo') === '1') GOO = true;
     else if (q.get('goo') === '0') GOO = false;
     else GOO = window.__peteProfileGet(KEYGOO) === '1';
+    if (q.get('votebubbles') === '1') VB = true;
+    else if (q.get('votebubbles') === '0') VB = false;
+    else VB = window.__peteProfileGet(KEYVB) === '1';
     reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   } catch (e) {}
   function persist() {
@@ -13643,6 +14032,7 @@ else ready();
       window.__peteProfileSet(KEYGLASS, GLASS ? '1' : '0');
       window.__peteProfileSet(KEYDWELL, String(DWELL / 1000));
       window.__peteProfileSet(KEYGOO, GOO ? '1' : '0');
+      window.__peteProfileSet(KEYVB, VB ? '1' : '0');
     } catch (e) {}
   }
   try { persist(); } catch (e2) {}
@@ -13865,13 +14255,41 @@ else ready();
     return out;
   }
 
+  function fillText(t, text, tags) {
+    /* Twitch emotes ride the chatbox renderer (single source of truth);
+       plain textContent when it is unavailable. Honors ?chatemotes=0. */
+    var bodyHtml = null;
+    try {
+      var emotesOn = new URLSearchParams(location.search).get('chatemotes') !== '0';
+      if (emotesOn && typeof window.__chatEmoteBody === 'function') {
+        bodyHtml = window.__chatEmoteBody(text, tags && tags.emotes, true);
+      }
+    } catch (e2) { bodyHtml = null; }
+    if (typeof bodyHtml === 'string') t.innerHTML = bodyHtml;
+    else t.textContent = text;
+  }
+
   function show(user, tags, text) {
     if (!on) return;
     text = String(text == null ? '' : text).trim().slice(0, 140);
     if (!text || text.charAt(0) === '!') return;
     if (pillState() !== 'collapsed') return;
     if (!ensure()) return;
+    var userKey = String(user || 'chat').slice(0, 25) || 'chat';
     try {
+      /* Same chatter twice in a row refreshes their bubble in place —
+         one active chatter can no longer flood the whole stack. */
+      var last = items.length ? items[items.length - 1] : null;
+      if (last && !last.dead && last.user === userKey) {
+        fillText(last.textEl, text, tags);
+        clearTimeout(last.timer);
+        last.timer = setTimeout(function () { retire(last); }, DWELL);
+        last.el.classList.remove('show');
+        void last.el.offsetWidth;
+        last.el.classList.add('show');
+        pumpGoo();
+        return;
+      }
       while (items.length >= MAX) retire(items[0]);
       var item = document.createElement('div');
       item.className = 'di-chatbubble fresh';
@@ -13880,21 +14298,11 @@ else ready();
       var u = document.createElement('b');
       u.className = 'cb-user';
       badgeNodes(tags && tags.badges, 2).forEach(function (n) { u.appendChild(n); });
-      u.appendChild(document.createTextNode(String(user || 'chat').slice(0, 25) || 'chat'));
+      u.appendChild(document.createTextNode(userKey));
       if (NAMES === 'twitch') u.style.setProperty('--bnc', twitchColor(tags, user));
       var t = document.createElement('span');
       t.className = 'cb-text';
-      /* Twitch emotes ride the chatbox renderer (single source of truth);
-         plain textContent when it is unavailable. Honors ?chatemotes=0. */
-      var bodyHtml = null;
-      try {
-        var emotesOn = new URLSearchParams(location.search).get('chatemotes') !== '0';
-        if (emotesOn && typeof window.__chatEmoteBody === 'function') {
-          bodyHtml = window.__chatEmoteBody(text, tags && tags.emotes, true);
-        }
-      } catch (e2) { bodyHtml = null; }
-      if (typeof bodyHtml === 'string') t.innerHTML = bodyHtml;
-      else t.textContent = text;
+      fillText(t, text, tags);
       pop.appendChild(u);
       pop.appendChild(t);
       item.appendChild(pop);
@@ -13902,7 +14310,7 @@ else ready();
       box.appendChild(item);
       void item.offsetWidth;
       item.classList.add('show');
-      var rec = { el: item, timer: 0, dead: false };
+      var rec = { el: item, timer: 0, dead: false, user: userKey, textEl: t };
       rec.timer = setTimeout(function () { retire(rec); }, DWELL);
       items.push(rec);
       pumpGoo();
@@ -13923,6 +14331,7 @@ else ready();
     sync('#drbubblenames [data-bn]', 'data-bn', NAMES);
     sync('#drbglass [data-bg]', 'data-bg', GLASS ? '1' : '0');
     sync('#drbubbledwell [data-bd]', 'data-bd', String(DWELL / 1000));
+    sync('#drbvotes [data-vb]', 'data-vb', VB ? '1' : '0');
     sync('#drgoo [data-goo]', 'data-goo', GOO ? '1' : '0');
   }
 
@@ -13947,7 +14356,7 @@ else ready();
     applyAttrs();
     paint();
     document.addEventListener('click', function (ev) {
-      var t = ev.target && ev.target.closest ? ev.target.closest('#drbubbles [data-bu], #drbubblemax [data-bm], #drbubblenames [data-bn], #drbglass [data-bg], #drbubbledwell [data-bd], #drgoo [data-goo]') : null;
+      var t = ev.target && ev.target.closest ? ev.target.closest('#drbubbles [data-bu], #drbubblemax [data-bm], #drbubblenames [data-bn], #drbglass [data-bg], #drbubbledwell [data-bd], #drbvotes [data-vb], #drgoo [data-goo]') : null;
       if (t) {
         if (t.hasAttribute('data-bu')) {
           on = t.getAttribute('data-bu') === '1';
@@ -13969,6 +14378,7 @@ else ready();
           var nd = parseFloat(t.getAttribute('data-bd'));
           if (isFinite(nd)) DWELL = Math.min(12, Math.max(2, nd)) * 1000;
         }
+        else if (t.hasAttribute('data-vb')) VB = t.getAttribute('data-vb') === '1';
         persist();
         applyAttrs();
         paint();
@@ -13999,6 +14409,7 @@ else ready();
       gooSync();
     } catch (e) {}
     try { window.__islandChatBubble = function (user, tags, text) { show(user, tags, text); }; } catch (e) {}
+    try { window.__wrVoteBubbles = function () { return VB; }; } catch (e2) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready);
