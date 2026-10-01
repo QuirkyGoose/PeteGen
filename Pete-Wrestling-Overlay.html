@@ -10,7 +10,7 @@
   drawer switch. ?channel= still overrides; first run defaults to agoodpete.) -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="rh-build" content="2026-09-28 23:18+aa62052fca">
+<meta name="rh-build" content="2026-09-29 19:44+5334a0393a">
 <title>AGoodPete — Wrestling Rater</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-3 -3 30 30%22><rect x=%22-3%22 y=%22-3%22 width=%2230%22 height=%2230%22 rx=%227%22 fill=%22%23d4a853%22/><g fill=%22%23FFFFFF%22 fill-opacity=%220.45%22><rect x=%222%22 y=%2215.5%22 width=%222.6%22 height=%226.5%22 rx=%221.3%22/><rect x=%226.5%22 y=%2212%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/><rect x=%2211%22 y=%228.5%22 width=%222.6%22 height=%2213.5%22 rx=%221.3%22/><rect x=%2215.5%22 y=%225%22 width=%222.6%22 height=%2217%22 rx=%221.3%22/></g><rect x=%2220%22 y=%221.5%22 width=%222.6%22 height=%2220.5%22 rx=%221.3%22 fill=%22%23FFFFFF%22/></svg>" />
 <style>
@@ -691,12 +691,16 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .tr-chip[data-tier="C"] { background: #aed581; color: #101a0b; }
 .tr-chip[data-tier="D"] { background: #64b5f6; color: #0a141f; }
 .tr-chip[data-tier="F"] { background: #757575; color: #ffffff; }
-.tr-range { color: var(--t3); font-family: var(--mono); font-size: 10.5px; white-space: nowrap; }
+.tr-range { color: var(--t3); font-family: var(--mono); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .tr-row .tr-num { text-align: right; font-variant-numeric: tabular-nums; }
 .tr-count { font-weight: 700; }
 .tr-pct { color: var(--t3); font-size: 11px; }
 .tr-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(127,127,127,0.18); overflow: hidden; }
-.tr-bar i { display: block; height: 100%; width: 0; }
+.tr-bar i { display: block; height: 100%; width: 0; transition: width .45s var(--ease-spring); }
+.tr-count.bump { animation: cntBump .4s var(--ease-spring); }
+.tr-row.pop { animation: avgPop .45s var(--ease-spring); }
+.tr-row.flash { animation: trFlash .6s ease; }
+@keyframes trFlash { 0% { background: rgba(212,168,83,.28); } 100% { background: transparent; } }
 .tr-row[data-tier="S"] .tr-bar i { background: #e57373; }
 .tr-row[data-tier="A"] .tr-bar i { background: #ffb74d; }
 .tr-row[data-tier="B"] .tr-bar i { background: #fff176; }
@@ -705,7 +709,7 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .tr-row[data-tier="F"] .tr-bar i { background: #757575; }
 .tr-row.top { background: rgba(127,127,127,0.1); }
 .tr-row.top .tr-chip { outline: 1px solid rgba(255,255,255,0.55); outline-offset: 1px; }
-.tr-foot { grid-column: 1 / -1; padding: 6px 10px 7px; font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .04em; color: var(--t3); border-top: 1px solid var(--line-soft); white-space: normal; line-height: 1.5; }
+.tr-foot { grid-column: 1 / -1; padding: 6px 10px 7px; font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .04em; color: var(--t3); border-top: 1px solid var(--line-soft); white-space: normal; line-height: 1.5; }
 .tr-foot b { color: var(--t2); font-weight: 600; }
 /* Studio: the board replaces the stat grid + heat strip in tier mode. */
 #spanel[data-votemode="tier"] .s-heat { display: none; }
@@ -748,6 +752,7 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .di-tiervotes .tv b { flex: 0 0 auto; font-family: var(--display); font-variant-numeric: tabular-nums; color: var(--t1); }
 @media (prefers-reduced-motion: reduce) {
   .tr-bar i { transition: none; }
+  .tr-count.bump, .tr-row.pop, .tr-row.flash { animation: none !important; }
 }
 .feed { padding: 10px 16px 12px; border-top: 1px solid var(--line-soft); }
 .feed .e { font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0; color: var(--t3); padding: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: rowIn 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); }
@@ -962,6 +967,19 @@ body.no-liquid .callout.final.hi { border-color: rgba(48,209,88,0.5); }
 .sidebtn { position: fixed; right: 0; top: 50%; transform: translateY(-50%); writing-mode: vertical-rl; text-orientation: mixed; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--t2); background: var(--glass); -webkit-backdrop-filter: var(--mat); backdrop-filter: var(--mat); border: 1px solid var(--line-soft); border-right: none; border-radius: var(--r-md) 0 0 var(--r-md); padding: 16px 8px; cursor: pointer; opacity: 0.6; transition: opacity .3s ease, color .3s ease, padding .3s ease; z-index: 40; }
 .sidebtn:hover { opacity: 1; color: var(--t1); padding: 18px 9px; }
 body.clean .sidebtn, body.history .sidebtn, body.voters .sidebtn, body.archive .sidebtn { display: none; }
+/* Clean-mode control reveal: program output must stay pixel-clean, but an
+   OBS Interact window renders the same clean page with no way to open the
+   drawer. Genuine pointer/keyboard input can only ever happen in an
+   interactive context (Interact, dock, real browser) — never in program
+   render — so it reveals the Controls entry for this page instance only
+   (in-memory class: never stored, never synced, program untouched). */
+body.clean.user-present .sidebtn { display: block; }
+/* OBS: keep the Controls tab on the left docked open-in-place, always visible,
+   even though clean mode is on (INOBS forces CLEAN on). Deliberately scoped to
+   .sidebtn alone so the rest of the broadcaster chrome the clean switch guards
+   — #dswitch, #testbar, .wr-resize, .di-acts/.di-x/.di-coach — stays hidden on
+   stream. To revert, delete this one rule. */
+body.clean.inobs .sidebtn { display: block; }
 .drawer { position: fixed; right: 0; top: 50%; width: 264px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 9px; max-height: calc(100vh - 24px); overflow-y: auto; background: var(--glass); -webkit-backdrop-filter: var(--mat); backdrop-filter: var(--mat); border: 1px solid var(--line-soft); border-right: none; border-radius: var(--r-lg) 0 0 var(--r-lg); box-shadow: var(--sh-panel); transform: translateY(-50%) translateX(115%); opacity: 0; visibility: hidden; transition: transform .5s var(--ease-spring), opacity .35s, visibility 0s linear .5s; z-index: 50; }
 @supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
   .drawer { background: rgba(24,24,27,0.97); }
@@ -3075,20 +3093,24 @@ html[data-phring="on"] .pete-portrait { border-radius: 50%; border-color: var(--
 .cb-pop {
   position: relative;
   --elev: .72;
-  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0) 32%), var(--glass);
-  -webkit-backdrop-filter: var(--mat);
-  backdrop-filter: var(--mat);
-  border: 1px solid var(--line);
+  background: #101016;
+  border: 1px solid rgba(255,255,255,0.14);
   border-radius: 18px;
   padding: 0.62em 1em 0.7em;
-  box-shadow: var(--sh-chip), 0 0 26px rgba(0,0,0,.5);
+  box-shadow: var(--sh-chip), 0 10px 24px rgba(0,0,0,.5);
   transform-origin: 50% 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-html[data-bglass="off"] .cb-pop { background: #000; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* Glass bubbles are opt-in (?bglass=1 / drawer): the old liquid recipe. */
+html[data-bglass="on"] .cb-pop {
+  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0) 32%), var(--glass);
+  -webkit-backdrop-filter: var(--mat);
+  backdrop-filter: var(--mat);
+  border-color: var(--line);
+}
 @supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
-  .cb-pop { background: #000; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html[data-bglass="on"] .cb-pop { background: #101016; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 body.no-fx .cb-pop { background: #000; -webkit-backdrop-filter: none; backdrop-filter: none; }
 #diland:not(.ipos-bl):not(.ipos-br) .cb-pop { transform-origin: 50% 0; }
@@ -3317,17 +3339,20 @@ html[data-islift="on"] #diland.ipos-br .di {
 .tier-table {
   border-radius: 4px;
   border-color: rgba(226,208,166,0.28);
-  background: #0b0b0f;
+  background: #08080c;
+  box-shadow: 0 12px 26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .tr-head {
   color: var(--amber-hi);
   border-bottom-color: rgba(212,168,83,0.4);
-  background: rgba(212,168,83,0.07);
+  background: rgba(212,168,83,0.09);
   letter-spacing: 0.14em;
 }
 .tr-row + .tr-row { border-top-color: rgba(226,208,166,0.14); }
-.tr-range { color: var(--t3); }
-.tr-row.top { background: rgba(212,168,83,0.09); }
+.tr-range { color: #c9c9d1; font-weight: 600; }
+.tr-pct { color: #c9c9d1; }
+.tr-foot { color: #c9c9d1; }
+.tr-row.top { background: rgba(212,168,83,0.12); }
 .tr-row.top .tr-chip { outline-color: var(--amber-hi); }
 /* hard no-glass guarantee for the board on this skin */
 .tier-table, .tier-table *,
@@ -3343,22 +3368,26 @@ html[data-islift="on"] #diland.ipos-br .di {
 }
 
 /* ------- LEDGER THEME (body[data-theme="ledger"]) - agoodpete only ----
-   Flat spreadsheet voice across every surface: solid ink, 1px gold-ruled
-   borders, squared corners, tabular numerals. No backdrop-filter, no
+   Dark material voice: near-black tonal surfaces (elevation by solid
+   fills, never blur), gold-ruled borders, squared corners, tabular
+   numerals, accessible secondary text. No backdrop-filter, no
    refraction or specular pseudo-layers - the guards below pin it even
    where the engine adds surfaces. Celebration moments (HOOMP / PLOP /
    follow beams, shimmers, steam) are untouched - only the glass goes.
    Glass theme restores the recipe above; toggle in the drawer (T). */
 
-/* rater panels: solid ledger cards */
+/* lifted secondary text across the whole ledger skin for legibility */
+body[data-theme="ledger"] { --t3: #c6c6cd; }
+
+/* rater panels: solid material cards with a top light-catch */
 body[data-theme="ledger"] #cpanel,
 body[data-theme="ledger"] .s-card {
-  background: #0b0b0f;
+  background: #08080c;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border: 1px solid rgba(226,208,166,0.28);
   border-radius: 4px;
-  box-shadow: 0 12px 26px rgba(0,0,0,0.55);
+  box-shadow: 0 12px 26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 body[data-theme="ledger"] #cpanel::before,
 body[data-theme="ledger"] .s-card::before { display: none !important; }
@@ -3366,12 +3395,12 @@ body[data-theme="ledger"] .s-card::before { display: none !important; }
 
 /* island: expanded panel goes solid, collapsed pill stays black */
 body[data-theme="ledger"] .di[data-state="panel"] {
-  background: #0b0b0f;
+  background: #08080c;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border: 1px solid rgba(226,208,166,0.28);
   border-radius: 10px;
-  box-shadow: 0 12px 26px rgba(0,0,0,0.55);
+  box-shadow: 0 12px 26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 /* wrestling stack: kill refraction + specular, solid cards */
@@ -3379,7 +3408,7 @@ body[data-theme="ledger"] .episode,
 body[data-theme="ledger"] .merch,
 body[data-theme="ledger"] .ticker,
 body[data-theme="ledger"] .wr-toast {
-  background: #0b0b0f;
+  background: #08080c;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border-color: rgba(226,208,166,0.28);
@@ -3396,11 +3425,11 @@ body[data-theme="ledger"] .episode { border-radius: 4px 4px 0 0; }
 body[data-theme="ledger"] .webcam-wrap { border-radius: 0 0 4px 4px; }
 body[data-theme="ledger"] .merch-inner { border-radius: 3px; }
 
-/* callouts / vote pops / verdict: flat ledger slips */
+/* callouts / vote pops / verdict: solid material slips */
 body[data-theme="ledger"] .callout,
 body[data-theme="ledger"] .vpop,
 body[data-theme="ledger"] .verdict {
-  background: #0b0b0f;
+  background: #08080c;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border: 1px solid rgba(226,208,166,0.28);
@@ -3415,15 +3444,24 @@ body[data-theme="ledger"] .callout::before,
 body[data-theme="ledger"] .callout::after,
 body[data-theme="ledger"] .vpop::after { display: none !important; }
 
-/* chat bubbles: flat ledger pops */
+/* chat bubbles: solid material pops with a filled tail */
 body[data-theme="ledger"] .cb-pop {
-  background: #0b0b0f;
+  background: #101016;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border-color: rgba(226,208,166,0.28);
+  box-shadow: var(--sh-chip), 0 10px 24px rgba(0,0,0,.5);
 }
-body[data-theme="ledger"] .di-chatbubble .cb-pop::after,
-body[data-theme="ledger"] .di-chatbubble.fresh .cb-pop::after { display: none !important; }
+body[data-theme="ledger"] .di-chatbubble.fresh .cb-pop::after {
+  display: block;
+  background: #101016;
+  border-right-color: rgba(226,208,166,0.28);
+  border-bottom-color: rgba(226,208,166,0.28);
+}
+body[data-theme="ledger"] #diland:not(.ipos-bl):not(.ipos-br) .cb-pop::after {
+  border-left-color: rgba(226,208,166,0.28);
+  border-top-color: rgba(226,208,166,0.28);
+}
 
 /* score-mode chrome goes matte too: no glow bars */
 body[data-theme="ledger"] .timerbar { box-shadow: none; }
@@ -4038,7 +4076,7 @@ try {
   <div class="dr-lab" style="margin-top:8px">Name colors</div>
   <div class="dr-presets" id="drbubblenames"><button data-bn="gold">Gold</button><button data-bn="twitch" class="on">Twitch</button></div>
   <div class="dr-lab" style="margin-top:8px">Liquid glass</div>
-  <div class="dr-presets" id="drbglass"><button data-bg="1" class="on">On</button><button data-bg="0">Off</button></div>
+  <div class="dr-presets" id="drbglass"><button data-bg="1">On</button><button data-bg="0" class="on">Off</button></div>
   <div class="dr-lab" style="margin-top:8px">Dwell time</div>
   <div class="dr-presets" id="drbubbledwell"><button data-bd="3">3s</button><button data-bd="4.5" class="on">4.5s</button><button data-bd="6">6s</button><button data-bd="9">9s</button></div>
   <div class="dr-lab" style="margin-top:8px">Vote scores</div>
@@ -4048,7 +4086,7 @@ try {
   <div class="dr-row" style="margin-top:8px">
     <button class="dr-ghost" id="bubbleTest" style="flex:1" title="Pop sample bubbles (this screen only)">Test bubbles</button>
   </div>
-  <div class="dr-stat">Stacked bubbles over the island, newest nearest the pill. URL: <b>&amp;bubble=0</b> off · <b>&amp;bubblemax=2</b> · <b>&amp;bubblenames=gold</b> · <b>&amp;bglass=0</b> flat · <b>&amp;bubblescale=1.2</b> · <b>&amp;bubbledwell=6</b> · <b>&amp;votebubbles=1</b> score bubbles · <b>&amp;goo=1</b> welds pill + bubbles into one droplet body.</div>
+  <div class="dr-stat">Stacked bubbles over the island, newest nearest the pill. URL: <b>&amp;bubble=0</b> off · <b>&amp;bubblemax=2</b> · <b>&amp;bubblenames=gold</b> · <b>&amp;bglass=1</b> glass bubbles (flat material by default) · <b>&amp;bubblescale=1.2</b> · <b>&amp;bubbledwell=6</b> · <b>&amp;votebubbles=1</b> score bubbles · <b>&amp;goo=1</b> welds pill + bubbles into one droplet body.</div>
   </section>
   <section class="dr-sec">
   <div class="dr-lab">Island — Final scribble</div>
@@ -4069,7 +4107,7 @@ try {
     <a class="dr-link" id="lnk-scene" target="_blank" rel="noopener" title="End-of-stream dashboard — add it as a browser source in your Ending scene">End scene</a>
   </div>
   </section>
-  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = scored + hate toast. Say <b>hoomp</b> or <b>plop</b> anywhere in chat for the HOOMP / PLOP moments.<br>Mods: <b>!rateopen</b> / <b>!rateopen tier 120 Topic</b> (tier board for this poll) / <b>!tiernext [sheet]</b> (next sheet item → tier poll) / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>V</b> vote mode (Score / Tier list) · <b>T</b> theme (Ledger / Glass) · <b>B</b> stack content (Auto / Cards / Tier board) · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Theme (drawer, <b>T</b>, or <b>?theme=glass</b> in the OBS URL): <b>Ledger</b> is the flat spreadsheet skin with no liquid glass anywhere — <b>Glass</b> restores the liquid-glass recipe. Glass tuning dims while ledger is on.<br>Vote mode (drawer default, per-poll <b>!rateopen tier …</b>, or <b>?votemode=tier</b> in the OBS URL): same <b>!vote -10 to 10</b> votes, shown as a flat spreadsheet tier board (S ≥9 · A ≥7 · B ≥5 · C ≥3 · D ≥1.5 · F &lt;1.5 score bands — final S–F is percentile across the sheet list) — no liquid glass on the board. Picking a vote style also switches the skin just after the swap — Tier list → Ledger, Score → Glass (T overrides until the next switch).<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling + island size: <b>?stack=0.5–2.5</b> (default 1) or the <b>Portion size</b> slider — the lifted island scales with the column. Wrestling overlay: <b>?wrestling=0</b> hides the stack. Bottom-right slot: <b>Stack content</b> (drawer, <b>B</b>, or <b>?stackmode=auto/cards/tiers</b>) follows the vote style by default — Tier list swaps the episode / merch / ticker cards for the live tier board — same votes, camera window stays. <b>Scene preset</b> sets overlay + slot together: <b>Wrestling</b> (shown + cards), <b>Tier board</b> (shown + tiers), <b>Rater only</b> (stack hidden). Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
+  <div class="dr-hint">Chat votes with <b>!vote -10 to 10</b> (decimals OK, e.g. <b>7.5</b> · <b>0.5</b> · <b>-3</b>) or <b>!vote hoomp</b> — counted separately, never touches the average. <b>!vote 0</b> = scored + hate toast. Say <b>hoomp</b> or <b>plop</b> anywhere in chat for the HOOMP / PLOP moments.<br>Mods: <b>!rateopen</b> / <b>!rateopen tier 120 Topic</b> (tier board for this poll) / <b>!rateopen sham 120 Item</b> (SHAM verdict — !vote sham vs keeps; type SHAM to nominate, 3 chatters qualifies, one per list, sham must outnumber keeps) / <b>!tiernext [sheet]</b> (next sheet item → tier poll) / <b>!rateend</b> / <b>!rateclear</b> / <b>!top5</b> / <b>!ratepause</b> / <b>!rateextend 30</b> / <b>!voteundo user</b> / <b>!ratelock</b>.<br>Keys: <b>D</b> controls · <b>P</b> pause · <b>E</b> end · <b>Shift+C</b> clear · <b>V</b> vote mode (Score / Tier list) · <b>T</b> theme (Ledger / Glass) · <b>B</b> stack content (Auto / Cards / Tier board) · <b>I</b> island panel (Island layout only) · <b>W</b> wrestling overlay.<br>Theme (drawer, <b>T</b>, or <b>?theme=glass</b> in the OBS URL): <b>Ledger</b> is the flat spreadsheet skin with no liquid glass anywhere — <b>Glass</b> restores the liquid-glass recipe. Glass tuning dims while ledger is on.<br>Vote mode (drawer default, per-poll <b>!rateopen tier …</b>, or <b>?votemode=tier</b> in the OBS URL): same <b>!vote -10 to 10</b> votes, shown as a flat spreadsheet tier board (S ≥9 · A ≥7 · B ≥5 · C ≥3 · D ≥1.5 · F &lt;1.5 score bands — final S–F is percentile across the sheet list) — no liquid glass on the board. Picking a vote style also switches the skin just after the swap — Tier list → Ledger, Score → Glass (T overrides until the next switch).<br>Wrestling controls live above under <b>Wrestling</b> — overlay visibility, episode, live merch, ticker. Accent recolors rater and stack together. Wrestling + island size: <b>?stack=0.5–2.5</b> (default 1) or the <b>Portion size</b> slider — the lifted island scales with the column. Wrestling overlay: <b>?wrestling=0</b> hides the stack. Bottom-right slot: <b>Stack content</b> (drawer, <b>B</b>, or <b>?stackmode=auto/cards/tiers</b>) follows the vote style by default — Tier list swaps the episode / merch / ticker cards for the live tier board — same votes, camera window stays. <b>Scene preset</b> sets overlay + slot together: <b>Wrestling</b> (shown + cards), <b>Tier board</b> (shown + tiers), <b>Rater only</b> (stack hidden). Head circle: <b>?phring=1</b> rings the Pete heads (default off). Chatbox: bottom-center when shown (<b>?chat=1</b>), <b>?chatpos=bl|br</b> moves it. Bubbles stack over the collapsed island per message (<b>?bubble=0</b> off). Positions (OBS has no drawer, so pin them in the URL): <b>?corner=br</b> · <b>?pos=right</b> · <b>?ipos=br</b>.<br>This file defaults to <b>?channel=agoodpete</b> — ?channel= still overrides. Stream source: <b>agoodpete.html?channel=agoodpete&amp;clean=1</b> (add <b>&amp;accent=…</b> to carry the accent).</div>
 </div>
 
 <!-- ═══════ FULL PAGES ═══════ -->
@@ -6023,7 +6061,8 @@ if (document.readyState === 'loading') {
       events: [],
       seen: [],
       hoompLog: [],
-      undoClear: null
+      undoClear: null,
+      sham: { dec: {}, used: null }
     };
   }
 
@@ -6083,6 +6122,8 @@ if (document.readyState === 'loading') {
     poll.id = String(poll.id || `${poll.opened || 0}|${poll.question || ''}`);
     poll.question = String(poll.question || 'Rate this').slice(0, 80);
     poll.votemode = poll.votemode === 'tier' ? 'tier' : 'score';
+    poll.sham = value.sham === true;
+    poll.shams = validHoompMap(value.shams);
     poll.votes = validVoteMap(poll.votes);
     poll.hoomps = validHoompMap(poll.hoomps);
     poll.voters = Object.assign(Object.create(null), poll.voters || {});
@@ -6144,6 +6185,10 @@ if (document.readyState === 'loading') {
         avg: item.avg,
         votes: Math.max(0, Number(item.votes) || 0),
         hoomps: Math.max(0, Number(item.hoomps) || 0),
+        sham: item.sham === 'won' ? 'won' : item.sham === 'lost' ? 'lost' : '',
+        shamVotes: Math.max(0, Number(item.shamVotes) || 0),
+        keepVotes: Math.max(0, Number(item.keepVotes) || 0),
+        shammed: item.shammed === true,
         ts: String(item.ts || ''),
         voteMap: validVoteMap(item.voteMap),
         hoompMap: validHoompMap(item.hoompMap),
@@ -6161,6 +6206,36 @@ if (document.readyState === 'loading') {
     state.hoompLog = (Array.isArray(raw.hoompLog) ? raw.hoompLog : [])
       .filter(Number.isFinite)
       .slice(-300);
+
+    /* SHAM ledger: declarations per item question + the spent lock. Capped
+       so a decade of streams can't bloat storage. */
+    state.sham = { dec: {}, used: null };
+    try {
+      const rawSham = raw.sham || {};
+      if (rawSham.used && rawSham.used.scope) {
+        state.sham.used = {
+          scope: String(rawSham.used.scope).slice(0, 60),
+          question: String(rawSham.used.question || '').slice(0, 80)
+        };
+      }
+      if (rawSham.dec && typeof rawSham.dec === 'object') {
+        Object.keys(rawSham.dec).slice(0, 60).forEach(qkey => {
+          const entry = rawSham.dec[qkey];
+          if (!entry || typeof entry.users !== 'object') return;
+          const users = Object.create(null);
+          Object.keys(entry.users).slice(0, 12).forEach(name => {
+            const clean = channelName(name);
+            if (clean) users[clean] = Number(entry.users[name]) || Date.now();
+          });
+          if (Object.keys(users).length) {
+            state.sham.dec[String(qkey).slice(0, 80)] = {
+              users,
+              eligible: entry.eligible === true
+            };
+          }
+        });
+      }
+    } catch (e) {}
 
     if (
       raw.undoClear &&
@@ -6283,15 +6358,19 @@ if (document.readyState === 'loading') {
     const values = Object.values((poll && poll.votes) || {})
       .filter(Number.isFinite);
     /* HOOMP votes ride alongside numeric votes: counted separately in
-       poll.hoomps, never mixed into the average. */
+       poll.hoomps, never mixed into the average. SHAM ballots work the
+       same way for verdict polls. */
     const hoomps = poll && poll.hoomps && typeof poll.hoomps === 'object'
       ? Object.keys(poll.hoomps).length
+      : 0;
+    const shams = poll && poll.shams && typeof poll.shams === 'object'
+      ? Object.keys(poll.shams).length
       : 0;
 
     if (!values.length) {
       return {
         n: 0, avg: 0, med: null, sd: null,
-        hi: 0, mid: 0, lo: 0, hoomps
+        hi: 0, mid: 0, lo: 0, hoomps, shams
       };
     }
 
@@ -6313,7 +6392,7 @@ if (document.readyState === 'loading') {
       hi: values.filter(v => v >= 8).length,
       mid: values.filter(v => v >= 4 && v < 8).length,
       lo: values.filter(v => v < 4).length,
-      hoomps
+      hoomps, shams
     };
   }
 
@@ -6466,9 +6545,14 @@ if (document.readyState === 'loading') {
     return poll && poll.votemode === 'tier' ? 'tier' : 'score';
   }
 
-  function tierTableHTML(buckets) {
+  function tierFootText() {
     var listName = '';
     try { listName = (typeof TIERLIST !== 'undefined' && TIERLIST && TIERLIST.list) || ''; } catch (e) {}
+    return 'Score bands, not final tiers — final S–F is percentile across ' +
+      esc(listName || 'the list') + '.';
+  }
+
+  function tierTableHTML(buckets) {
     return '<div class="tr-head"><span>Tier</span><span>Score</span>' +
       '<span class="tr-num">Votes</span><span class="tr-num">Share</span></div>' +
       buckets.rows.map(row =>
@@ -6482,8 +6566,50 @@ if (document.readyState === 'loading') {
         '%"></i></span>' +
         '</div>'
       ).join('') +
-      '<div class="tr-foot">Score bands, not final tiers — final S–F is percentile across ' +
-      esc(listName || 'the list') + '.</div>';
+      '<div class="tr-foot">' + tierFootText() + '</div>';
+  }
+
+  /* Live tier board painter: builds the table once, then updates rows in
+     place so share bars glide, counts bump, fresh leaders pop and the row
+     that just gained a vote flashes — instead of the whole board snapping
+     on every vote. Falls back to a rebuild whenever the row set changes. */
+  function paintTierBoard(el, buckets) {
+    if (!el || !buckets) return;
+    const rows = el.querySelectorAll('.tr-row');
+    const want = buckets.rows.map(row => row.t).join('');
+    const have = Array.prototype.map.call(rows, row => row.dataset.tier).join('');
+    if (!rows.length || have !== want) {
+      setHTML(el, tierTableHTML(buckets));
+      el._tierCounts = {};
+      buckets.rows.forEach(row => { el._tierCounts[row.t] = row.count; });
+      return;
+    }
+    const last = el._tierCounts || {};
+    buckets.rows.forEach(row => {
+      const node = el.querySelector('.tr-row[data-tier="' + row.t + '"]');
+      if (!node) return;
+      const wasTop = node.classList.contains('top');
+      node.classList.toggle('top', !!row.top);
+      if (row.top && !wasTop) pulse(node, 'pop');
+      const countEl = node.querySelector('.tr-count');
+      if (countEl && countEl.textContent !== String(row.count)) {
+        countEl.textContent = row.count;
+        pulse(countEl, 'bump');
+      }
+      const pctEl = node.querySelector('.tr-pct');
+      if (pctEl) pctEl.textContent = row.pct + '%';
+      const bar = node.querySelector('.tr-bar i');
+      if (bar) {
+        bar.style.width = (buckets.total
+          ? Math.max(row.count ? 4 : 0, row.count / buckets.max * 100)
+          : 0) + '%';
+      }
+      if ((last[row.t] || 0) < row.count) pulse(node, 'flash');
+    });
+    el._tierCounts = {};
+    buckets.rows.forEach(row => { el._tierCounts[row.t] = row.count; });
+    const foot = el.querySelector('.tr-foot');
+    if (foot) foot.textContent = tierFootText();
   }
 
   function readableColor(hex) {
@@ -6589,12 +6715,15 @@ if (document.readyState === 'loading') {
        Topic". A bare leading tier/score is always a mode keyword; after the
        seconds it is only a keyword when seconds were given, so a question
        that merely starts with the word keeps it. Otherwise the drawer
-       default (VOTEMODE) seeds the poll. */
+       default (VOTEMODE) seeds the poll. "sham" in either slot opens a
+       SHAM verdict poll instead (!vote sham vs keep scores). */
     let votemode = VOTEMODE;
+    let sham = false;
     let rest = rawArgs;
-    const lead = rest.match(/^(tier|score)\b\s*/i);
+    const lead = rest.match(/^(tier|score|sham)\b\s*/i);
     if (lead) {
-      votemode = lead[1].toLowerCase();
+      if (lead[1].toLowerCase() === 'sham') sham = true;
+      else votemode = lead[1].toLowerCase();
       rest = rest.slice(lead[0].length);
     }
 
@@ -6605,9 +6734,10 @@ if (document.readyState === 'loading') {
     let question = String(match && match[2] || '').trim();
 
     if (match && match[1]) {
-      const after = question.match(/^(tier|score)\b\s*/i);
+      const after = question.match(/^(tier|score|sham)\b\s*/i);
       if (after) {
-        votemode = after[1].toLowerCase();
+        if (after[1].toLowerCase() === 'sham') sham = true;
+        else votemode = after[1].toLowerCase();
         question = question.slice(after[0].length).trim();
       }
     }
@@ -6618,8 +6748,10 @@ if (document.readyState === 'loading') {
       id: uid(),
       question: question || 'Rate this',
       votemode,
+      sham,
       votes: Object.create(null),
       hoomps: Object.create(null),
+      shams: Object.create(null),
       voters: Object.create(null),
       status: 'open',
       opened: now,
@@ -6638,7 +6770,7 @@ if (document.readyState === 'loading') {
     state.events = [];
     state.undoClear = null;
       addEvent(state, 'Rating opened — !vote -10 to 10, !vote hoomp; 0 scores + hate toast.' +
-        (votemode === 'tier' ? ' Tier board on.' : ''));
+        (sham ? ' SHAM verdict — !vote sham vs keep scores.' : votemode === 'tier' ? ' Tier board on.' : ''));
     return { changed: true, effect: { kind: 'open' } };
   }
 
@@ -6659,7 +6791,7 @@ if (document.readyState === 'loading') {
     poll.closed = Date.now();
     poll.trend = null;
 
-    if (previous && st.n > 0 && !poll.demo) {
+    if (previous && st.n > 0 && !poll.demo && !poll.sham) {
       const delta = Math.round((st.avg - previous.avg) * 10) / 10;
       poll.trend = {
         d: Math.abs(delta),
@@ -6667,6 +6799,13 @@ if (document.readyState === 'loading') {
         prev: previous.avg
       };
     }
+
+    /* SHAM verdict: removal ballots must strictly outnumber keep scores.
+       A win locks the list's one sham onto this item (it can't move) and
+       marks the scored entry so tier reveals skip it. */
+    const shamVerdict = poll.sham
+      ? { shams: st.shams, keeps: st.n, won: st.shams > st.n }
+      : null;
 
     if (!poll.demo && !state.results.some(result => result.id === poll.id)) {
       state.results.unshift({
@@ -6676,22 +6815,42 @@ if (document.readyState === 'loading') {
         avg: st.avg,
         votes: st.n,
         hoomps: st.hoomps,
+        sham: shamVerdict ? (shamVerdict.won ? 'won' : 'lost') : '',
+        shamVotes: shamVerdict ? shamVerdict.shams : 0,
+        keepVotes: shamVerdict ? shamVerdict.keeps : st.n,
         ts: new Date().toISOString(),
         voteMap: clone(poll.votes),
         hoompMap: clone(poll.hoomps || {}),
         voters: clone(poll.voters)
       });
       state.results.length = Math.min(state.results.length, 100);
+
+      if (shamVerdict && !poll.demo) {
+        /* The list's one sham is spent on the verdict — win or lose, it
+           can't move to another item. Only a win marks the scored entry. */
+        state.sham.used = { scope: shamScope(), question: poll.question };
+        if (shamVerdict.won) {
+          const target = shamQ(poll.question);
+          const hit = state.results.find(result =>
+            result.id !== poll.id && !result.sham && shamQ(result.question) === target
+          );
+          if (hit) hit.shammed = true;
+        }
+      }
     }
 
     addEvent(
       state,
-      st.n
-        ? `Final: ${st.avg.toFixed(1)}/10 from ${st.n} votes` +
-          (st.hoomps ? ` + ${st.hoomps} hoomp${st.hoomps === 1 ? '' : 's'}` : '')
-        : st.hoomps
-          ? `Closed with no numeric votes — ${st.hoomps} hoomp${st.hoomps === 1 ? '' : 's'}`
-          : 'Rating closed with no votes'
+      shamVerdict
+        ? (shamVerdict.won
+            ? `SHAM WINS on ${poll.question} — ${shamVerdict.shams} sham vs ${shamVerdict.keeps} keep`
+            : `SHAM FAILS on ${poll.question} — ${shamVerdict.shams} sham vs ${shamVerdict.keeps} keep`)
+        : st.n
+          ? `Final: ${st.avg.toFixed(1)}/10 from ${st.n} votes` +
+            (st.hoomps ? ` + ${st.hoomps} hoomp${st.hoomps === 1 ? '' : 's'}` : '')
+          : st.hoomps
+            ? `Closed with no numeric votes — ${st.hoomps} hoomp${st.hoomps === 1 ? '' : 's'}`
+            : 'Rating closed with no votes'
     );
 
     /* Tier auto-advance: a closed tier poll pulls the next sheet item —
@@ -6713,6 +6872,10 @@ if (document.readyState === 'loading') {
         avg: st.avg,
         votes: st.n,
         hoomps: st.hoomps,
+        sham: !!shamVerdict,
+        shamWon: !!(shamVerdict && shamVerdict.won),
+        shams: shamVerdict ? shamVerdict.shams : 0,
+        keeps: shamVerdict ? shamVerdict.keeps : st.n,
         trend: poll.trend,
         pollId: poll.id
       }
@@ -6818,7 +6981,7 @@ if (document.readyState === 'loading') {
 
     if (!user) {
       const event = state.events.find(item =>
-        (item.kind === 'vote' || item.kind === 'hoompvote') &&
+        (item.kind === 'vote' || item.kind === 'hoompvote' || item.kind === 'shamvote') &&
         item.pollId === poll.id &&
         (own(poll.votes, item.user) ||
           (poll.hoomps && own(poll.hoomps, item.user)))
@@ -6829,14 +6992,16 @@ if (document.readyState === 'loading') {
     if (!user) return { changed: false };
     const hasVote = own(poll.votes, user);
     const hasHoomp = poll.hoomps && own(poll.hoomps, user);
-    if (!hasVote && !hasHoomp) return { changed: false };
+    const hasSham = poll.shams && own(poll.shams, user);
+    if (!hasVote && !hasHoomp && !hasSham) return { changed: false };
 
     if (hasVote) delete poll.votes[user];
     if (hasHoomp) delete poll.hoomps[user];
-    if (hasVote) delete poll.voters[user];
+    if (hasSham) delete poll.shams[user];
+    if (hasVote || hasSham) delete poll.voters[user];
 
     state.events = state.events.filter(item =>
-      !((item.kind === 'vote' || item.kind === 'hoompvote') && item.user === user)
+      !((item.kind === 'vote' || item.kind === 'hoompvote' || item.kind === 'shamvote') && item.user === user)
     );
 
     sampleAverage(poll);
@@ -6855,13 +7020,20 @@ if (document.readyState === 'loading') {
     ) return closePoll(state);
 
     const text = String(args || '').trim();
+    /* SHAM verdict polls: !vote sham casts a removal ballot (same shape as
+       HOOMP — countable, never touches the average). Inline regex keeps
+       this function self-contained for headless tests. */
+    if (poll.sham && /^s+h+a+m+s?$/i.test(text)) {
+      return castSham(state, poll, user, color, badges);
+    }
+    if (!/^-?\d+([.,]\d+)?$/.test(text)) return { changed: false };
     /* HOOMP as a countable vote: !vote hoomp / !rate hoomp records one
        HOOMP per user per poll, fires the usual HOOMP moment, and never
        touches the numeric average. Inline regex (not the shared helper)
        keeps this function self-contained for headless tests. */
     if (/^h+o+mp+s?$/i.test(text)) {
       if (!poll.hoomps || typeof poll.hoomps !== 'object') poll.hoomps = Object.create(null);
-      if (poll.locked && !own(poll.votes, user) && !own(poll.hoomps, user)) return { changed: false };
+      if (poll.locked && !own(poll.votes, user) && !own(poll.hoomps, user) && !(poll.shams && own(poll.shams, user))) return { changed: false };
       if (own(poll.hoomps, user)) return { changed: false };
       poll.hoomps[user] = Date.now();
       if (!state.hoompLog) state.hoompLog = [];
@@ -6891,9 +7063,12 @@ if (document.readyState === 'loading') {
       return { changed: false };
     }
 
-    if (poll.locked && !own(poll.votes, user) && !(poll.hoomps && own(poll.hoomps, user))) return { changed: false };
+    if (poll.locked && !own(poll.votes, user) && !(poll.hoomps && own(poll.hoomps, user)) && !(poll.shams && own(poll.shams, user))) return { changed: false };
 
     const value = Math.round(raw * 10) / 10;
+
+    /* One ballot per chatter: a numeric keep clears a SHAM ballot. */
+    if (poll.sham && poll.shams) delete poll.shams[user];
 
     /* Zero is a scored vote like any other — it still carries the hate
        toast (flagged on the vote effect, gated by the hate toggle). */
@@ -6918,7 +7093,7 @@ if (document.readyState === 'loading') {
     }
 
     const entries = state.results
-      .filter(result => result.votes > 0)
+      .filter(result => result.votes > 0 && !result.shammed && !result.sham)
       .slice()
       .sort((a, b) => b.avg - a.avg)
       .slice(0, 5)
@@ -7013,6 +7188,78 @@ if (document.readyState === 'loading') {
     return String(message || '')
       .split(/[^a-z]/i)
       .some(word => /^p+l+o+p+$/i.test(word));
+  }
+
+  /* SHAM declarations: a bare "sham" in chat (elongation tolerant) nominates
+     the open poll's item for removal. Three DISTINCT chatters qualify it;
+     one sham per list (TIERLIST list, else the stream) — once spent it
+     can't move. In a sham verdict poll the keyword counts as a ballot. */
+  function shamHit(message) {
+    return String(message || '')
+      .split(/[^a-z]/i)
+      .some(word => /^s+h+a+m+s?$/i.test(word));
+  }
+
+  function shamScope() {
+    try { return TIERLIST.list || 'stream'; } catch (e) { return 'stream'; }
+  }
+
+  function shamQ(question) {
+    return String(question || '').trim().toLowerCase().slice(0, 80);
+  }
+
+  function shamDeclare(state, user) {
+    const poll = state.poll;
+    if (!poll || poll.status !== 'open') return { changed: false };
+    if (poll.sham) return castSham(state, poll, user, '', '');
+
+    const scope = shamScope();
+    if (!state.sham) state.sham = { dec: {}, used: null };
+    if (state.sham.used && state.sham.used.scope === scope) return { changed: false };
+
+    const q = shamQ(poll.question);
+    if (!q) return { changed: false };
+    const entry = state.sham.dec[q] || (state.sham.dec[q] = { users: Object.create(null) });
+    if (entry.eligible || own(entry.users, user)) return { changed: false };
+    entry.users[user] = Date.now();
+
+    const count = Object.keys(entry.users).length;
+    if (count >= 3) {
+      entry.eligible = true;
+      addEvent(state, 'SHAM qualified on ' + poll.question + ' — verdict poll next');
+      return { changed: true, effect: { kind: 'shamqual', user, question: poll.question } };
+    }
+    addEvent(state, user + ' cries SHAM (' + count + '/3) — ' + poll.question);
+    return { changed: true };
+  }
+
+  /* One ballot per chatter: SHAM clears a numeric keep and vice versa, so
+     "SHAM wins" is well-defined at close (strict majority of ballots). */
+  function castSham(state, poll, user, color, badges) {
+    if (!poll || poll.status !== 'open' || !poll.sham) return { changed: false };
+    if (!poll.shams || typeof poll.shams !== 'object') poll.shams = Object.create(null);
+    if (poll.locked && !own(poll.votes, user) && !own(poll.shams, user)) return { changed: false };
+    if (own(poll.shams, user)) return { changed: false };
+
+    const hadKeep = own(poll.votes, user);
+    delete poll.votes[user];
+    if (hadKeep) delete poll.voters[user];
+    poll.shams[user] = Date.now();
+    if (!poll.voters[user]) poll.voters[user] = { c: color || '', b: badges || '' };
+
+    state.events = state.events.filter(event =>
+      !(event.kind === 'shamvote' && event.user === user)
+    );
+    state.events.unshift({
+      ts: Date.now() / 1000,
+      kind: 'shamvote',
+      pollId: poll.id,
+      user,
+      c: color || '',
+      b: badges || ''
+    });
+    state.events.length = Math.min(state.events.length, 16);
+    return { changed: true, effect: { kind: 'sham', user } };
   }
 
   function dispatch(state, request) {
@@ -7160,6 +7407,11 @@ if (document.readyState === 'loading') {
         effect: { kind: 'plop', user }
       };
     }
+
+    /* SHAM declarations ride bare in chat (like HOOMP moments, unlike
+       commands): three distinct chatters qualify an item, one sham per
+       list. In a verdict poll the keyword counts as a ballot. */
+    if (shamHit(message)) return shamDeclare(state, user);
 
     return { changed: false };
   }
@@ -8044,6 +8296,65 @@ if (document.readyState === 'loading') {
     dismissCallout(element, 6000);
   }
 
+  /* SHAM verdict reveal: same choreography as a final (island owns it or
+     the center-screen toast falls back), but the copy is the verdict, not
+     an average. A win also earns confetti. */
+  function shamFinal(effect) {
+    const won = !!effect.shamWon;
+    const tally = effect.shams + ' sham · ' + effect.keeps + ' keep';
+    const islandOwned = islandFinal();
+    try {
+      blurReveal($('diFt1'), won ? 'SHAM WINS' : 'SHAM FAILS');
+      $('diFt2').textContent = tally;
+    } catch (e) {}
+    if (!islandOwned) shamToast(won, tally);
+    if (won) confetti(50);
+    [392, 523, 659].forEach((frequency, index) => {
+      setTimeout(() => sound(frequency, 0.2), index * 110);
+    });
+    kickRater();
+  }
+
+  function shamToast(won, tally) {
+    if (!SHOWCO || FULLPAGE || !CHANNEL) return;
+    const box = $('callouts');
+    if (!box) return;
+    while (box.children.length >= 4) box.firstElementChild.remove();
+
+    const element = document.createElement('div');
+    element.className = 'callout final';
+    element.setAttribute('role', 'status');
+
+    const sheen = document.createElement('span');
+    sheen.className = 'co-sheen';
+    sheen.setAttribute('aria-hidden', 'true');
+    element.appendChild(sheen);
+
+    const col = document.createElement('div');
+    col.className = 'co-final-col';
+    element.appendChild(col);
+
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'co-eyebrow';
+    eyebrow.textContent = 'Sham verdict';
+    col.appendChild(eyebrow);
+
+    const word = document.createElement('span');
+    word.className = 'co-word ' + (won ? 'banger' : 'rough');
+    word.textContent = won ? 'SHAM WINS' : 'SHAM FAILS';
+    col.appendChild(word);
+
+    const count = document.createElement('span');
+    count.className = 'co-n';
+    count.textContent = tally;
+    col.appendChild(count);
+
+    element.style.left = '50%';
+    box.appendChild(element);
+    layoutCallouts(box);
+    dismissCallout(element, 6000);
+  }
+
   function confetti(count) {
     if (FULLPAGE || reducedMotion || LITE) return;
 
@@ -8277,10 +8588,34 @@ if (document.readyState === 'loading') {
 
     if (effect.kind === 'top5') islandShow('top5', 8200);
 
+    if (effect.kind === 'shamqual') {
+      const tookQ = MODE === 'island'
+        ? islandPeek('SHAM qualified — ' + effect.question, 3400)
+        : false;
+      if (!tookQ) callout('SHAM qualified', effect.question);
+      sound(740, 0.12);
+      setTimeout(() => sound(988, 0.16), 110);
+    }
+
+    if (effect.kind === 'sham') {
+      const sPoll = activeState().poll;
+      const shCount = sPoll && sPoll.shams ? Object.keys(sPoll.shams).length : 0;
+      const kpCount = sPoll ? stats(sPoll).n : 0;
+      const tookS = MODE === 'island'
+        ? islandPeek(`${effect.user} votes SHAM (${shCount}–${kpCount})`, 2600)
+        : false;
+      if (!tookS) callout(effect.user + ' votes SHAM', shCount + '–' + kpCount);
+      kickRater();
+    }
+
     if (effect.kind === 'final') {
-      const islandOwned = islandFinal();
-      if (!islandOwned) {
-        finalToast(effect.avg, effect.votes, effect.trend, effect.hoomps);
+      if (effect.sham) {
+        shamFinal(effect);
+      } else {
+        const islandOwned = islandFinal();
+        if (!islandOwned) {
+          finalToast(effect.avg, effect.votes, effect.trend, effect.hoomps);
+        }
       }
 
       if (effect.votes && effect.avg >= 7.5) {
@@ -8298,7 +8633,7 @@ if (document.readyState === 'loading') {
          moment; everywhere else (or if the pill can't take it) celebrate()
          falls back to a callout. The timer is guarded by poll id +
          still-closed so a stale fire after the next poll opens is dropped. */
-      if (effect.votes && effect.avg >= 9) {
+      if (effect.votes && effect.avg >= 9 && !effect.sham) {
         const sPoll = effect.pollId;
         const sSub = effect.avg.toFixed(1) + ' · ' + effect.votes +
           (effect.votes === 1 ? ' vote' : ' votes');
@@ -8423,12 +8758,36 @@ if (document.readyState === 'loading') {
           '<span class="u"' + (color ? ' style="color:' + color + '"' : '') + '>' +
           esc(event.user) + '</span><span class="v hi">HOOMP</span></div>';
       }
+      if (event.kind === 'shamvote') {
+        const color = readableColor(event.c);
+        return '<div class="e vote hoompv">' +
+          '<span class="u"' + (color ? ' style="color:' + color + '"' : '') + '>' +
+          esc(event.user) + '</span><span class="v lo">SHAM</span></div>';
+      }
       return '<div class="e">' + esc(event.text) + '</div>';
     }).join('');
   }
 
   function hoompLabel(count) {
     return count ? ` · ${count} hoomp${count === 1 ? '' : 's'}` : '';
+  }
+
+  function shamLabel(count) {
+    return count ? ` · ${count} sham${count === 1 ? '' : 's'}` : '';
+  }
+
+  /* Open-poll SHAM declaration readout for the classic stats ("2/3",
+     "ready"). Empty string when nothing is brewing. */
+  function shamDecCell(state, poll) {
+    try {
+      if (!poll || poll.status !== 'open' || poll.sham) return '';
+      if (!state.sham || !state.sham.dec) return '';
+      const entry = state.sham.dec[shamQ(poll.question)];
+      if (!entry) return '';
+      if (entry.eligible) return statCell('sham', 'ready');
+      const n = Object.keys(entry.users).length;
+      return n ? statCell('sham', n + '/3') : '';
+    } catch (e) { return ''; }
   }
 
   /* ----------------------- Classic ------------------------------- */
@@ -8496,7 +8855,7 @@ if (document.readyState === 'loading') {
     panel.dataset.votemode = pollTier(poll);
 
     $('cshow').textContent = state.show_name;
-    $('cvoters').textContent = st.n + (st.n === 1 ? ' vote' : ' votes') + hoompLabel(st.hoomps);
+    $('cvoters').textContent = st.n + (st.n === 1 ? ' vote' : ' votes') + hoompLabel(st.hoomps) + shamLabel(st.shams);
 
     const key = poll ? poll.id + ':' + poll.status + ':' + pollTier(poll) : 'idle';
     if (key !== UI.classicKey) {
@@ -8527,7 +8886,7 @@ if (document.readyState === 'loading') {
       if (avgNow != null && lastCrowdAvg != null && Math.abs(avgNow - lastCrowdAvg) >= 0.3) pulse($('cavg'), 'pop');
       lastCrowdAvg = avgNow;
       setNumber($('cavg'), avgNow);
-      $('ccnt').textContent = st.n + ' votes' + hoompLabel(st.hoomps);
+      $('ccnt').textContent = st.n + ' votes' + hoompLabel(st.hoomps) + shamLabel(st.shams);
 
       Array.from($('cstars').children).forEach((star, index) => {
         star.classList.toggle('on', st.n > 0 && index < Math.round(score(poll)));
@@ -8546,14 +8905,16 @@ if (document.readyState === 'loading') {
 
       if (pollTier(poll) === 'tier') {
         const buckets = tierBuckets(poll);
-        setHTML($('ctiers'), tierTableHTML(buckets));
+        paintTierBoard($('ctiers'), buckets);
 
-        $('cdcap').textContent = (TIERLIST.list ? TIERLIST.list + ' · ' : '') + 'Tier board · ' + st.n + ' cast' + hoompLabel(st.hoomps);
+        $('cdcap').textContent = (TIERLIST.list ? TIERLIST.list + ' · ' : '') + 'Tier board · ' + st.n + ' cast' + hoompLabel(st.hoomps) + shamLabel(st.shams);
         $('cdstats').innerHTML =
           statCell('avg', st.n ? st.avg.toFixed(1) : '—') +
           statCell('top tier', buckets.winner) +
           statCell('median', st.med == null ? '—' : fmt(st.med)) +
-          (st.hoomps ? statCell('hoomps', st.hoomps) : '');
+          (st.hoomps ? statCell('hoomps', st.hoomps) : '') +
+          (poll.sham ? statCell('sham', st.shams + '–' + st.n) : '') +
+          shamDecCell(state, poll);
       } else {
         const dist = distribution(poll);
         const columns = document.querySelectorAll('#cdistbox .dc');
@@ -8568,12 +8929,22 @@ if (document.readyState === 'loading') {
           column.title = count + ' votes';
         });
 
-        $('cdcap').textContent = 'Votes · ' + st.n + ' cast' + hoompLabel(st.hoomps);
+        const shamLead = poll.sham
+          ? (st.shams > st.n ? 'SHAM' : st.n > st.shams ? 'KEEP' : 'TIED')
+          : '';
+        $('cdcap').textContent = poll.sham
+          ? 'SHAM ' + st.shams + ' · KEEP ' + st.n + hoompLabel(st.hoomps)
+          : 'Votes · ' + st.n + ' cast' + hoompLabel(st.hoomps);
         $('cdstats').innerHTML =
           statCell('avg', st.n ? st.avg.toFixed(1) : '—') +
           statCell('top band', dist.mode) +
           statCell('median', st.med == null ? '—' : fmt(st.med)) +
-          (st.hoomps ? statCell('hoomps', st.hoomps) : '');
+          (st.hoomps ? statCell('hoomps', st.hoomps) : '') +
+          (poll.sham ? statCell('sham', st.shams + '–' + st.n) : '') +
+          shamDecCell(state, poll) +
+          (poll.sham && poll.status === 'closed'
+            ? statCell('verdict', st.shams > st.n ? 'SHAM WINS' : 'SHAM FAILS')
+            : poll.sham ? statCell('leads', shamLead) : '');
       }
     }
 
@@ -8634,10 +9005,12 @@ if (document.readyState === 'loading') {
 
     $('stopic').textContent = poll ? poll.question : 'Rate this';
     setNumber($('savg'), st.n ? score(poll) : null);
-    $('scount').textContent = st.n + ' votes' + hoompLabel(st.hoomps);
+    $('scount').textContent = st.n + ' votes' + hoompLabel(st.hoomps) + shamLabel(st.shams);
     $('stimer').textContent = timerText(poll);
-    $('sverdict').hidden = !FEAT.verdict || !st.n;
-    $('sverdict').textContent = st.n ? verdictWord(score(poll)) : '';
+    $('sverdict').hidden = !FEAT.verdict || (!st.n && !(poll && poll.sham && poll.status === 'closed'));
+    $('sverdict').textContent = poll && poll.sham && poll.status === 'closed'
+      ? (st.shams > st.n ? 'SHAM WINS' : 'SHAM FAILS')
+      : st.n ? verdictWord(score(poll)) : '';
 
     const trend = FEAT.trend && poll && poll.trend;
     $('strend').hidden = !trend;
@@ -8650,16 +9023,21 @@ if (document.readyState === 'loading') {
         (st.n ? count / st.n * 100 : 0) + '%';
     });
 
-    $('sstats').innerHTML = pollTier(poll) === 'tier'
-      ? tierTableHTML(tierBuckets(poll))
-      : [
+    if (pollTier(poll) === 'tier') {
+      /* Stable skeleton + in-place painter: the studio board glides like
+         every other surface instead of rebuilding each render. */
+      if (!$('stiers')) $('sstats').innerHTML = '<div class="tier-table" id="stiers"></div>';
+      paintTierBoard($('stiers'), tierBuckets(poll));
+      return;
+    }
+    $('sstats').innerHTML = [
         ['Avg', st.n ? st.avg.toFixed(1) : '—'],
         ['Median', st.med == null ? '—' : fmt(st.med)],
         ['Votes', st.n],
         ['High ≥8', st.hi],
         ['Mid 4–<8', st.mid],
         ['Low <4', st.lo]
-      ].concat(st.hoomps ? [['Hoomps', st.hoomps]] : []).map(([label, value]) =>
+      ].concat(st.hoomps ? [['Hoomps', st.hoomps]] : []).concat(poll && poll.sham ? [['Sham', st.shams + '–' + st.n]] : []).map(([label, value]) =>
         '<span>' + esc(label) + '<b>' + esc(value) + '</b></span>'
       ).join('');
 
@@ -8794,7 +9172,7 @@ if (document.readyState === 'loading') {
           <div class="di-hero">
             <span class="di-word" id="diWord"></span>
             <span class="di-big" id="diBig">—</span>
-            <span class="di-den">/10</span>
+            <span class="di-den" id="diDen">/10</span>
             <span class="di-n" id="diN"></span>
           </div>
 
@@ -9379,10 +9757,11 @@ if (document.readyState === 'loading') {
     $('diTopic2').textContent = poll ? poll.question : 'Waiting for the next rating';
     $('diTimer').textContent = timerText(poll);
     $('diTimer').hidden = !poll || poll.status !== 'open';
-    const cntTxt = st.n + 'v' + (st.hoomps ? ` · ${st.hoomps}h` : '');
+    const shamTally = poll && poll.sham ? 'SHAM ' + st.shams + ' · KEEP ' + st.n : '';
+    const cntTxt = shamTally || st.n + 'v' + (st.hoomps ? ` · ${st.hoomps}h` : '');
     if ($('diCnt').textContent !== cntTxt) pulse($('diCnt'), 'bump');
     $('diCnt').textContent = cntTxt;
-    $('diCnt').hidden = !st.n && !st.hoomps;
+    $('diCnt').hidden = !shamTally && !st.n && !st.hoomps;
 
     /* Collapsed pill must stay live: the avg badge sits on the compact face,
        so update it on every tick — not only once the panel opens. Heavy
@@ -9412,15 +9791,30 @@ if (document.readyState === 'loading') {
       const entry = topEntry;
       const average = liveAvg;
 
-      setNumber($('diBig'), average);
-      $('diWord').textContent = entry ? 'TOP 5'
-        : st.n ? verdictWord(score(poll))
-        : noScore ? 'NO SCORE'
-        : pollOpen ? 'VOTE NOW' : 'STANDBY';
+      if (poll && poll.sham) {
+        /* Verdict hero: the SHAM count is the number that matters. */
+        $('diBig').textContent = st.shams;
+        $('diDen').hidden = true;
+        const closedSham = poll.status === 'closed';
+        const wonSham = closedSham && st.shams > st.n;
+        $('diWord').textContent = closedSham
+          ? (wonSham ? 'SHAM WINS' : 'SHAM FAILS')
+          : 'SHAM ' + st.shams + ' · KEEP ' + st.n;
+        $('diWord').className = 'di-word ' +
+          (closedSham ? (wonSham ? 'banger' : 'rough') : 'mixed');
+        if (TIERLIST.list && !demoState) $('diSub').textContent = TIERLIST.list + ' · #' + CHANNEL;
+      } else {
+        $('diDen').hidden = false;
+        setNumber($('diBig'), average);
+        $('diWord').textContent = entry ? 'TOP 5'
+          : st.n ? verdictWord(score(poll))
+          : noScore ? 'NO SCORE'
+          : pollOpen ? 'VOTE NOW' : 'STANDBY';
 
-      $('diWord').className = 'di-word ' +
-        (st.n && score(poll) < 4 ? 'rough'
-          : st.n && score(poll) >= 8.5 ? 'banger' : 'mixed');
+        $('diWord').className = 'di-word ' +
+          (st.n && score(poll) < 4 ? 'rough'
+            : st.n && score(poll) >= 8.5 ? 'banger' : 'mixed');
+      }
 
       const dist = distribution(poll);
 
@@ -9454,7 +9848,7 @@ if (document.readyState === 'loading') {
          the full info blocks below; when the board lives here, only the
          one-line strip fits. */
       const fullTier = tierOn && !boardHere && st.n > 0;
-      if (boardHere) setHTML($('diTier'), tierTableHTML(buckets));
+      if (boardHere) paintTierBoard($('diTier'), buckets);
       $('diTier').hidden = !boardHere;
 
       /* Tier meta line: list + score-style stats (median, leading tier,
@@ -10030,8 +10424,25 @@ if (document.readyState === 'loading') {
     if (GLIDE) glideTo(button);
   }
 
-  function toggleDrawer(force) {
-    const drawer = $('drawer');
+  /* Clean-mode control reveal (see CSS): first genuine input unhides the
+     Controls entry for this page instance only. Program render never
+     fires input, so program output stays clean. */
+  function revealControlsOnInput() {
+    try {
+      var root = document.documentElement;
+      if (!root) return;
+      var shown = false;
+      var reveal = function () {
+        if (shown) return;
+        shown = true;
+        try { root.classList.add('user-present'); } catch (e) {}
+      };
+      window.addEventListener('pointerdown', reveal, { capture: true, passive: true });
+      window.addEventListener('keydown', reveal, { capture: true });
+    } catch (e2) {}
+  }
+
+  function toggleDrawer(force) {    const drawer = $('drawer');
     UI.drawerOpen = force == null ? !UI.drawerOpen : !!force;
     drawer.classList.toggle('open', UI.drawerOpen);
     drawer.inert = !UI.drawerOpen;
@@ -10189,18 +10600,21 @@ if (document.readyState === 'loading') {
 
   /* Tier results export: ranked item → avg → votes lines for Discord. */
   function copyTierResults() {
-    const items = activeState().results
-      .filter(result => result.votemode === 'tier' && result.votes > 0)
+    const live = activeState();
+    const items = live.results
+      .filter(result => result.votemode === 'tier' && result.votes > 0 && !result.shammed)
       .slice()
       .sort((a, b) => b.avg - a.avg);
     if (!items.length) { tierListStatus('Tier list: no tier results yet.'); return; }
+    const shammed = live.results.filter(result => result.shammed);
     const head = (TIERLIST.list ? TIERLIST.list + ' — ' : '') + 'tier results (' +
       new Date().toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) + ')';
     copyText(
       head + '\n' + items.map((result, index) =>
         (index + 1) + '. ' + result.question + ' — ' + result.avg.toFixed(1) +
         ' · ' + result.votes + (result.votes === 1 ? ' vote' : ' votes')
-      ).join('\n'),
+      ).join('\n') +
+      (shammed.length ? '\nShammed: ' + shammed.map(result => result.question).join(', ') : ''),
       'Tier results copied'
     );
   }
@@ -10401,7 +10815,9 @@ if (document.readyState === 'loading') {
           ? 'hiding in ' + Math.max(0, Math.ceil((poll.autohide_at - Date.now()) / 1000)) + 's · '
           : '') +
         (pollTier(poll) === 'tier' ? '[tier] ' : '') +
-        st.n + ' votes · ' + (st.n ? score(poll).toFixed(1) + '/10' : 'no score')
+        (poll.sham ? '[sham] ' : '') +
+        st.n + ' votes · ' + (st.n ? score(poll).toFixed(1) + '/10' : 'no score') +
+        (poll.sham ? ' · SHAM ' + st.shams : '')
       : '';
 
     setHTML($('drhist'),
@@ -10583,12 +10999,13 @@ if (document.readyState === 'loading') {
     if ($('tsTopic')) {
       $('tsTopic').textContent = poll ? poll.question : 'Waiting for the next rating';
     }
-    if ($('tsTiers')) setHTML($('tsTiers'), tierTableHTML(tierBuckets(poll)));
+    if ($('tsTiers')) paintTierBoard($('tsTiers'), tierBuckets(poll));
     if ($('tsFoot')) {
       $('tsFoot').textContent = st.n + (st.n === 1 ? ' vote' : ' votes') +
         hoompLabel(st.hoomps) +
         (poll && poll.status === 'closed' ? ' · final' : '') +
-        (TIERLIST.list ? ' · ' + TIERLIST.list : '');
+        (TIERLIST.list ? ' · ' + TIERLIST.list : '') +
+        (poll && poll.sham ? ' · SHAM ' + st.shams + '–' + st.n : '');
     }
   }
 
@@ -11297,6 +11714,7 @@ if (document.readyState === 'loading') {
   installGlassFilters();
   initGlide();
   watchGlide();
+  revealControlsOnInput();
 
   if (!INOBS && q.get('stage') !== '0') {
     document.body.classList.add('browser-stage');
@@ -11325,6 +11743,7 @@ if (document.readyState === 'loading') {
   } catch (eBG4) {}
 
   document.body.classList.toggle('clean', CLEAN);
+  document.body.classList.toggle('inobs', INOBS);
   document.body.classList.toggle('testmode', TESTMODE);
   document.body.classList.toggle('history', HISTMODE);
   document.body.classList.toggle('voters', VOTERSMODE);
@@ -13609,7 +14028,7 @@ else ready();
     flag('bubble', selected('#drbubbles', 'data-bu', '1') === '1');
     put('bubblemax', selected('#drbubblemax', 'data-bm', '3'));
     put('bubblenames', selected('#drbubblenames', 'data-bn', 'twitch'));
-    flag('bglass', selected('#drbglass', 'data-bg', '1') === '1');
+    flag('bglass', selected('#drbglass', 'data-bg', '0') === '1');
     put('bubbledwell', selected('#drbubbledwell', 'data-bd', '4.5'));
     flag('votebubbles', selected('#drbvotes', 'data-vb', '0') === '1');
     put('bubblescale', current.get('bubblescale') || '1');
@@ -14369,7 +14788,8 @@ else ready();
    island, each with its own jelly-in, dwell and retract. Fed by
    chatbox.js (window.__islandChatBubble) plus the drawer test button.
    !commands never bubble; anything but collapsed skips. Customisation:
-   ?bubblemax=1-5 · ?bubblenames=gold|twitch · ?bglass=0 ·
+   ?bubblemax=1-5 · ?bubblenames=gold|twitch · ?bglass=1 (glass opt-in,
+   flat material by default) ·
    ?bubblescale=0.8-1.6 · ?bubbledwell=2-12 · ?bubble=0. All drawer
    choices persist; engine untouched. */
 (function () {
@@ -14379,7 +14799,7 @@ else ready();
       KEYDWELL = 'pete-bubbledwell', KEYGOO = 'pete-goo',
       KEYVB = 'pete-votebubbles';
   var DWELL = 4500, MAX = 3, NAMES = 'twitch', SCALE = 1,
-      GLASS = true, GOO = false, reduced = false, on = true, VB = false;
+      GLASS = false, GOO = false, reduced = false, on = true, VB = false;
   try {
     var q = new URLSearchParams(location.search);
     var dw = parseFloat(String(q.get('bubbledwell') || '').replace(',', '.'));
@@ -14394,9 +14814,9 @@ else ready();
     else NAMES = 'twitch';
     var sc = parseFloat(String(q.get('bubblescale') || '').replace(',', '.'));
     if (isFinite(sc)) SCALE = Math.min(1.6, Math.max(0.8, sc));
-     if (q.get('bglass') === '0') GLASS = false;
-     else if (q.get('bglass') === '1') GLASS = true;
-     else if (window.__peteProfileGet(KEYGLASS) === '0') GLASS = false;
+     if (q.get('bglass') === '1') GLASS = true;
+     else if (q.get('bglass') === '0') GLASS = false;
+     else GLASS = window.__peteProfileGet(KEYGLASS) === '1';
      if (q.get('bubble') === '0') on = false;
      else if (q.get('bubble') === '1') on = true;
      else on = window.__peteProfileGet(KEY) !== '0';
@@ -14449,9 +14869,9 @@ else ready();
     try {
       var root = document.documentElement;
       root.setAttribute('data-bnames', NAMES);
-      /* Glass gates on html[data-bglass="off"]; absence = on. */
-      if (GLASS) root.removeAttribute('data-bglass');
-      else root.setAttribute('data-bglass', 'off');
+      /* Flat material is the default; glass is opt-in (?bglass=1). */
+      if (GLASS) root.setAttribute('data-bglass', 'on');
+      else root.removeAttribute('data-bglass');
       if (GOO) root.setAttribute('data-goo', 'on');
       else root.removeAttribute('data-goo');
       if (box) box.style.setProperty('--bubble-scale', SCALE);
