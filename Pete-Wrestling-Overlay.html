@@ -10,7 +10,7 @@
   drawer switch. ?channel= still overrides; first run defaults to agoodpete.) -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="rh-build" content="2026-09-29 19:44+5334a0393a">
+<meta name="rh-build" content="2026-10-01 19:18+eb7fc6cbc2">
 <title>AGoodPete — Wrestling Rater</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-3 -3 30 30%22><rect x=%22-3%22 y=%22-3%22 width=%2230%22 height=%2230%22 rx=%227%22 fill=%22%23d4a853%22/><g fill=%22%23FFFFFF%22 fill-opacity=%220.45%22><rect x=%222%22 y=%2215.5%22 width=%222.6%22 height=%226.5%22 rx=%221.3%22/><rect x=%226.5%22 y=%2212%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/><rect x=%2211%22 y=%228.5%22 width=%222.6%22 height=%2213.5%22 rx=%221.3%22/><rect x=%2215.5%22 y=%225%22 width=%222.6%22 height=%2217%22 rx=%221.3%22/></g><rect x=%2220%22 y=%221.5%22 width=%222.6%22 height=%2220.5%22 rx=%221.3%22 fill=%22%23FFFFFF%22/></svg>" />
 <style>
@@ -677,44 +677,116 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
    tabular numerals — no liquid glass anywhere in this block (no
    backdrop-filter, no refraction, no specular) so the board reads as a
    different instrument from the score panels. Same numeric votes, only
-   the breakdown changes. Matte tier chips follow the classic S–F ladder. */
-.tier-table { margin: 8px 12px 0; border: 1px solid var(--line-soft); border-radius: var(--r-sm); overflow: hidden; background: transparent; }
-.tr-head, .tr-row { display: grid; grid-template-columns: 40px 1fr 52px 52px; align-items: center; gap: 2px 8px; padding: 4px 10px; }
-.tr-head { font-family: var(--mono); font-size: 8.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--t3); border-bottom: 1px solid var(--line-soft); }
+   the breakdown changes.
+
+   Overlay-first: this is read at 720p from across a room, so the tier
+   letter and the share bar carry the data and the band label is the
+   quietest thing on screen. The bar is drawn as share-of-total — the same
+   quantity as the percentage beside it. (It used to be share-of-leader,
+   so a row could render a full-length bar next to the number "18%".)
+
+   One density knob, --tr-fs, scales the whole board, so a surface sets its
+   size once instead of restating padding and font-size per instance. The
+   S–F colours are semantic rather than accent, so they are fixed per tier
+   (each tier carries --tier / --tier-wash / --tier-line) and deliberately
+   do not follow the accent skin. */
+.tier-table {
+  --tr-fs: 12px; --tr-rail: 3px; --tr-cols: 1.5em 4.3em minmax(0, 1fr) 3em 2.6em;
+  margin: 8px 12px 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: transparent;
+  font-size: var(--tr-fs);
+}
+.tr-head, .tr-row { display: grid; grid-template-columns: var(--tr-cols); align-items: center; gap: 0 .55em; }
+.tr-head {
+  padding: 0 .7em .45em;
+  font-family: var(--mono); font-size: .68em; font-weight: 600;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--t4);
+  border-bottom: 1px solid var(--line-soft);
+}
 .tr-head .tr-num { text-align: right; }
-.tr-row { font-family: var(--body); font-size: 12px; color: var(--t1); }
+.tr-row { position: relative; padding: .3em .7em; font-family: var(--body); color: var(--t1); }
 .tr-row + .tr-row { border-top: 1px solid var(--line-soft); }
-.tr-chip { width: 28px; height: 20px; display: grid; place-items: center; border-radius: 4px; font-family: var(--display); font-size: 12px; font-weight: 700; line-height: 1; }
-.tr-chip[data-tier="S"] { background: #e57373; color: #1a0b0b; }
-.tr-chip[data-tier="A"] { background: #ffb74d; color: #1f1305; }
-.tr-chip[data-tier="B"] { background: #fff176; color: #1e1c05; }
-.tr-chip[data-tier="C"] { background: #aed581; color: #101a0b; }
-.tr-chip[data-tier="D"] { background: #64b5f6; color: #0a141f; }
-.tr-chip[data-tier="F"] { background: #757575; color: #ffffff; }
-.tr-range { color: var(--t3); font-family: var(--mono); font-size: 11px; font-weight: 600; white-space: nowrap; }
+/* Tier rail — the silhouette. It reads as a coloured ladder edge at a
+   glance and is the one leader marker that survives at distance. */
+.tr-row::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  width: var(--tr-rail); background: var(--tier); opacity: .5;
+  transition: opacity .3s var(--ease-spring);
+}
+/* S–F ladder: red → orange → yellow → green → sky → grey, at luminances
+   that hold up over game footage. Each tier also carries a dim wash (the
+   leader row) and a line (glow), so no colour maths is needed at the point
+   of use — kept off color-mix for older CEF builds inside OBS.
+
+   Keyed on [data-tier] rather than on the board's own classes so the
+   island's per-vote chips wear the same band colour as the board and
+   everything on screen speaks one language. Only sets custom properties,
+   so an unintended match is inert. */
+[data-tier="S"] { --tier: #ff4d4f; --tier-wash: rgba(255,77,79,.14); --tier-line: rgba(255,77,79,.5); }
+[data-tier="A"] { --tier: #ff9f1c; --tier-wash: rgba(255,159,28,.14); --tier-line: rgba(255,159,28,.5); }
+[data-tier="B"] { --tier: #ffd426; --tier-wash: rgba(255,212,38,.14); --tier-line: rgba(255,212,38,.5); }
+[data-tier="C"] { --tier: #4ade80; --tier-wash: rgba(74,222,128,.14); --tier-line: rgba(74,222,128,.5); }
+[data-tier="D"] { --tier: #38bdf8; --tier-wash: rgba(56,189,248,.14); --tier-line: rgba(56,189,248,.5); }
+[data-tier="F"] { --tier: #8a8f98; --tier-wash: rgba(138,143,152,.14); --tier-line: rgba(138,143,152,.5); }
+/* The letter is the anchor — the old 28x20 chip was the smallest thing on a
+   720p canvas. No box: the rail and the colour carry it. */
+.tr-chip {
+  font-family: var(--display); font-size: 1.28em; font-weight: 700; line-height: 1;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  color: var(--tier, var(--t2));
+}
+.tr-range {
+  font-family: var(--mono); font-size: .78em; font-weight: 500;
+  color: var(--t4); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .tr-row .tr-num { text-align: right; font-variant-numeric: tabular-nums; }
-.tr-count { font-weight: 700; }
-.tr-pct { color: var(--t3); font-size: 11px; }
-.tr-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(127,127,127,0.18); overflow: hidden; }
-.tr-bar i { display: block; height: 100%; width: 0; transition: width .45s var(--ease-spring); }
+.tr-count { font-family: var(--display); font-size: 1.05em; font-weight: 700; }
+.tr-pct { font-family: var(--mono); font-size: .82em; font-weight: 600; color: var(--t3); }
+.tr-row.top .tr-pct { color: var(--t1); }
+.tr-bar {
+  display: block; height: .5em; min-height: 5px; border-radius: var(--r-full);
+  background: rgba(255,255,255,.09); overflow: hidden;
+}
+.tr-bar i {
+  display: block; height: 100%; width: 0; border-radius: inherit;
+  background: var(--tier, var(--t2)); box-shadow: 0 0 10px var(--tier-line, transparent);
+  transition: width .45s var(--ease-spring);
+}
 .tr-count.bump { animation: cntBump .4s var(--ease-spring); }
 .tr-row.pop { animation: avgPop .45s var(--ease-spring); }
 .tr-row.flash { animation: trFlash .6s ease; }
-@keyframes trFlash { 0% { background: rgba(212,168,83,.28); } 100% { background: transparent; } }
-.tr-row[data-tier="S"] .tr-bar i { background: #e57373; }
-.tr-row[data-tier="A"] .tr-bar i { background: #ffb74d; }
-.tr-row[data-tier="B"] .tr-bar i { background: #fff176; }
-.tr-row[data-tier="C"] .tr-bar i { background: #aed581; }
-.tr-row[data-tier="D"] .tr-bar i { background: #64b5f6; }
-.tr-row[data-tier="F"] .tr-bar i { background: #757575; }
-.tr-row.top { background: rgba(127,127,127,0.1); }
-.tr-row.top .tr-chip { outline: 1px solid rgba(255,255,255,0.55); outline-offset: 1px; }
-.tr-foot { grid-column: 1 / -1; padding: 6px 10px 7px; font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .04em; color: var(--t3); border-top: 1px solid var(--line-soft); white-space: normal; line-height: 1.5; }
+@keyframes trFlash { 0% { background: var(--tier-wash, rgba(212,168,83,.28)); } 100% { background: transparent; } }
+/* Leader: a full-opacity glowing rail, a faint tier wash and a lit letter.
+   A tie lights every leading row identically and the foot line spells it
+   out, so "everything is winning" is no longer the default reading. */
+.tr-row.top { background: var(--tier-wash, rgba(127,127,127,.1)); }
+.tr-row.top::before { opacity: 1; box-shadow: 0 0 12px var(--tier-line, transparent); }
+.tr-row.top .tr-chip { text-shadow: 0 0 18px var(--tier-line, transparent); }
+.tr-foot {
+  padding: .55em .7em .6em;
+  font-family: var(--mono); font-size: .7em; font-weight: 500;
+  letter-spacing: .04em; color: var(--t4);
+  border-top: 1px solid var(--line-soft); line-height: 1.5;
+}
 .tr-foot b { color: var(--t2); font-weight: 600; }
+/* Idle: an empty board used to be six real tiers full of zeroes, with the
+   invitation to vote living somewhere else entirely. */
+.tr-idle { display: none; }
+.tier-table.is-empty .tr-idle {
+  display: block; padding: .6em .7em;
+  font-family: var(--mono); font-size: .76em; font-weight: 500;
+  letter-spacing: .04em; color: var(--t3);
+  border-bottom: 1px solid var(--line-soft);
+}
+.tier-table.is-empty .tr-idle b { color: var(--t2); font-weight: 600; }
+.tier-table.is-empty .tr-row { opacity: .34; }
 /* Studio: the board replaces the stat grid + heat strip in tier mode. */
 #spanel[data-votemode="tier"] .s-heat { display: none; }
 #spanel[data-votemode="tier"] .s-stats { display: block; }
-#spanel[data-votemode="tier"] .s-stats .tier-table { margin: 0; border: none; border-radius: 0; }
+#spanel[data-votemode="tier"] .s-stats .tier-table { margin: 0; border: none; border-radius: 0; --tr-fs: 12.5px; }
 /* Island: the board replaces the heat bars + side column in tier mode. */
 .di[data-votemode="tier"] .di-main { display: none; }
 /* Tier latest strip: the score-style info (who just voted what) under the
@@ -731,14 +803,27 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .di[data-votemode="tier"] .di-spark-hd { margin-bottom: 2px; }
 .di[data-votemode="tier"] .di-sparksvg { height: 32px; }
 .di-tier { margin: 10px 0 4px; }
-.di-tier .tr-head, .di-tier .tr-row { padding: 2px 8px; }
-.di-tier.tier-table { margin: 10px 0 4px; }
+.di-tier.tier-table { margin: 10px 0 4px; --tr-fs: 11px; }
 /* Tier meta line: list + score-style stats (median, leading tier, trend vs
    the last item, scored count) under the hero. The panel caps at 412px, so
    tier mode also tightens the hero + island board rows to pay for it. */
 .di-tiermeta { flex: 0 0 auto; margin: 0 2px 8px; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--amber-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .di[data-votemode="tier"] .di-hero { margin: 10px 0 8px; }
-.di-tier .tr-foot { padding: 4px 10px 5px; font-size: 8.5px; }
+/* Tier-mode hero pill reports crowd SPREAD instead of a score verdict.
+   BANGER / ROUGH are score-mode thresholds (>=8.5 / <4) that say nothing
+   useful next to a band board, and "how united is the crowd" is the fact
+   that tells you whether the average is worth reading at all. Reuses the
+   island's existing ok / warn / dim semantics rather than adding a second
+   colour language beside the S–F ladder. */
+.di-word.sp-united { background: rgba(48,209,88,0.14); color: #5be08d; }
+.di-word.sp-split { background: rgba(255,159,10,0.16); color: #ffb340; }
+.di-word.sp-mixed { background: var(--cell); color: var(--t2); }
+.di-word.sp-early { background: var(--cell); color: var(--t3); }
+/* Tier mode: individual votes wear their band's colour, so the number a
+   chatter just cast and the bar it moved are visibly the same thing. */
+.lv { color: var(--tier, var(--t1)); font-weight: 700; }
+.di-latest .ll-s.lv { letter-spacing: 0; }
+.di-tiervotes .tv b.lv { font-family: var(--display); font-size: 12px; }
 /* Tier full-info blocks: stats grid + recent-votes list. Rendered only when
    the stack owns the board (room exists); when the board lives in the
    island, the one-line strip above is all that fits. */
@@ -752,6 +837,7 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 .di-tiervotes .tv b { flex: 0 0 auto; font-family: var(--display); font-variant-numeric: tabular-nums; color: var(--t1); }
 @media (prefers-reduced-motion: reduce) {
   .tr-bar i { transition: none; }
+  .tr-row::before { transition: none; }
   .tr-count.bump, .tr-row.pop, .tr-row.flash { animation: none !important; }
 }
 .feed { padding: 10px 16px 12px; border-top: 1px solid var(--line-soft); }
@@ -961,6 +1047,40 @@ body.no-liquid .callout.final.hi { border-color: rgba(48,209,88,0.5); }
 .hoomp-word { display: block; font-family: var(--display); font-size: 96px; line-height: 1; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; color: var(--ok); text-shadow: 0 8px 32px rgba(48,209,88,0.35); }
 .hoomp-who { display: block; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--t1); margin-top: 12px; }
 .hoomp-toast.out { opacity: 0; transform: translate(-50%,-58%) scale(.95); transition: .4s; }
+/* SHAM qualification toast. The one-shot 3-chatter milestone gets hoomp-sized
+   real estate; the per-ballot moment stays a callout (see .callout.sham). */
+.sham-toast { position: fixed; top: 38%; left: 50%; transform: translate(-50%,-50%); z-index: 95; text-align: center; pointer-events: none; animation: hoompIn .5s var(--ease-spring); }
+.sham-word { display: block; font-family: var(--display); font-size: 88px; line-height: 1; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; color: var(--danger); text-shadow: 0 8px 34px rgba(255,69,58,0.4); }
+.sham-flag { display: inline-block; margin-top: 10px; font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #ffb3b0; background: rgba(255,69,58,0.16); border: 1px solid rgba(255,69,58,0.4); border-radius: var(--r-full); padding: 4px 12px; }
+.sham-sub { display: block; margin-top: 11px; max-width: min(520px, 70vw); font-family: var(--body); font-size: 14px; font-weight: 600; color: var(--t1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sham-toast.out { opacity: 0; transform: translate(-50%,-58%) scale(.95); transition: .4s; }
+/* Ballot: danger-tinted so a removal vote never reads as an ordinary score,
+   with the running tally in the trailing slot. */
+.callout.sham { gap: 10px; padding: 13px 20px; background: rgba(58,20,22,0.9); -webkit-backdrop-filter: var(--mat); backdrop-filter: var(--mat); border-color: rgba(255,69,58,0.5); box-shadow: var(--sh-float); border-radius: var(--r-lg); }
+.callout.sham .co-t { font-family: var(--body); font-size: 15px; font-weight: 700; color: #ffb3b0; letter-spacing: -0.01em; }
+.callout.sham .co-x { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--t2); background: var(--cell); border-radius: var(--r-full); padding: 4px 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* SHAM verdict rows in history / recap / archive. The stored entry carries
+   the keeps' mean as its average, so these rows must not be dressed as a
+   score: the verdict replaces the number, the tally replaces the vote count,
+   and the "/10" suffix the row styles add by default is suppressed. */
+.hp-row.sham .a.sham-v,
+.mv-row.sham .mv-a {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .08em; color: var(--danger);
+}
+.hp-row.sham .a.sham-v::after,
+.mv-row.sham .mv-a::after { content: none; }
+.hp-row.sham .q, .mv-row.sham .mv-q { color: var(--t3); }
+.hp-row.sham .n, .mv-row.sham .mv-votes { color: var(--t3); }
+/* Island SHAM test row — dev-only. Gated on testmode in CSS as well as in JS
+   so this can never reach a program source even if the hidden flag is wrong. */
+.di-shamtest { display: none; align-items: center; gap: 6px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line-soft); }
+body.testmode .di-shamtest { display: flex; }
+body.clean .di-shamtest, body.recapscene .di-shamtest { display: none !important; }
+.di-shamtest[hidden] { display: none !important; }
+.di-st-lab { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #ff7a72; }
+.di-shamtest .di-ab { flex: 1 1 0; min-width: 0; padding: 5px 4px; font-size: 10.5px; }
 @keyframes hoompIn { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.4) rotate(-5deg); } 60% { opacity: 1; transform: translate(-50%,-50%) scale(1.1) rotate(2deg); } 100% { transform: translate(-50%,-50%) scale(1) rotate(0); } }
 
 /* ═══════ DRAWER & CONTROLS — iOS side sheet ═══════ */
@@ -980,6 +1100,44 @@ body.clean.user-present .sidebtn { display: block; }
    — #dswitch, #testbar, .wr-resize, .di-acts/.di-x/.di-coach — stays hidden on
    stream. To revert, delete this one rule. */
 body.clean.inobs .sidebtn { display: block; }
+/* ═══════ CONTROL DOCK — vertical panel on the left ═══════
+   Overrides the shared right-middle sheet (RateHive.html keeps it): one tab
+   mid-left opens a full-height dock; sections stack top→bottom with one
+   page-level scroll. Deliberately NO liquid glass here — flat solid
+   chrome so dense controls stay readable. Stream path stays ?clean=1. */
+.sidebtn {
+  top: 50%;
+  left: 0;
+  right: auto;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  opacity: 1;
+  background: #111114;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--amber-line);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  padding: 16px 9px;
+  box-shadow: var(--sh-chip), 0 0 18px var(--amber-glow);
+  animation: wrTabIn 0.6s var(--ease-spring) 0.3s both;
+}
+.sidebtn:hover { opacity: 1; padding: 18px 10px; border-color: var(--amber-hi); }
+/* Hit slop: the tab is a ~20px-wide vertical strip, which shrinks to a few
+   pixels once an OBS source is scaled in the preview — easy to miss. This
+   transparent pseudo-element enlarges the clickable box well past the visible
+   tab (extra room up, down and to the right; the left edge is already flush
+   to the viewport) without altering how the button looks. */
+.sidebtn::before {
+  content: "";
+  position: absolute;
+  inset: -20px -18px -20px 0;
+}
+@keyframes wrTabIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(-10px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
 .drawer { position: fixed; right: 0; top: 50%; width: 264px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 9px; max-height: calc(100vh - 24px); overflow-y: auto; background: var(--glass); -webkit-backdrop-filter: var(--mat); backdrop-filter: var(--mat); border: 1px solid var(--line-soft); border-right: none; border-radius: var(--r-lg) 0 0 var(--r-lg); box-shadow: var(--sh-panel); transform: translateY(-50%) translateX(115%); opacity: 0; visibility: hidden; transition: transform .5s var(--ease-spring), opacity .35s, visibility 0s linear .5s; z-index: 50; }
 @supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
   .drawer { background: rgba(24,24,27,0.97); }
@@ -1025,6 +1183,27 @@ body.rh-glide .dr-presets button.on { border-color: transparent; background: tra
 .dr-go:hover { filter: brightness(1.1); }
 .dr-go:active { transform: translateY(1px) scale(0.99); }
 .dr-go:disabled { opacity: .45; cursor: default; }
+/* A rating is already running: Start stays clickable so it can explain
+   itself, but reads as constrained rather than as the primary action. */
+.dr-go.blocked { background: rgba(255,255,255,0.1); color: var(--t2); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16); }
+.dr-go.blocked:hover { filter: brightness(1.18); }
+/* The notice carries the reason and the remedy; it is the only place the
+   constraint is spelled out, so it gets the attention. */
+.dr-warn {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500; line-height: 1.55;
+  color: #ffb3b0; background: rgba(255,69,58,0.1);
+  border: 1px solid rgba(255,69,58,0.28); border-radius: var(--r-sm);
+  padding: 7px 9px; margin: 6px 0 2px;
+}
+.dr-warn[hidden] { display: none; }
+.dr-warn b { color: #fff; font-weight: 700; }
+.dr-warn.nudge { animation: drWarnShake .4s ease; }
+@keyframes drWarnShake {
+  0%, 100% { transform: translateX(0); }
+  22% { transform: translateX(-3px); }
+  46% { transform: translateX(3px); }
+  72% { transform: translateX(-2px); }
+}
 .dr-stat { font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--t2); min-height: 14px; padding: 2px 0; }
 .dr-stat b { color: var(--amber-hi); font-weight: 600; }
 .dr-row { display: flex; gap: 6px; }
@@ -1194,7 +1373,7 @@ body.voters, body.archive { background: var(--bg); }
 #recappage { display: none; }
 body.recapscene { background: var(--bg); }
 body.recapscene.recap-alpha { background: transparent; }
-body.recapscene #cpanel, body.recapscene #spanel, body.recapscene .sidebtn, body.recapscene .drawer, body.recapscene #votepops, body.recapscene #callouts, body.recapscene #dswitch, body.recapscene #testbar, body.recapscene #verdict, body.recapscene #diland, body.recapscene .confetti-layer, body.recapscene .hoomp-toast, body.recapscene .copy-toast { display: none !important; }
+body.recapscene #cpanel, body.recapscene #spanel, body.recapscene .sidebtn, body.recapscene .drawer, body.recapscene #votepops, body.recapscene #callouts, body.recapscene #dswitch, body.recapscene #testbar, body.recapscene #verdict, body.recapscene #diland, body.recapscene .confetti-layer, body.recapscene .hoomp-toast, body.recapscene .sham-toast, body.recapscene .copy-toast { display: none !important; }
 body.recapscene #recappage { display: block; position: fixed; inset: 0; overflow-y: auto; }
 .rp-in { max-width: 1320px; margin: 0 auto; padding: clamp(20px, 3.6vh, 48px) clamp(18px, 3vw, 48px) 52px; }
 .rp-logo { font-family: var(--display); font-size: clamp(36px, 5.8vh, 58px); font-weight: 700; line-height: 1.02; color: var(--t1); letter-spacing: -0.03em; text-transform: none; display: flex; align-items: center; gap: 16px; }
@@ -1355,7 +1534,7 @@ body.no-sweep .pollq, body.no-sweep .crowd, body.no-sweep .stars, body.no-sweep 
 body.no-island #diland { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-  .vpop, .callout, .hoomp-toast, .pollq, .crowd, .stars, .timer, .chip.open, .di-ft strong.blur-in { animation: none !important; }
+  .vpop, .callout, .hoomp-toast, .sham-toast, .pollq, .crowd, .stars, .timer, .chip.open, .di-ft strong.blur-in { animation: none !important; }
 }
 
 /* ═══════ POLISH ═══════ */
@@ -1374,7 +1553,7 @@ body.no-island #diland { display: none !important; }
 /* quick actions grid */
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .quick-grid .dr-ghost { padding: 9px 10px; }
-.quick-grid .dr-ghost.armed { color: var(--amber-ink); border-color: var(--amber); background: var(--amber); }
+.dr-ghost.armed { color: var(--amber-ink); border-color: var(--amber); background: var(--amber); }
 /* copy-result toast */
 .copy-toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(8px); z-index: 99; font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--t1); background: var(--glass); -webkit-backdrop-filter: var(--mat); backdrop-filter: var(--mat); border: 1px solid var(--line-soft); box-shadow: var(--sh-chip); border-radius: var(--r-full); padding: 9px 18px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s var(--ease-spring); }
 .copy-toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -3340,7 +3519,6 @@ html[data-islift="on"] #diland.ipos-br .di {
   border-radius: 4px;
   border-color: rgba(226,208,166,0.28);
   background: #08080c;
-  box-shadow: 0 12px 26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .tr-head {
   color: var(--amber-hi);
@@ -3352,8 +3530,10 @@ html[data-islift="on"] #diland.ipos-br .di {
 .tr-range { color: #c9c9d1; font-weight: 600; }
 .tr-pct { color: #c9c9d1; }
 .tr-foot { color: #c9c9d1; }
+/* Leader reads gold on this skin: the rail follows the row wash instead of
+   staying tier-coloured, so the two signals agree. */
 .tr-row.top { background: rgba(212,168,83,0.12); }
-.tr-row.top .tr-chip { outline-color: var(--amber-hi); }
+.tr-row.top::before { background: rgba(212,168,83,0.95); }
 /* hard no-glass guarantee for the board on this skin */
 .tier-table, .tier-table *,
 .tr-head, .tr-row, .tr-chip, .tr-bar, .tr-bar i {
@@ -3362,7 +3542,20 @@ html[data-islift="on"] #diland.ipos-br .di {
   text-shadow: none;
   box-shadow: none;
 }
-.tr-row.top .tr-chip { box-shadow: none; }
+/* ...except two base-board rules the blanket above cannot reach, which used
+   to keep glowing tier-coloured on a gold rail:
+     - `*` never matches a pseudo-element, so `.tr-row.top::before`'s
+       box-shadow survived untouched;
+     - `.tr-row.top .tr-chip` (0,3,0) out-specifies the bare `.tr-chip`
+       (0,1,0) listed above, so the leader letter kept its tier-coloured
+       text-shadow.
+   Re-stated here at matching specificity, after the blanket. The leader is
+   still marked by the gold wash plus the full-opacity rail. */
+.tr-row.top::before { box-shadow: none; }
+.tr-row.top .tr-chip { text-shadow: none; }
+/* The ink drop shadow this skin asks for has to land *after* the blanket
+   above, which used to cancel it on the same rule that declared it. */
+.tier-table { box-shadow: 0 12px 26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); }
 @media (prefers-reduced-transparency: reduce) {
   .tier-table { background: #000; }
 }
@@ -3507,8 +3700,9 @@ html[data-stackmode="tiers"] .stack .ticker { display: none; }
   letter-spacing: 0.09em; text-transform: uppercase; color: var(--amber-hi);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.tierstack .tier-table { margin: 8px 0 0; }
-.tierstack .tr-head, .tierstack .tr-row { padding: 3px 8px; }
+/* One density knob for the board (was three restated rules); 11px keeps the
+   five columns inside the ~329px stack slot at --wr-scale 1. */
+.tierstack .tier-table { margin: 8px 0 0; --tr-fs: 11px; }
 .ts-foot {
   margin-top: 6px; color: var(--t3); font-family: var(--mono); font-size: 6.8px;
   font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
@@ -3938,6 +4132,7 @@ try {
   </section>
   <section class="dr-sec">
   <button class="dr-go" id="drgo">Start rating</button>
+  <div class="dr-warn" id="drbusy" hidden>A rating is already running &mdash; <b>Close rating</b> locks the result, <b>Clear panel</b> drops it. Start works again once either does.</div>
   <button class="dr-demo" id="drdemo">&#9654; Run demo</button>
   <div class="dr-stat" id="drstat"></div>
   <div class="dr-pos dr-only-classic">
@@ -3979,6 +4174,16 @@ try {
     <button class="dr-ghost" id="drplop" style="flex:1" title="Preview the PLOP moment on this screen only — not counted, not sent to OBS">PLOP</button>
     <button class="dr-ghost" id="drorbflare" style="flex:1" title="Flash the status orb beside the island (this screen only)">ORB</button>
   </div>
+  <div class="dr-lab" style="margin-top:10px">SHAM — test moments <span style="opacity:.6">(this screen only)</span></div>
+  <div class="dr-row">
+    <button class="dr-ghost" id="drshamnom" style="flex:1" title="Walk a nomination up: 1/3, 2/3, then qualified — a bare SHAM in chat, three distinct chatters. Not counted, not sent to OBS.">Sham nom 0/3</button>
+    <button class="dr-ghost" id="drshamvote" style="flex:1" title="A removal ballot in a SHAM verdict poll, with a running tally. Not counted, not sent to OBS.">Sham vote</button>
+  </div>
+  <div class="dr-row" style="margin-top:6px">
+    <button class="dr-ghost" id="drshamwin" style="flex:1" title="Preview SHAM WINS — the item is marked shammed and skipped in tier reveals, confetti, verdict reveal.">Sham wins</button>
+    <button class="dr-ghost" id="drshamfail" style="flex:1" title="Preview SHAM FAILS — the list's one sham is spent either way.">Sham fails</button>
+  </div>
+  <div class="dr-stat" id="drshamstat">Previews only. Live flow: bare <b>SHAM</b> in chat nominates the open item (3 distinct chatters), then <b>!rateopen sham 120 Item</b> runs the verdict — <b>!vote sham</b> vs numeric keeps, one ballot each, strict majority wins.</div>
   </section>
   <section class="dr-sec">
   <div class="dr-lab">Alerts — Follows (StreamElements)</div>
@@ -6501,13 +6706,16 @@ if (document.readyState === 'loading') {
      live score bands, NOT final tiers: Pete assigns final S–F by
      percentile across the whole sheet list, so a band is only where a
      vote landed, never a promise of the final tier. */
+  /* `label` is the spaced form (drawer/history copy); `short` is the tight
+     form the board's band column uses — five columns have to fit a 320px
+     stack slot, and the dashes are the only slack. */
   const TIER_ROWS = [
-    { t: 'S', min: 9, label: '9 – 10' },
-    { t: 'A', min: 7, label: '7 – 8.9' },
-    { t: 'B', min: 5, label: '5 – 6.9' },
-    { t: 'C', min: 3, label: '3 – 4.9' },
-    { t: 'D', min: 1.5, label: '1.5 – 2.9' },
-    { t: 'F', min: -Infinity, label: '< 1.5' }
+    { t: 'S', min: 9, label: '9 – 10', short: '9–10' },
+    { t: 'A', min: 7, label: '7 – 8.9', short: '7–8.9' },
+    { t: 'B', min: 5, label: '5 – 6.9', short: '5–6.9' },
+    { t: 'C', min: 3, label: '3 – 4.9', short: '3–4.9' },
+    { t: 'D', min: 1.5, label: '1.5 – 2.9', short: '1.5–2.9' },
+    { t: 'F', min: -Infinity, label: '< 1.5', short: '<1.5' }
   ];
 
   function tierOf(value) {
@@ -6515,6 +6723,42 @@ if (document.readyState === 'loading') {
       if (value >= row.min) return row.t;
     }
     return 'F';
+  }
+
+  /* Band attributes for a single vote, tier mode only. Hoomp / plop are
+     countable votes that were never scores, so they get no band rather than
+     being swept into F. Returns the text that follows an opening quote so
+     callers can keep one template:
+       '<span class="ll-s' + voteTierAttrs(v) + '">'
+     -> class="ll-s lv" data-tier="S"   for a score
+     -> class="ll-s"                    for hoomp / plop */
+  function voteTierAttrs(vote) {
+    if (!Number.isFinite(vote)) return '';
+    return ' lv" data-tier="' + tierOf(vote);
+  }
+
+  /* Shares are floored and the leftover units handed to the largest
+     fractional parts, so the column sums to exactly 100. Rounding each row
+     independently drifted to 101 on a 2/3/5/4/3/1 split — a board whose
+     percentages don't add up undercuts the one number it is trusted for. */
+  function tierPercents(counts, total) {
+    const out = {};
+    if (!total) {
+      TIER_ROWS.forEach(row => { out[row.t] = 0; });
+      return out;
+    }
+    const exact = TIER_ROWS.map(row => ({ t: row.t, value: counts[row.t] / total * 100 }));
+    let assigned = 0;
+    exact.forEach(entry => {
+      out[entry.t] = Math.floor(entry.value);
+      assigned += out[entry.t];
+    });
+    exact
+      .map(entry => ({ t: entry.t, frac: entry.value - Math.floor(entry.value) }))
+      .sort((a, b) => b.frac - a.frac)
+      .slice(0, 100 - assigned)
+      .forEach(entry => { out[entry.t] += 1; });
+    return out;
   }
 
   function tierBuckets(poll) {
@@ -6526,17 +6770,21 @@ if (document.readyState === 'loading') {
     const total = TIER_ROWS.reduce((sum, row) => sum + counts[row.t], 0);
     const top = Math.max(0, ...TIER_ROWS.map(row => counts[row.t]));
     const leaders = TIER_ROWS.filter(row => top > 0 && counts[row.t] === top);
+    const pcts = tierPercents(counts, total);
 
     return {
       rows: TIER_ROWS.map(row => ({
         t: row.t,
         label: row.label,
+        short: row.short,
         count: counts[row.t],
-        pct: total ? Math.round(counts[row.t] / total * 100) : 0,
+        pct: pcts[row.t],
         top: top > 0 && counts[row.t] === top
       })),
       total,
       max: Math.max(1, top),
+      leaders: leaders.length,
+      empty: total === 0,
       winner: !top ? '—' : leaders.length > 1 ? 'tie' : leaders[0].t
     };
   }
@@ -6545,28 +6793,57 @@ if (document.readyState === 'loading') {
     return poll && poll.votemode === 'tier' ? 'tier' : 'score';
   }
 
-  function tierFootText() {
+  /* The one line under the board. It carries the two things the chips
+     cannot: who is actually in front (ties included — a tie used to tint
+     every leading row identically and read as "everything is winning"),
+     and the standing caveat that these are score bands, not the final
+     percentile tiers. */
+  function tierFootText(buckets) {
     var listName = '';
     try { listName = (typeof TIERLIST !== 'undefined' && TIERLIST && TIERLIST.list) || ''; } catch (e) {}
-    return 'Score bands, not final tiers — final S–F is percentile across ' +
-      esc(listName || 'the list') + '.';
+    var lead = '';
+    if (buckets && !buckets.empty) {
+      if (buckets.winner === 'tie') {
+        lead = buckets.rows.filter(function (row) { return row.top; })
+          .map(function (row) { return row.t; }).join('–') + ' tied · ';
+      } else {
+        lead = buckets.winner + ' leads · ';
+      }
+    }
+    /* Plain text, not markup. The two callers differ: tierTableHTML injects
+       it through innerHTML (and escapes it there), while the in-place
+       painter assigns it to textContent. Escaping here meant the textContent
+       path rendered raw entities from the second paint onward — a list named
+       "Pete's Pies" showed as "Pete&#39;s Pies". */
+    return lead + 'Score bands, not final tiers — final S–F is percentile across ' +
+      (listName || 'the list') + '.';
   }
 
+  /* Board markup. Five columns — tier, band, share bar, votes, percent —
+     with the bar as a real column rather than a second line under a
+     four-cell grid: the fill and the number beside it are now the same
+     quantity, so the bar is drawn as share-of-total. `is-empty` and
+     `data-winner` on the table let CSS own the idle and tie states
+     without rebuilding the rows. The first head cell is deliberately
+     blank: "TIER" over these bands would be the one misleading word on
+     screen, and the foot line is where that gets said. */
   function tierTableHTML(buckets) {
-    return '<div class="tr-head"><span>Tier</span><span>Score</span>' +
-      '<span class="tr-num">Votes</span><span class="tr-num">Share</span></div>' +
+    return '<div class="tr-head"><span></span><span>Score</span>' +
+      '<span>Share</span><span class="tr-num">Votes</span>' +
+      '<span class="tr-num">%</span></div>' +
+      '<div class="tr-idle">Waiting for votes <b>!vote -10 to 10</b></div>' +
       buckets.rows.map(row =>
         '<div class="tr-row' + (row.top ? ' top' : '') + '" data-tier="' + row.t + '">' +
         '<span class="tr-chip" data-tier="' + row.t + '">' + row.t + '</span>' +
-        '<span class="tr-range">' + esc(row.label) + '</span>' +
+        '<span class="tr-range">' + esc(row.short) + '</span>' +
+        '<span class="tr-bar"><i style="width:' +
+        (buckets.total ? Math.max(row.count ? 3 : 0, row.pct) : 0) +
+        '%"></i></span>' +
         '<span class="tr-num tr-count">' + row.count + '</span>' +
         '<span class="tr-num tr-pct">' + row.pct + '%</span>' +
-        '<span class="tr-bar"><i style="width:' +
-        (buckets.total ? Math.max(row.count ? 4 : 0, row.count / buckets.max * 100) : 0) +
-        '%"></i></span>' +
         '</div>'
       ).join('') +
-      '<div class="tr-foot">' + tierFootText() + '</div>';
+      '<div class="tr-foot">' + esc(tierFootText(buckets)) + '</div>';
   }
 
   /* Live tier board painter: builds the table once, then updates rows in
@@ -6575,6 +6852,12 @@ if (document.readyState === 'loading') {
      on every vote. Falls back to a rebuild whenever the row set changes. */
   function paintTierBoard(el, buckets) {
     if (!el || !buckets) return;
+    /* Table-level state. The idle line is CSS (`.tier-table.is-empty`), so
+       the rows never have to be rebuilt to show it. `data-winner` is a state
+       readout for debugging and tests — the visible tie wording comes from
+       the foot line, not from CSS. */
+    el.classList.toggle('is-empty', !!buckets.empty);
+    el.setAttribute('data-winner', String(buckets.winner));
     const rows = el.querySelectorAll('.tr-row');
     const want = buckets.rows.map(row => row.t).join('');
     const have = Array.prototype.map.call(rows, row => row.dataset.tier).join('');
@@ -6601,7 +6884,7 @@ if (document.readyState === 'loading') {
       const bar = node.querySelector('.tr-bar i');
       if (bar) {
         bar.style.width = (buckets.total
-          ? Math.max(row.count ? 4 : 0, row.count / buckets.max * 100)
+          ? Math.max(row.count ? 3 : 0, row.pct)
           : 0) + '%';
       }
       if ((last[row.t] || 0) < row.count) pulse(node, 'flash');
@@ -6609,7 +6892,7 @@ if (document.readyState === 'loading') {
     el._tierCounts = {};
     buckets.rows.forEach(row => { el._tierCounts[row.t] = row.count; });
     const foot = el.querySelector('.tr-foot');
-    if (foot) foot.textContent = tierFootText();
+    if (foot) foot.textContent = tierFootText(buckets);
   }
 
   function readableColor(hex) {
@@ -7026,11 +7309,14 @@ if (document.readyState === 'loading') {
     if (poll.sham && /^s+h+a+m+s?$/i.test(text)) {
       return castSham(state, poll, user, color, badges);
     }
-    if (!/^-?\d+([.,]\d+)?$/.test(text)) return { changed: false };
     /* HOOMP as a countable vote: !vote hoomp / !rate hoomp records one
        HOOMP per user per poll, fires the usual HOOMP moment, and never
        touches the numeric average. Inline regex (not the shared helper)
-       keeps this function self-contained for headless tests. */
+       keeps this function self-contained for headless tests.
+
+       Deliberately ABOVE the numeric guard: the guard used to run first and
+       reject "hoomp" as non-numeric, which made this entire branch dead code
+       — the documented !vote hoomp silently did nothing. */
     if (/^h+o+mp+s?$/i.test(text)) {
       if (!poll.hoomps || typeof poll.hoomps !== 'object') poll.hoomps = Object.create(null);
       if (poll.locked && !own(poll.votes, user) && !own(poll.hoomps, user) && !(poll.shams && own(poll.shams, user))) return { changed: false };
@@ -8128,6 +8414,17 @@ if (document.readyState === 'loading') {
 
     if (poll && poll.status !== 'top5') {
       const st = stats(poll);
+      /* A sham verdict's numeric votes are keeps, not scores — copying
+         "7.0/10" for a removal ballot would read as a rating. */
+      if (poll.sham) {
+        const verdict = poll.status === 'closed'
+          ? (st.shams > st.n ? 'SHAM WINS' : 'SHAM FAILS')
+          : 'SHAM verdict open';
+        return copyText(
+          `${poll.question} — ${verdict} (${st.shams} sham · ${st.n} keep)`,
+          'Result copied'
+        );
+      }
       return copyText(
         `${poll.question} — ${st.n ? score(poll).toFixed(1) + '/10' : 'no score'} ` +
         `(${st.n} votes)${poll.status === 'open' ? ' [live]' : ''}`,
@@ -8168,7 +8465,7 @@ if (document.readyState === 'loading') {
     }, lifetime);
   }
 
-  function callout(text, value, className, lifetime) {
+  function callout(text, value, className, lifetime, extra) {
     if (!SHOWCO || FULLPAGE || !CHANNEL) return;
 
     const box = $('callouts');
@@ -8190,6 +8487,16 @@ if (document.readyState === 'loading') {
       number.className = 'co-v ' + band(value);
       number.textContent = fmt(value);
       element.appendChild(number);
+    }
+
+    /* Optional trailing tally for callouts that are about two numbers rather
+       than one score (a SHAM ballot reads "2–1 keeps", which `value` cannot
+       express since it formats as a single vote). */
+    if (extra != null) {
+      const tally = document.createElement('span');
+      tally.className = 'co-x';
+      tally.textContent = String(extra);
+      element.appendChild(tally);
     }
 
     element.style.left = '50%';
@@ -8313,6 +8620,120 @@ if (document.readyState === 'loading') {
       setTimeout(() => sound(frequency, 0.2), index * 110);
     });
     kickRater();
+  }
+
+  /* SHAM qualification toast. The 3-chatter milestone fires once per item, so
+     it earns a real toast (hoomp-sized, danger-coloured) rather than a
+     callout that scrolls past. The individual ballot below stays a callout —
+     it fires several times per verdict poll and 96px would be deafening.
+     Returns true when it took the moment, so the caller can skip its
+     callout fallback. */
+  function shamQualToast(question) {
+    if (!SHOWCO || FULLPAGE || !CHANNEL) return false;
+    if (document.querySelectorAll('.sham-toast').length >= 1) return false;
+
+    const element = document.createElement('div');
+    element.className = 'sham-toast';
+    element.setAttribute('role', 'status');
+    element.innerHTML =
+      '<span class="sham-word">SHAM</span>' +
+      '<span class="sham-flag">QUALIFIED</span>' +
+      '<span class="sham-sub">' + esc(question || '') + '</span>';
+    document.body.appendChild(element);
+    setTimeout(() => element.remove(), 3600);
+    return true;
+  }
+
+  /* SHAM test moments — shared by the Controls drawer and the island's test
+     row. Presentation only: nothing is counted, no sham is declared or
+     spent, nothing is written to state and nothing is sent to OBS, exactly
+     like the HOOMP / PLOP previews. `shamTestStep` counts the nomination up
+     locally so all three stages are reachable from one button; the ballot
+     tally then steps 1–0, 2–1, 3–1. */
+  let shamTestStep = 0;
+  /* Ballot preview tally, on its own counter: 1–0 → 2–1 → 3–1, then round
+     again. It used to derive from shamTestStep, which is already at 3 by the
+     time the verdict matters — so the presses read 1–0, 1–0, 2–1, 3–2 and
+     the first two looked identical. */
+  let shamVoteStep = 0;
+
+  function shamTestLabel() {
+    return shamTestStep >= 3 ? 'qualified' : shamTestStep + '/3';
+  }
+
+  function shamTest(action) {
+    const who = CHANNEL || 'test_user';
+    const sync = () => {
+      if ($('drshamnom')) $('drshamnom').textContent = 'Sham nom ' + shamTestLabel();
+      const pill = $('diShamNom');
+      if (pill) pill.textContent = 'nom ' + shamTestLabel();
+    };
+
+    if (action === 'nom') {
+      /* Pressing again after a qualification restarts a fresh nomination.
+         Done as its own branch so the reset doesn't announce a phantom
+         "0 of 3" — the button label flipping back to 0/3 is the feedback. */
+      if (shamTestStep >= 3) {
+        shamTestStep = 0;
+        sync();
+        return;
+      }
+      shamTestStep += 1;
+      sync();
+      if (shamTestStep < 3) {
+        callout(shamTestStep + ' of 3 chatters cry SHAM', null, 'sham', 2600);
+      } else {
+        const state = activeState();
+        const question = ($('drtopic') && $('drtopic').value.trim()) ||
+          (state.poll && state.poll.question) || 'this item';
+        emitEffect({ kind: 'shamqual', user: who, question: question });
+      }
+      return;
+    }
+
+    if (action === 'vote') {
+      const tallies = [[1, 0], [2, 1], [3, 1]];
+      const tally = tallies[shamVoteStep % tallies.length];
+      shamVoteStep++;
+      emitEffect({ kind: 'sham', user: who, shams: tally[0], keeps: tally[1] });
+      return;
+    }
+
+    /* The verdict rides the existing 'final' path so this previews the real
+       choreography — island reveal, confetti, chime — not a lookalike. */
+    const won = action === 'win';
+    emitEffect({
+      kind: 'final', sham: true, shamWon: won,
+      shams: won ? 4 : 2, keeps: won ? 2 : 3,
+      avg: 0, votes: 6, hoomps: 0, trend: null
+    });
+  }
+
+  /* Blocked start. openPoll() already refuses an open poll with exactly this
+     wording, but the drawer's Start button used to be a dead disabled
+     control, so the reason was never reachable from the one place Pete is
+     actually looking. Now the button stays live, explains itself, and points
+     at the two buttons that do work — and no !rateopen is broadcast for the
+     leader to silently drop. */
+  function rateBusyNotice() {
+    const poll = activeState().poll;
+    if (!poll || poll.status !== 'open') return false;
+    callout('End or clear the current rating first', null, 'sham', 3200);
+    const note = $('drbusy');
+    if (note) {
+      note.classList.remove('nudge');
+      void note.offsetWidth;          // restart the shake
+      note.classList.add('nudge');
+    }
+    ['drclose', 'drclear'].forEach(id => {
+      const button = $(id);
+      if (!button) return;
+      button.classList.remove('armed');
+      void button.offsetWidth;
+      button.classList.add('armed');
+      setTimeout(() => button.classList.remove('armed'), 1400);
+    });
+    return true;
   }
 
   function shamToast(won, tally) {
@@ -8592,19 +9013,31 @@ if (document.readyState === 'loading') {
       const tookQ = MODE === 'island'
         ? islandPeek('SHAM qualified — ' + effect.question, 3400)
         : false;
-      if (!tookQ) callout('SHAM qualified', effect.question);
+      if (!tookQ && !shamQualToast(effect.question)) {
+        callout('SHAM qualified', effect.question);
+      }
       sound(740, 0.12);
       setTimeout(() => sound(988, 0.16), 110);
     }
 
     if (effect.kind === 'sham') {
       const sPoll = activeState().poll;
-      const shCount = sPoll && sPoll.shams ? Object.keys(sPoll.shams).length : 0;
-      const kpCount = sPoll ? stats(sPoll).n : 0;
+      /* Live path reads the poll; the tester passes explicit counts so the
+         preview shows a plausible running tally instead of whatever the
+         open (non-sham) poll happens to hold. */
+      const shCount = Number.isFinite(effect.shams)
+        ? effect.shams
+        : (sPoll && sPoll.shams ? Object.keys(sPoll.shams).length : 0);
+      const kpCount = Number.isFinite(effect.keeps)
+        ? effect.keeps
+        : (sPoll ? stats(sPoll).n : 0);
       const tookS = MODE === 'island'
         ? islandPeek(`${effect.user} votes SHAM (${shCount}–${kpCount})`, 2600)
         : false;
-      if (!tookS) callout(effect.user + ' votes SHAM', shCount + '–' + kpCount);
+      if (!tookS) {
+        callout(effect.user + ' votes SHAM', null, 'sham', 4000,
+          shCount + '–' + kpCount + ' KEEP');
+      }
       kickRater();
     }
 
@@ -8618,13 +9051,19 @@ if (document.readyState === 'loading') {
         }
       }
 
-      if (effect.votes && effect.avg >= 7.5) {
+      /* Score-mode flourishes only. A sham verdict still carries the keeps'
+         average, so an ungated check here threw confetti for a *failed* sham
+         and stacked the score chime on top of shamFinal's own three-note
+         verdict. shamFinal owns the sham moment end to end. */
+      if (!effect.sham && effect.votes && effect.avg >= 7.5) {
         confetti(effect.avg >= 8.5 ? 80 : 30);
       }
 
-      [523, 659, 784].forEach((frequency, index) => {
-        setTimeout(() => sound(frequency, 0.25), index * 90);
-      });
+      if (!effect.sham) {
+        [523, 659, 784].forEach((frequency, index) => {
+          setTimeout(() => sound(frequency, 0.25), index * 90);
+        });
+      }
 
       kickRater();
 
@@ -8908,13 +9347,13 @@ if (document.readyState === 'loading') {
         paintTierBoard($('ctiers'), buckets);
 
         $('cdcap').textContent = (TIERLIST.list ? TIERLIST.list + ' · ' : '') + 'Tier board · ' + st.n + ' cast' + hoompLabel(st.hoomps) + shamLabel(st.shams);
-        $('cdstats').innerHTML =
+        setHTML($('cdstats'),
           statCell('avg', st.n ? st.avg.toFixed(1) : '—') +
           statCell('top tier', buckets.winner) +
           statCell('median', st.med == null ? '—' : fmt(st.med)) +
           (st.hoomps ? statCell('hoomps', st.hoomps) : '') +
           (poll.sham ? statCell('sham', st.shams + '–' + st.n) : '') +
-          shamDecCell(state, poll);
+          shamDecCell(state, poll));
       } else {
         const dist = distribution(poll);
         const columns = document.querySelectorAll('#cdistbox .dc');
@@ -8935,7 +9374,7 @@ if (document.readyState === 'loading') {
         $('cdcap').textContent = poll.sham
           ? 'SHAM ' + st.shams + ' · KEEP ' + st.n + hoompLabel(st.hoomps)
           : 'Votes · ' + st.n + ' cast' + hoompLabel(st.hoomps);
-        $('cdstats').innerHTML =
+        setHTML($('cdstats'),
           statCell('avg', st.n ? st.avg.toFixed(1) : '—') +
           statCell('top band', dist.mode) +
           statCell('median', st.med == null ? '—' : fmt(st.med)) +
@@ -8944,7 +9383,7 @@ if (document.readyState === 'loading') {
           shamDecCell(state, poll) +
           (poll.sham && poll.status === 'closed'
             ? statCell('verdict', st.shams > st.n ? 'SHAM WINS' : 'SHAM FAILS')
-            : poll.sham ? statCell('leads', shamLead) : '');
+            : poll.sham ? statCell('leads', shamLead) : ''));
       }
     }
 
@@ -8987,7 +9426,7 @@ if (document.readyState === 'loading') {
       $('stimer').textContent = '';
       $('sverdict').hidden = true;
       $('strend').hidden = true;
-      $('sstats').innerHTML = '';
+      setHTML($('sstats'), '');
       $('schips').innerHTML = poll.top5.slice().reverse().map(entry =>
         '<span class="s-vchip">' + esc(entry.question) +
         '<b>' + entry.avg.toFixed(1) + '</b></span>'
@@ -9026,11 +9465,11 @@ if (document.readyState === 'loading') {
     if (pollTier(poll) === 'tier') {
       /* Stable skeleton + in-place painter: the studio board glides like
          every other surface instead of rebuilding each render. */
-      if (!$('stiers')) $('sstats').innerHTML = '<div class="tier-table" id="stiers"></div>';
+      if (!$('stiers')) setHTML($('sstats'), '<div class="tier-table" id="stiers"></div>');
       paintTierBoard($('stiers'), tierBuckets(poll));
       return;
     }
-    $('sstats').innerHTML = [
+    setHTML($('sstats'), [
         ['Avg', st.n ? st.avg.toFixed(1) : '—'],
         ['Median', st.med == null ? '—' : fmt(st.med)],
         ['Votes', st.n],
@@ -9039,7 +9478,7 @@ if (document.readyState === 'loading') {
         ['Low <4', st.lo]
       ].concat(st.hoomps ? [['Hoomps', st.hoomps]] : []).concat(poll && poll.sham ? [['Sham', st.shams + '–' + st.n]] : []).map(([label, value]) =>
         '<span>' + esc(label) + '<b>' + esc(value) + '</b></span>'
-      ).join('');
+      ).join(''));
 
     const last = state.events[0];
     const lastVote = last && last.pollId === poll.id && last.kind === 'vote' ? last.user : '';
@@ -9210,6 +9649,13 @@ if (document.readyState === 'loading') {
             <span class="di-cta">
               <b>!vote -10 to 10</b> · 0 scores + hate toast
             </span>
+            <div class="di-shamtest" id="diShamTest" hidden>
+              <span class="di-st-lab">SHAM</span>
+              <button class="di-ab" type="button" data-shamtest="nom" id="diShamNom">nom 0/3</button>
+              <button class="di-ab" type="button" data-shamtest="vote">vote</button>
+              <button class="di-ab" type="button" data-shamtest="win">wins</button>
+              <button class="di-ab" type="button" data-shamtest="fail">fails</button>
+            </div>
           </div>
            <div class="rh-scale-note">
              Scale −10 to +10 · negative scores grouped as &lt;0
@@ -9243,6 +9689,16 @@ if (document.readyState === 'loading') {
     const box = $('diBox');
 
     box.addEventListener('click', event => {
+      /* Test row: stopPropagation so pressing a SHAM button doesn't also
+         count as a click on the island body (which would re-open it). */
+      const shamControl = event.target.closest('[data-shamtest]');
+      if (shamControl) {
+        event.stopPropagation();
+        event.preventDefault();
+        shamTest(shamControl.dataset.shamtest);
+        return;
+      }
+
       const control = event.target.closest('[data-island]');
 
       if (control) {
@@ -9598,12 +10054,31 @@ if (document.readyState === 'loading') {
     }
   }
 
+  /* Scramble bookkeeping lives up here because blurReveal takes over an
+     element's copy and must be able to cancel a scramble still cycling on
+     it. */
+  const scrambleTimers = new Map();
+  const SCRAMBLE_GLYPHS = '0123456789';
+
+  function cancelScramble(el) {
+    try {
+      const prev = scrambleTimers.get(el);
+      if (prev) { clearInterval(prev); scrambleTimers.delete(el); }
+    } catch (e) {}
+  }
+
   /* Focus reveal for celebration copy, BlurText in spirit: the copy snaps
      to its final string immediately, then eases from frosted blur to
-     sharp — a lens finding focus. Reduced-motion snaps with no sweep. */
+     sharp — a lens finding focus. Reduced-motion snaps with no sweep.
+
+     It also claims the element. islandFinal() scrambles diFt1 for ~750ms and
+     finally writes the score string back, so without cancelling first a SHAM
+     verdict reveal was overwritten by "Final: 7.0 — GREAT" a beat after it
+     appeared. */
   function blurReveal(el, text) {
     text = String(text == null ? '' : text);
     if (!el) return;
+    cancelScramble(el);
     el.textContent = text;
     if (reducedMotion || !text) return;
     try {
@@ -9618,16 +10093,10 @@ if (document.readyState === 'loading') {
      while words pass through untouched — the final average unscrambles
      itself. Reduced-motion sets instantly. One timer per element, so a
      re-reveal restarts cleanly instead of double-driving. */
-  const scrambleTimers = new Map();
-  const SCRAMBLE_GLYPHS = '0123456789';
   function scrambleReveal(el, text, dur) {
     text = String(text == null ? '' : text);
     if (!el) return;
-    try {
-      const prev = scrambleTimers.get(el);
-      if (prev) clearInterval(prev);
-      scrambleTimers.delete(el);
-    } catch (e) {}
+    cancelScramble(el);
     el.textContent = text;
     if (reducedMotion || !text) return;
     try {
@@ -9769,6 +10238,14 @@ if (document.readyState === 'loading') {
     const isTop = poll && poll.status === 'top5';
     const topEntry = isTop ? poll.top5[poll.top5_idx] : null;
     const liveAvg = topEntry ? topEntry.avg : st.n ? score(poll) : null;
+    /* Tier mode is resolved up here because the hero pill below needs it, and
+       that is well before the board's own block further down. */
+    const tierOn = pollTier(poll) === 'tier' && !isTop;
+    /* Crowd spread — how much the average deserves to be trusted. Hoisted so
+       the hero pill and the info blocks read from one value. */
+    const spread = st.n < 5 ? 'early'
+      : st.sd < 1.2 ? 'united'
+      : st.sd >= 2.2 ? 'split' : 'mixed';
     const liveAvgTxt = liveAvg == null ? '—' : liveAvg.toFixed(1);
     if ($('diAvgN').dataset.target !== liveAvgTxt) pulse($('diAvg'), 'pop');
     setNumber($('diAvgN'), liveAvg);
@@ -9806,13 +10283,22 @@ if (document.readyState === 'loading') {
       } else {
         $('diDen').hidden = false;
         setNumber($('diBig'), average);
+        /* Tier mode keeps the average (the board shows shape, not centre) but
+           swaps the score verdict for crowd spread. BANGER / ROUGH are
+           score-mode thresholds; next to a band board the useful question is
+           whether the crowd agreed, which is what the pill now answers.
+           Score mode is untouched. */
         $('diWord').textContent = entry ? 'TOP 5'
-          : st.n ? verdictWord(score(poll))
-          : noScore ? 'NO SCORE'
-          : pollOpen ? 'VOTE NOW' : 'STANDBY';
+          : tierOn
+            ? (st.n ? spread.toUpperCase()
+              : noScore ? 'NO SCORE' : pollOpen ? 'VOTE NOW' : 'STANDBY')
+            : st.n ? verdictWord(score(poll))
+            : noScore ? 'NO SCORE'
+            : pollOpen ? 'VOTE NOW' : 'STANDBY';
 
-        $('diWord').className = 'di-word ' +
-          (st.n && score(poll) < 4 ? 'rough'
+        $('diWord').className = 'di-word ' + (
+          tierOn && st.n ? 'sp-' + spread
+            : st.n && score(poll) < 4 ? 'rough'
             : st.n && score(poll) >= 8.5 ? 'banger' : 'mixed');
       }
 
@@ -9821,8 +10307,14 @@ if (document.readyState === 'loading') {
       Array.from($('diHbars').children).forEach((column, index) => {
         const count = dist.counts[index];
         const bar = column.firstElementChild;
-        bar.style.height = (count ? Math.max(7, count / dist.max * 100) : 0) + '%';
-         bar.className = index < 5 ? 'h-rust' : index < 9 ? 'h-amber' : 'h-sage';
+        const height = (count ? Math.max(7, count / dist.max * 100) : 0) + '%';
+        if (bar.style.height !== height) bar.style.height = height;
+        /* `hot` (the modal bucket) was styled in the sheet but never applied,
+           so the island's tallest bar had no highlight while the classic
+           distribution's did. */
+        const cls = (index < 5 ? 'h-rust' : index < 9 ? 'h-amber' : 'h-sage') +
+          (count > 0 && count === dist.max ? ' hot' : '');
+        if (bar.className !== cls) bar.className = cls;
       });
 
       const recent = recentVotes(state, poll, 4);
@@ -9836,7 +10328,6 @@ if (document.readyState === 'loading') {
          table (top-5 countdown keeps its own list either way). De-dup: when
          the wrestling stack already shows this board, the island keeps its
          hero (avg + verdict + votes) instead of a second copy. */
-      const tierOn = pollTier(poll) === 'tier' && !isTop;
       let boardHere = tierOn;
       try {
         const rootEl = document.documentElement;
@@ -9851,50 +10342,72 @@ if (document.readyState === 'loading') {
       if (boardHere) paintTierBoard($('diTier'), buckets);
       $('diTier').hidden = !boardHere;
 
-      /* Tier meta line: list + score-style stats (median, leading tier,
-         trend vs the last item, scored count) under the hero. */
+      /* Tier meta line: list context + trend only. Median, leader and vote
+         count were each stated twice or thrice (hero pill, board foot, and
+         the info grid below); the leader is repeated here only when the
+         board is not on screen to say it itself. "N IN LIST" is
+         TIERLIST.count — items in the sheet, not crowd votes — which read
+         as a vote count sitting under the hero's own "N votes". */
       const tmeta = [];
       if (tierOn) {
         if (TIERLIST.list) tmeta.push(TIERLIST.list.toUpperCase().slice(0, 24));
-        if (st.med != null) tmeta.push('MED ' + fmt(st.med));
-        if (buckets.winner === 'tie') tmeta.push('TIED');
-        else if (buckets.winner !== '—') tmeta.push('TOP ' + buckets.winner);
+        if (!boardHere) {
+          if (buckets.winner === 'tie') tmeta.push('TIED');
+          else if (buckets.winner !== '—') tmeta.push('TOP ' + buckets.winner);
+        }
         if (poll.trend && poll.status === 'closed') tmeta.push(trendText(poll.trend) + ' VS LAST');
-        if (TIERLIST.count > 0) tmeta.push(TIERLIST.count + ' SCORED');
+        if (TIERLIST.count > 0) tmeta.push(TIERLIST.count + ' IN LIST');
         if (TIERLIST.list) $('diSub').textContent = demoState ? $('diSub').textContent : TIERLIST.list + ' · #' + CHANNEL;
       }
       if (tmeta.length) $('diTierMeta').textContent = tmeta.join(' · ');
       $('diTierMeta').hidden = !tmeta.length;
 
       /* Tier latest strip: score-style info (who just voted what) under the
-         board — the trajectory + scale-note hide in tier mode to make room. */
+         board — the trajectory + scale-note hide in tier mode to make room.
+         In tier mode each vote wears its band colour, so the number a
+         chatter cast and the bar it moved are visibly the same thing. */
       const latest = tierOn ? recentVotes(state, poll, 4) : [];
       if (latest.length) {
         setHTML($('diLatest'),
           '<span class="ll-lab">LATEST</span> ' + latest.map(event =>
-            '<span class="ll-s">' + fmt(event.vote) + '</span> ' +
+            '<span class="ll-s' + voteTierAttrs(event.vote) + '">' + fmt(event.vote) + '</span> ' +
             '<span class="ll-u">' + esc(String(event.user).slice(0, 18)) + '</span>'
           ).join(' · '));
       }
       $('diLatest').hidden = !latest.length || fullTier;
 
-      /* Tier full-info blocks: stats grid + recent-votes list for the room
-         the missing board leaves behind. */
+      /* Tier full-info blocks for the room the missing board leaves behind.
+         Cell set chosen so it does not repeat the island: the hero owns the
+         mean, the pill owns the spread, the meta owns the leader. What is
+         left to say is the robust centre and the range the crowd spanned. */
       if (fullTier) {
-        const consensus = st.n < 5 ? 'early'
-          : st.sd < 1.2 ? 'united'
-          : st.sd >= 2.2 ? 'split' : 'mixed';
+        let highest = null, lowest = null;
+        Object.values((poll && poll.votes) || {}).forEach(vote => {
+          if (!Number.isFinite(vote)) return;
+          if (highest === null || vote > highest) highest = vote;
+          if (lowest === null || vote < lowest) lowest = vote;
+        });
         setHTML($('diTierStats'),
           '<div class="di-ts"><span class="k">Median</span><span class="v">' + fmt(st.med) + '</span></div>' +
-          '<div class="di-ts"><span class="k">Top tier</span><span class="v">' + esc(buckets.winner) + '</span></div>' +
-          '<div class="di-ts"><span class="k">Votes</span><span class="v">' + st.n + '</span></div>' +
-          '<div class="di-ts"><span class="k">Crowd</span><span class="v">' + consensus + '</span></div>');
+          '<div class="di-ts"><span class="k">Highest</span><span class="v">' + fmt(highest) + '</span></div>' +
+          '<div class="di-ts"><span class="k">Lowest</span><span class="v">' + fmt(lowest) + '</span></div>');
         setHTML($('diTierVotes'), recentVotes(state, poll, 4).map(event =>
-          '<div class="tv"><span>' + esc(String(event.user).slice(0, 24)) + '</span><b>' + fmt(event.vote) + '</b></div>'
+          '<div class="tv"><span>' + esc(String(event.user).slice(0, 24)) + '</span><b class="' +
+          (Number.isFinite(event.vote) ? 'lv' : '') + '"' +
+          (Number.isFinite(event.vote) ? ' data-tier="' + tierOf(event.vote) + '"' : '') + '>' +
+          fmt(event.vote) + '</b></div>'
         ).join(''));
       }
       $('diTierStats').hidden = !fullTier;
       $('diTierVotes').hidden = !fullTier;
+
+      /* SHAM test row: only on the fully expanded panel face, and only in
+         testmode (CSS also gates it, so a stray un-hide can't put dev UI on
+         a program source). */
+      try {
+        const row = $('diShamTest');
+        if (row) row.hidden = ISLAND.state !== 'panel';
+      } catch (e) {}
 
       const cta = document.querySelector('#diland .di-cta');
       if (cta) {
@@ -9913,12 +10426,12 @@ if (document.readyState === 'loading') {
         }
       }
 
-      $('diStats').innerHTML =
+      setHTML($('diStats'),
         'median <b>' + (st.med == null ? '—' : fmt(st.med)) + '</b><br>' +
         'top band <b>' + esc(dist.mode) + '</b><br>' +
         (st.n < 5 ? 'early result' :
           st.sd < 1.2 ? 'strong consensus' :
-          st.sd >= 2.2 ? 'split crowd' : 'mixed crowd');
+          st.sd >= 2.2 ? 'split crowd' : 'mixed crowd'));
 
       const values = poll && poll.series
         ? poll.series.filter(point => point.n > 0).map(point => point.avg)
@@ -9938,12 +10451,12 @@ if (document.readyState === 'loading') {
       $('diTop5').hidden = !isTop;
 
       if (isTop) {
-        $('diTop5').innerHTML = poll.top5.map((item, index) =>
+        setHTML($('diTop5'), poll.top5.map((item, index) =>
           '<div class="di-t5' + (index === poll.top5_idx ? ' cur' : '') + '">' +
           '<span class="rk">#' + (poll.top5.length - index) + '</span>' +
           '<span class="qq">' + esc(item.question) + '</span>' +
           '<span class="aa">' + item.avg.toFixed(1) + '</span></div>'
-        ).join('');
+        ).join(''));
       }
     }
 
@@ -10014,13 +10527,37 @@ if (document.readyState === 'loading') {
   /* ----------------------- History and recap ---------------------- */
 
   function resultRows(results, mini) {
+    /* A SHAM verdict entry stores the keeps' mean as `avg`, but a removal
+       ballot is not a rating — excluded here too, so it can never steal the
+       "best" highlight from a real score. */
     const best = results.reduce((value, item) =>
-      item.votes > 0 ? Math.max(value, item.avg) : value, -Infinity
+      item.votes > 0 && !item.sham ? Math.max(value, item.avg) : value, -Infinity
     );
 
     return results.map(item => {
       const hc = Math.max(0, Number(item.hoomps) || 0);
       const hsuffix = hc ? ` + ${hc}h` : '';
+
+      /* Sham verdicts are listed, not scored: the verdict replaces the
+         number and the tally replaces the vote count. */
+      if (item.sham) {
+        const sv = Math.max(0, Number(item.shamVotes) || 0);
+        const kv = Math.max(0, Number(item.keepVotes) || 0);
+        return mini
+          ? '<div class="mv-row sham">' +
+            '<span class="mv-a">' + (item.sham === 'won' ? 'SHAM' : 'FAIL') +
+            '</span><span class="mv-q" title="' + esc(item.question) + '">' +
+            esc(item.question) + '</span><span class="mv-votes">' +
+            sv + 's · ' + kv + 'k</span></div>'
+          : '<div class="hp-row sham">' +
+            '<span class="ts">' + esc(timeLabel(item.ts)) + '</span>' +
+            '<span class="q" title="' + esc(item.question) + '">' +
+            esc(item.question) + '</span><span class="a sham-v">' +
+            (item.sham === 'won' ? 'SHAM WINS' : 'SHAM FAILS') +
+            '</span><span class="n">' + sv + ' sham · ' + kv + ' keep' +
+            '</span></div>';
+      }
+
       if (mini) {
         return '<div class="mv-row' + (item.avg === best ? ' best' : '') + '">' +
           '<span class="mv-a">' + (item.votes ? item.avg.toFixed(1) : '—') +
@@ -10053,6 +10590,9 @@ if (document.readyState === 'loading') {
     const users = new Map();
 
     results.forEach(result => {
+      /* Keeps cast in a SHAM verdict are not ratings — folding them in
+         dragged both the crowd average and the voter agreement around. */
+      if (result.sham) return;
       const voters = result.voters || {};
       Object.entries(result.voteMap || {}).forEach(([user, value]) => {
         if (!users.has(user)) {
@@ -10201,27 +10741,36 @@ if (document.readyState === 'loading') {
         avg: stats(poll).avg,
         votes: stats(poll).n,
         hoomps: stats(poll).hoomps,
+        sham: poll.sham ? 'live' : '',
         voteMap: poll.votes,
         voters: poll.voters
       });
     }
 
-    const values = summaryResults.flatMap(item =>
+    /* Sham verdicts stay in the list (labelled) but never enter a score
+       aggregate: their "votes" are keeps and their "average" is the keeps'
+       mean, so folding them in moved the crowd average, the vote total, the
+       trajectory and "Best rated" for a poll nobody scored. */
+    const rated = summaryResults.filter(item => !item.sham);
+    const liveRated = !!(poll && !poll.sham);
+
+    const values = rated.flatMap(item =>
       Object.values(item.voteMap || {})
     );
 
-    const votes = summaryResults.reduce((sum, item) => sum + item.votes, 0);
+    const votes = rated.reduce((sum, item) => sum + item.votes, 0);
     const average = values.length
       ? values.reduce((a, b) => a + b, 0) / values.length
       : null;
 
-    const best = results.filter(item => item.votes > 0)
+    const best = rated.filter(item => item.votes > 0)
       .sort((a, b) => b.avg - a.avg)[0];
 
     const hoomps = state.hoompLog.filter(time => all || time >= cutoff).length;
 
     const heroes = [
-      ['Ratings', results.length + (poll ? ' +1 live' : '')],
+      ['Ratings', Math.max(0, rated.length - (liveRated ? 1 : 0)) +
+        (liveRated ? ' +1 live' : '')],
       ['Votes cast', votes],
       ['Crowd average', average == null ? '—' : average.toFixed(1)],
       ['Best rated', best ? best.avg.toFixed(1) : '—'],
@@ -10250,7 +10799,7 @@ if (document.readyState === 'loading') {
       live +
       '<div class="rp-card rp-traj"><div class="rp-ch">' +
       '<span class="t">Crowd trajectory</span><span class="n">−10 to +10</span></div>' +
-      sparkSvg(results.filter(item => item.votes).slice().reverse().map(item => item.avg), 1100, 184) +
+      sparkSvg(results.filter(item => item.votes && !item.sham).slice().reverse().map(item => item.avg), 1100, 184) +
       '</div><div class="rp-card"><div class="rp-ch">' +
       '<span class="t">Ratings</span></div><div class="hp-list">' +
       (resultRows(results) || '<div class="rp-empty">No closed ratings in this window.</div>') +
@@ -10789,11 +11338,15 @@ if (document.readyState === 'loading') {
 
     $('drtopic').disabled = open;
     $('drsecs').disabled = open;
-    $('drgo').disabled = open;
+    /* Deliberately NOT disabled while open: a dead button can't answer why.
+       The click is intercepted by rateBusyNotice(), which explains and
+       highlights the remedy instead. */
+    $('drgo').disabled = false;
+    if ($('drbusy')) $('drbusy').hidden = !open;
     if ($('drtierload')) $('drtierload').disabled = open || TIERLIST.loading;
     if ($('drtiernext')) $('drtiernext').disabled = open || TIERLIST.loading;
     if ($('drsheet')) $('drsheet').disabled = TIERLIST.loading;
-    $('drgo').textContent = open ? 'Rating open' : 'Start rating';
+    $('drgo').classList.toggle('blocked', open);
     $('drclose').disabled = !open;
     $('drclear').disabled = !poll;
     $('drpause').disabled = !open;
@@ -10993,6 +11546,13 @@ if (document.readyState === 'loading') {
   function renderTierStack(state) {
     const box = $('tierstack');
     if (!box) return;
+    /* The slot is display:none unless the stack is pinned to the board, and
+       this runs 4×/second — skip the paint (and the six-row in-place update)
+       while it cannot be seen. The tick repaints within one frame of the
+       slot being switched on, so nothing goes stale on screen. */
+    try {
+      if (document.documentElement.getAttribute('data-stackmode') !== 'tiers') return;
+    } catch (e) {}
     const poll = state.poll;
     const st = stats(poll);
 
@@ -11310,6 +11870,7 @@ if (document.readyState === 'loading') {
     $('drx').addEventListener('click', () => toggleDrawer(false));
 
     $('drgo').addEventListener('click', () => {
+      if (rateBusyNotice()) return;
       const seconds = clamp(Math.floor(Number($('drsecs').value) || 0), 0, 3600);
       const topic = $('drtopic').value.trim().slice(0, 80) || 'Rate this';
 
@@ -11353,6 +11914,13 @@ if (document.readyState === 'loading') {
     if ($('drplop')) $('drplop').addEventListener('click', () => {
       emitEffect({ kind: 'plop', user: CHANNEL || 'test_user' });
     });
+
+    /* SHAM test moments — handlers only; the tester itself is shamTest(),
+       which the island's test row shares. */
+    if ($('drshamnom')) $('drshamnom').addEventListener('click', () => shamTest('nom'));
+    if ($('drshamvote')) $('drshamvote').addEventListener('click', () => shamTest('vote'));
+    if ($('drshamwin')) $('drshamwin').addEventListener('click', () => shamTest('win'));
+    if ($('drshamfail')) $('drshamfail').addEventListener('click', () => shamTest('fail'));
 
     document.addEventListener('click', event => {
       const button = event.target.closest('button');
