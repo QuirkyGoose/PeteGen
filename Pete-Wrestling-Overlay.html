@@ -10,7 +10,7 @@
   drawer switch. ?channel= still overrides; first run defaults to agoodpete.) -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="rh-build" content="2026-10-01 19:18+eb7fc6cbc2">
+<meta name="rh-build" content="2026-10-02 21:48+0c9e241661">
 <title>AGoodPete — Wrestling Rater</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-3 -3 30 30%22><rect x=%22-3%22 y=%22-3%22 width=%2230%22 height=%2230%22 rx=%227%22 fill=%22%23d4a853%22/><g fill=%22%23FFFFFF%22 fill-opacity=%220.45%22><rect x=%222%22 y=%2215.5%22 width=%222.6%22 height=%226.5%22 rx=%221.3%22/><rect x=%226.5%22 y=%2212%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/><rect x=%2211%22 y=%228.5%22 width=%222.6%22 height=%2213.5%22 rx=%221.3%22/><rect x=%2215.5%22 y=%225%22 width=%222.6%22 height=%2217%22 rx=%221.3%22/></g><rect x=%2220%22 y=%221.5%22 width=%222.6%22 height=%2220.5%22 rx=%221.3%22 fill=%22%23FFFFFF%22/></svg>" />
 <style>
@@ -222,10 +222,9 @@ body.mode-island #diland { --s: 1.06; }
 body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:not(.browser-stage) #lightrays, body:not(.browser-stage) #faulty { display: none !important; }
 
 /* ── the Dynamic Island shell: solid-black pill that morphs into a material panel ── */
-.di { position: relative; width: 360px; max-width: calc(100vw - 16px); height: 38px; background: #000; border: 1px solid rgba(255,255,255,0.09); border-radius: var(--r-full); box-shadow: var(--sh-chip); overflow: hidden; cursor: pointer; transition: width .5s var(--isl-pop), height .5s var(--isl-pop), border-radius .45s var(--isl-spring), background .35s ease, border-color .3s ease, box-shadow .35s ease, transform .25s ease; animation: islIn .7s .25s var(--ease-spring) backwards; }
+.di { position: relative; width: 360px; max-width: calc(100vw - 16px); height: 38px; background: #000; border: 1px solid rgba(255,255,255,0.09); border-radius: var(--r-full); box-shadow: var(--sh-chip); overflow: hidden; cursor: pointer; transition: width .5s var(--isl-pop), height .5s var(--isl-pop), border-radius .45s var(--isl-spring), background .35s ease, border-color .3s ease, box-shadow .35s ease, transform .25s ease; }
 @keyframes islIn { from { transform: translateY(-72px) scale(.94); opacity: 0; } }
 @keyframes islInUp { from { transform: translateY(72px); opacity: 0; } }
-#diland.ipos-bl .di, #diland.ipos-br .di { animation-name: islInUp; }
 .di[data-state="collapsed"]:hover { border-color: rgba(255,255,255,0.2); }
 .di[data-state="peek"] { width: 392px; height: 52px; background: #000; border-radius: var(--r-full); }
 .di[data-state="final"] { width: 396px; height: 84px; border-radius: 28px; background: #000; cursor: default; }
@@ -426,8 +425,8 @@ body:not(.browser-stage) #softaurora, body:not(.browser-stage) #dotgrid, body:no
 @supports not ((background-clip: text) or (-webkit-background-clip: text)) {
   .di[data-st="open"] .di-lab { background: none; color: var(--ok); animation: none; }
 }
-.di[data-state="final"] { animation: islIn .7s .25s var(--ease-spring) backwards, finalGlow 1.8s ease-in-out 1s infinite; }
-#diland.ipos-bl .di[data-state="final"], #diland.ipos-br .di[data-state="final"] { animation-name: islInUp, finalGlow; }
+.di[data-state="final"] { animation: finalGlow 1.8s ease-in-out 1s infinite; }
+#diland .di[data-state="final"], #diland.ipos-bl .di[data-state="final"], #diland.ipos-br .di[data-state="final"] { animation-name: finalGlow; }
 @keyframes finalGlow { 0%, 100% { box-shadow: var(--sh-chip), 0 0 22px rgba(48,209,88,.16); } 50% { box-shadow: var(--sh-chip), 0 0 46px rgba(48,209,88,.42); } }
 
 /* ── face 3 · expanded panel (iOS material sheet) ── */
@@ -1121,7 +1120,6 @@ body.clean.inobs .sidebtn { display: block; }
   border-radius: 0 10px 10px 0;
   padding: 16px 9px;
   box-shadow: var(--sh-chip), 0 0 18px var(--amber-glow);
-  animation: wrTabIn 0.6s var(--ease-spring) 0.3s both;
 }
 .sidebtn:hover { opacity: 1; padding: 18px 10px; border-color: var(--amber-hi); }
 /* Hit slop: the tab is a ~20px-wide vertical strip, which shrinks to a few
@@ -2344,7 +2342,6 @@ html[data-islift="off"] .pete-idle { bottom: 78px; }
   border-radius: 0 10px 10px 0;
   padding: 16px 9px;
   box-shadow: var(--sh-chip), 0 0 18px var(--amber-glow);
-  animation: wrTabIn 0.6s var(--ease-spring) 0.3s both;
 }
 .sidebtn:hover { opacity: 1; padding: 18px 10px; border-color: var(--amber-hi); }
 @keyframes wrTabIn {
@@ -2654,6 +2651,25 @@ html[data-overlay="1"] .wr-resize { display: none !important; }
 /* legacy ?overlay=1 links hide the (now merged) controls, like ?clean=1 */
 html[data-overlay="1"] #sidebtn,
 html[data-overlay="1"] .drawer { display: none !important; }
+/* ── Interact escape hatch for the rule above ──────────────────────────────
+   OBS opens an Interact window with the program source's URL *verbatim*, so
+   it inherits the legacy ?overlay=1 — and the ID + !important rule just above
+   then hides the Controls tab and the dock in exactly the window Pete drives
+   from. It outranks both body-class reveals in overlay.css
+   (body.clean.inobs / body.clean.user-present), which are plain class rules,
+   so "right-click → Interact → click once" silently did nothing, and the `D`
+   key toggled .open on a display:none drawer.
+   Re-open them for genuine interactive use only: `user-present` is written by
+   a real pointerdown/mousedown/touchstart/click/keydown (revealControlsOnInput in overlay.js) and program
+   render never fires input, so program output stays pixel-clean. Keying on
+   `inobs` instead would be wrong — window.obsstudio exists in the program
+   source too, so the tab would go on stream.
+   The drawer needs `flex` (its base display), not `block`.
+   NOTE: deliberately NOT gated on body.clean — Pete runs ?clean=0 on some
+   machines, and the gate meant no input could ever re-show an ?overlay=1
+   page for him. */
+html[data-overlay="1"] body.user-present #sidebtn { display: block !important; }
+html[data-overlay="1"] body.user-present .drawer { display: flex !important; }
 
 /* Wrestling category lives inside the drawer — native dr-* parts */
 #drawer .dr-in + .dr-in { margin-top: 6px; }
@@ -6049,6 +6065,18 @@ if (document.readyState === 'loading') {
      ?seroom= channel id override (else decoded from the JWT). */
   const SE_JWT = String(q.get('sejwt') || '').trim();
   const SE_ROOM = String(q.get('seroom') || '').trim();
+
+  /* Remote control bridge (see relay/control-hub.mjs). OBS runs this page in
+     CEF, where the drawer is unusable — input never reaches it — and a
+     BroadcastChannel cannot bridge CEF to a normal browser. So when
+     ?hub=host:port &hubtok=… are present, this instance listens for `act`
+     frames and applies them to the drawer. Opt-in: no hub params, no
+     listeners, no behaviour change. The token is a URL secret and is never
+     written to storage. */
+  const HUB = String(q.get('hub') || '').trim();
+  const HUBTOK = String(q.get('hubtok') || '').trim();
+  const hubBase = HUB ? HUB.replace(/^https?:\/\//, '').replace(/\/+$/, '') : '';
+  let hubSource = null;
   let SHOWCO = boolParam(
     'callouts',
     readStorage(KEYS.callouts, '1') !== '0'
@@ -7837,6 +7865,155 @@ if (document.readyState === 'loading') {
     }, 4000);
 
     pendingRequests.set(id, timeout);
+  }
+
+  /* -------------------- Remote control bridge ---------------------- */
+  /* Applies a control app's intent by driving the drawer's own DOM rather than
+     reimplementing it: a synthetic click hits the same delegated listener
+     the hand does, so every existing control (and any added later) works over
+     the network with no per-control code here. */
+
+  function hubApplyAct(frame) {
+    /* A control app is a remote input device, so its frames are untrusted:
+       anything malformed must be dropped rather than thrown, because an
+       exception here would tear down the SSE handler mid-stream. */
+    if (!frame || typeof frame !== 'object') return;
+
+    if (typeof frame.cmd === 'string' && frame.cmd) {
+      sendCommand(frame.cmd);
+      return;
+    }
+
+    /* Preset rows (theme, accent, design, vote mode) hold several buttons
+       that share one container id and differ only by data-*, so "#drtheme"
+       is ambiguous. The control app appends " >> nth=N" to name the exact
+       child; a bare selector still works for ordinary buttons. */
+    const fire = selector => {
+      const parts = String(selector).split('>>');
+      const target = document.querySelector(parts[0].trim());
+      if (!target) return false;
+      let node = target;
+      if (parts[1]) {
+        /* Strict digits only. Coercing with Number() would turn "abc" into
+           NaN and, worse, treat an emptied string as 0 — clicking the first
+           child of a preset row when the sender meant something else. */
+        const raw = String(parts[1]).replace(/^[^0-9]*/, '');
+        if (!/^[0-9]+$/.test(raw)) return false;
+        const n = Number(raw);
+        if (!Number.isSafeInteger(n) || !target.children[n]) return false;
+        node = target.children[n];
+      }
+      node.click();
+      return true;
+    };
+
+    const write = (selector, value) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      /* Range inputs only settle if the value is committed through an event;
+         assigning .value alone leaves the label and the stored setting stale. */
+      if (typeof el.value === 'string' || typeof el.value === 'number') el.value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    };
+
+    try {
+      if (typeof frame.click === 'string') fire(frame.click);
+      if (frame.set && typeof frame.set.sel === 'string') {
+        write(frame.set.sel, frame.set.value != null ? frame.set.value : '');
+      }
+      if (typeof frame.drawer === 'boolean') toggleDrawer(frame.drawer);
+      if (frame.key) {
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+          key: String(frame.key),
+          shiftKey: !!frame.shiftKey,
+          bubbles: true
+        }));
+      }
+      render();
+    } catch (error) {
+      /* A bad frame from the control app must never break the stream. */
+    }
+  }
+
+  function hubPublishState() {
+    if (!hubBase || !hubSource) return;
+    let snapshot;
+    try {
+      /* Reuse the page's own stats helpers rather than re-deriving the maths:
+         score() and stats() already handle hoomps, sham polls and the tier
+         mode, and a second implementation here would quietly drift from them. */
+      const poll = S && S.poll ? S.poll : null;
+      const st = poll ? stats(poll) : null;
+      snapshot = {
+        at: Date.now(),
+        topic: poll ? String(poll.question || '') : '',
+        status: poll ? String(poll.status || 'closed') : 'closed',
+        sham: !!(poll && poll.sham),
+        paused: !!(poll && poll.paused),
+        locked: !!(poll && poll.locked),
+        votemode: poll ? String(poll.votemode || VOTEMODE) : String(VOTEMODE),
+        votes: st ? Number(st.n) || 0 : 0,
+        average: st && st.n ? score(poll) : null,
+        hoomps: poll ? hoompCount(poll) : 0,
+        results: S && S.results ? S.results.length : 0,
+        theme: String(THEME),
+        design: String(DESIGN),
+        mode: String(MODE)
+      };
+    } catch (error) { return; }
+
+    fetch(`http://${hubBase}/state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: HUBTOK, state: snapshot })
+    }).catch(() => { /* hub asleep; the control app shows it as offline */ });
+  }
+
+  function startControlBridge() {
+    if (!hubBase || !HUBTOK) return;
+
+    try {
+      hubSource = new EventSource(`http://${hubBase}/events?role=overlay&token=${encodeURIComponent(HUBTOK)}`);
+    } catch (error) {
+      return;
+    }
+
+    hubSource.onmessage = event => {
+      let frame = null;
+      try { frame = JSON.parse(event.data); } catch (error) { return; }
+      if (!frame || frame.type !== 'act') return;
+      hubApplyAct(frame);
+      /* Publish after the render settles so the control app's readout never
+         lags a frame behind the thing it is describing. */
+      setTimeout(hubPublishState, 60);
+    };
+
+    hubSource.onerror = () => {
+      /* EventSource retries on its own; nothing to do but avoid noise. */
+    };
+
+    /* Publish the drawer's own markup so the control app can mirror it
+       instead of hand-listing controls. Sent on connect and again whenever a
+       control app asks (the hub caches the latest). */
+    setTimeout(hubPublishManifest, 400);
+  }
+
+  function hubPublishManifest() {
+    if (!hubBase || !HUBTOK) return;
+    let html = '';
+    try {
+      const drawer = document.getElementById('drawer');
+      if (drawer) html = drawer.innerHTML;
+    } catch (error) { return; }
+    if (!html) return;
+
+    fetch(`http://${hubBase}/manifest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: HUBTOK, html })
+    }).catch(() => { /* hub asleep */ });
   }
 
   /* ----------------------- Coordination --------------------------- */
@@ -10975,10 +11152,11 @@ if (document.readyState === 'loading') {
 
   /* Clean-mode control reveal (see CSS): first genuine input unhides the
      Controls entry for this page instance only. Program render never
-     fires input, so program output stays clean. */
+     fires input, so program output stays clean. Listens to mouse/touch
+     fallbacks as well as pointer/key for old OBS CEF builds. */
   function revealControlsOnInput() {
     try {
-      var root = document.documentElement;
+      var root = document.body;
       if (!root) return;
       var shown = false;
       var reveal = function () {
@@ -10987,6 +11165,9 @@ if (document.readyState === 'loading') {
         try { root.classList.add('user-present'); } catch (e) {}
       };
       window.addEventListener('pointerdown', reveal, { capture: true, passive: true });
+      window.addEventListener('mousedown', reveal, { capture: true, passive: true });
+      window.addEventListener('touchstart', reveal, { capture: true, passive: true });
+      window.addEventListener('click', reveal, { capture: true });
       window.addEventListener('keydown', reveal, { capture: true });
     } catch (e2) {}
   }
@@ -12283,6 +12464,35 @@ if (document.readyState === 'loading') {
   initGlide();
   watchGlide();
   revealControlsOnInput();
+  startControlBridge();
+
+  /* Some render pipelines (offscreen OBS windows, suspended tabs, headless
+     testing) never advance the CSS-animation timeline, which leaves every
+     entrance animated with `both`/`backwards` pinned at its `from` keyframe:
+     opacity 0 and, for the Controls tab / island, shifted off-canvas — i.e.
+     the UI is invisible and unclickable. One beat after startup, snap any
+     still-pending pinned entrance animation to its end state. Infinite
+     animations (glides, glows, pulses) are left alone. */
+  try {
+    setTimeout(function () {
+      try {
+        var anims = document.getAnimations();
+        for (var i = 0; i < anims.length; i++) {
+          var a = anims[i];
+          try {
+            if (a.playState === 'running' || a.playState === 'finished') continue;
+            var timing = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+            if (!timing || timing.iterations === Infinity) continue;
+            a.finish();
+          } catch (eA) {}
+        }
+      } catch (eB) {}
+    }, 1200);
+  } catch (eC) {}
+
+  /* Keep the control app's readout fresh even when nothing is pressed, so the
+     vote count and average tick along on their own. */
+  if (hubBase && HUBTOK) setInterval(hubPublishState, 1000);
 
   if (!INOBS && q.get('stage') !== '0') {
     document.body.classList.add('browser-stage');
