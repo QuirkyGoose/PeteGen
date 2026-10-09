@@ -10,7 +10,7 @@
   drawer switch. ?channel= still overrides; first run defaults to agoodpete.) -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="rh-build" content="2026-10-06 agoodpete-votes-1to10 · motion-fix + hardening r2 · clip-fix r3 · interact-fix r1 · ctrl-link r1 · autolite r1">
+<meta name="rh-build" content="2026-10-09 agoodpete-votes-1to10 · motion-fix + hardening r2 · clip-fix r3 · interact-fix r1 · ctrl-link r1 · autolite r1 · verchip r2 · inputdiag r2">
 <title>AGoodPete — Wrestling Rater</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-3 -3 30 30%22><rect x=%22-3%22 y=%22-3%22 width=%2230%22 height=%2230%22 rx=%227%22 fill=%22%23d4a853%22/><g fill=%22%23FFFFFF%22 fill-opacity=%220.45%22><rect x=%222%22 y=%2215.5%22 width=%222.6%22 height=%226.5%22 rx=%221.3%22/><rect x=%226.5%22 y=%2212%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/><rect x=%2211%22 y=%228.5%22 width=%222.6%22 height=%2213.5%22 rx=%221.3%22/><rect x=%2215.5%22 y=%225%22 width=%222.6%22 height=%2217%22 rx=%221.3%22/></g><rect x=%2220%22 y=%221.5%22 width=%222.6%22 height=%2220.5%22 rx=%221.3%22 fill=%22%23FFFFFF%22/></svg>" />
 <style>
@@ -4484,6 +4484,42 @@ body[data-theme="ledger"] #chatbox .chatmsg {
 }
 
 </style>
+<script>
+/* ==== inputdiag r1: raw input probe ====================================
+   Counts every click, pointer and key event this page RECEIVES, at
+   document capture phase, before any app code can lose it. Runs first in
+   the document and depends on nothing, so it survives every later
+   failure. Read the numbers from the ver chip's "input:" line or the
+   controller's Build-info toast. Clicking in the OBS Interact window and
+   still seeing 0c/0p/0k means the events never reached the page at all —
+   that is an OBS-side issue (browser-source Custom CSS containing
+   pointer-events:none, or Settings > Advanced > "Browser source hardware
+   acceleration" off/broken), not this file. */
+(function () {
+  try {
+    window.__rhIn = { ck: 0, pt: 0, ky: 0 };
+    var bump = function (kind) {
+      return function (ev) {
+        try {
+          /* page-internal .click() calls are synthetic (isTrusted false) -
+             they are not OBS input, so they must not muddy the counters */
+          if (ev && ev.isTrusted === false) return;
+          window.__rhIn[kind]++;
+          var h = document.documentElement;
+          if (h && h.setAttribute) {
+            h.setAttribute('data-rh-input', 'c' + window.__rhIn.ck +
+              '/p' + window.__rhIn.pt + '/k' + window.__rhIn.ky);
+          }
+          if (window.__rhVerTouch) { try { window.__rhVerTouch(); } catch (eT) {} }
+        } catch (e) {}
+      };
+    };
+    document.addEventListener('click', bump('ck'), true);
+    document.addEventListener('pointerdown', bump('pt'), true);
+    document.addEventListener('keydown', bump('ky'), true);
+  } catch (e) {}
+})();
+</script>
 <script>
   var __pq = new URLSearchParams(location.search);
   /* C4: guarded like every other storage access - a locked-down CEF threw
@@ -13679,7 +13715,16 @@ if (document.readyState === 'loading') {
   S = loadState();
 
   setupDrawer();
-  bindControls();
+  /* inputdiag r1: prove + protect the control wiring. __rhUI is reported
+     by the ver chip and the controller's Build-info toast: 'ok' means
+     every click handler was bound; 'err:...' names what killed the boot. */
+  try {
+    bindControls();
+    window.__rhUI = 'ok';
+  } catch (eBC) {
+    window.__rhUI = 'err:' +
+      (eBC && eBC.message ? eBC.message : String(eBC));
+  }
   setupAlertsDrawer();
   setupViewLinks();
   setupTestConsole();
@@ -13802,9 +13847,9 @@ if (document.readyState === 'loading') {
           &ctrl=HOST:PORT … controller on another machine.
      Frames in (JSON): {t:'act',frame:{cmd|click|set|key|drawer}} ·
        {t:'cmd',c} · {t:'votes',n} · {t:'demo',on} · {t:'fx',kind,user} ·
-       {t:'ping',ts} · {t:'getstate'} · {t:'getmanifest'} · {t:'reload'}.
+       {t:'ping',ts} · {t:'getstate'} · {t:'getmanifest'} · {t:'getver'} · {t:'reload'}.
      Frames out: {t:'hello',…} · {t:'state',s} · {t:'pong',ts} ·
-       {t:'log',msg} · {t:'manifest',html}.
+       {t:'log',msg} · {t:'manifest',html} · {t:'ver',name,stamp,fx,gpu}.
      Test votes are refused outside ?test=1 / demo mode, so live results
      only ever contain real voters. */
   try {
@@ -13980,6 +14025,20 @@ if (document.readyState === 'loading') {
               send({ t: 'manifest', html: html });
               break;
             }
+            case 'getver': {
+              var vi = { stamp: '', fx: '?', gpu: '?', ck: 0, pt: 0, ky: 0, ui: '?' };
+              try { if (window.__rhVerInfo) vi = window.__rhVerInfo(); } catch (eVI) {}
+              try { if (window.__rhShowVerChip) window.__rhShowVerChip(); } catch (eSV) {}
+              /* inputdiag r2 (whereami): also report WHERE this page loaded
+                 from (exact URL - catches stale/duplicate file copies) and
+                 the live page state classes (mode-island / nochan / ...). */
+              var rhb = '';
+              try { rhb = String(document.body.className || '').trim(); } catch (eB) {}
+              send({ t: 'ver', name: CTRL_NAME, stamp: vi.stamp, fx: vi.fx,
+                gpu: vi.gpu, ck: vi.ck, pt: vi.pt, ky: vi.ky, ui: vi.ui,
+                url: String(location.href), body: rhb });
+              break;
+            }
             case 'getstate': publish(true); break;
             case 'reload': try { location.reload(); } catch (eR) {} break;
             case 'ping': send({ t: 'pong', ts: msg.ts }); break;
@@ -14010,7 +14069,8 @@ if (document.readyState === 'loading') {
               send({ t: 'log', msg: 'diag · webgl=' + (d.webgl || '?') +
                 ' · soft=' + d.soft + ' · fx=' + (d.fx || '?') +
                 ' · storage=' + d.storage + ' · obs=' + d.inobs +
-                (d.fps ? ' · fps=' + d.fps : '') });
+                (d.fps ? ' · fps=' + d.fps : '') +
+                ' · ui=' + (window.__rhUI === undefined ? '?' : window.__rhUI) });
             }
           } catch (eD) {}
         };
@@ -18807,6 +18867,144 @@ else ready();
   } catch (e) {}
 })();
 
+</script>
+<style id="rh-verchip-css">
+#rh-verchip{position:fixed;left:12px;bottom:12px;z-index:2147483647;max-width:560px;padding:8px 12px;border-radius:10px;background:rgba(10,12,16,.85);color:#e8eaf0;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.02em;pointer-events:none;opacity:0;transition:opacity .5s ease;white-space:pre-wrap;word-break:break-word;border:1px solid rgba(255,255,255,.16);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+#rh-verchip.rh-on{opacity:1}
+</style>
+<script>
+/* ==== verchip r2 + inputdiag r2: on-demand build & input toast ==========
+   The page stays silent by default. The Windows controller's "Build info"
+   button sends {t:'getver'}: this chip pops here for ~10s and a {t:'ver'}
+   frame replies with the data for the controller's own toast. ?ver=1 pins
+   the chip at boot (controller-less diagnosis); ?ver=0 never paints it on
+   screen — the reply data still works. pointer-events:none so it can
+   never sit between a click and its target.
+   inputdiag r1 adds the live third line:
+     input: <clicks>c/<pointers>p/<keys>k · ui: <state>
+   - clicks/pointers/keys climb the moment OBS's Interact window delivers
+     an event to this page. If they stay 0 while you click, the events
+     never arrive at all (OBS side: browser-source Custom CSS with
+     pointer-events:none, or Settings > Advanced > Browser source
+     hardware acceleration off/broken).
+   - ui: ok = every control handler was bound at boot; err:... names the
+     failure that skipped them; ? = wiring not reached.
+   inputdiag r2 (whereami) adds two more lines:
+     page: <live body classes> · from: <URL this page was loaded from>
+   from: names the file the source REALLY loaded (catches stale or
+   duplicate copies, e.g. Windows "(1)" files or an old path); page:
+   shows the live layout / nochan state. */
+(function () {
+  'use strict';
+
+  function info() {
+    var stamp = '(no rh-build meta)';
+    try {
+      var meta = document.querySelector('meta[name="rh-build"]');
+      if (meta && meta.content) stamp = String(meta.content);
+    } catch (eM) {}
+    var fx = '?', gpu = '?';
+    try {
+      var d = window.__ratehiveDiag;
+      if (d) {
+        if (d.fx) fx = String(d.fx);
+        if (d.webgl) gpu = String(d.webgl);
+      }
+    } catch (eD) {}
+    try {
+      var qv = new URLSearchParams(location.search);
+      if (qv.get('fx')) fx = 'forced:' + qv.get('fx');
+    } catch (eF) {}
+    var ck = '?', pt = '?', ky = '?', ui = '?';
+    try {
+      var n = window.__rhIn;
+      if (n) {
+        ck = String(n.ck); pt = String(n.pt); ky = String(n.ky);
+      }
+    } catch (eI) {}
+    try {
+      if (window.__rhUI !== undefined) ui = String(window.__rhUI);
+    } catch (eU) {}
+    var url = '', bcls = '';
+    try { url = String(location.href); } catch (eL) {}
+    try { bcls = String(document.body.className || '').trim(); } catch (eC2) {}
+    return { stamp: stamp, fx: fx, gpu: gpu, ck: ck, pt: pt, ky: ky, ui: ui,
+      url: url, body: bcls };
+  }
+
+  function text(i) {
+    return 'RateHive ' + i.stamp + '\nfx: ' + i.fx + ' \u00b7 gpu: ' + i.gpu +
+      '\ninput: ' + i.ck + 'c/' + i.pt + 'p/' + i.ky + 'k \u00b7 ui: ' + i.ui +
+      '\npage: ' + (i.body || '-') + '\nfrom: ' + (i.url || '-');
+  }
+
+  var ALLOWED = true;   /* ?ver=0: never paint on screen */
+  try {
+    var q0 = new URLSearchParams(location.search);
+    var m0 = String(q0.get('ver') || '');
+    if (m0 === '0' || m0 === 'false' || m0 === 'off') ALLOWED = false;
+  } catch (eQ) {}
+
+  var live = null;     /* mounted chip + removal timers */
+
+  function stopTick() {
+    try { if (live && live.tick) clearInterval(live.tick); } catch (eC) {}
+  }
+
+  function show(ms) {
+    var i = info();
+    if (!ALLOWED) return i;           /* suppressed: data only */
+    if (live) return i;               /* one toast at a time */
+    try {
+      var chip = document.createElement('div');
+      chip.id = 'rh-verchip';
+      chip.textContent = text(i);
+      document.body.appendChild(chip);
+      live = { chip: chip, t1: null, t2: null, tick: null };
+      setTimeout(function () {
+        try { chip.classList.add('rh-on'); } catch (eS) {}
+      }, 60);
+      /* inputdiag r1: keep the input line live while the chip is up, so a
+         screenshot taken while clicking in the Interact window tells the
+         whole story. */
+      live.tick = setInterval(function () {
+        try {
+          if (live && live.chip) live.chip.textContent = text(info());
+        } catch (eI2) {}
+      }, 400);
+      var pin = (ms === 0);           /* exact 0 pins (?ver=1); default ~10s toast */
+      if (!pin) {
+        var life = Math.max(3000, Number(ms) || 10000);
+        live.t1 = setTimeout(function () {
+          try { chip.classList.remove('rh-on'); } catch (eH) {}
+        }, life);
+        live.t2 = setTimeout(function () {
+          stopTick();
+          try { if (chip.parentNode) chip.parentNode.removeChild(chip); } catch (eR) {}
+          live = null;
+        }, life + 900);
+      }
+    } catch (e) { stopTick(); live = null; }
+    return i;
+  }
+
+  window.__rhVerInfo = info;
+  window.__rhShowVerChip = show;
+  /* The raw-input probe calls this on every counted event, so the input
+     line answers a click instantly while the chip is visible. */
+  window.__rhVerTouch = function () {
+    try {
+      if (live && live.chip) live.chip.textContent = text(info());
+    } catch (e) {}
+  };
+
+  /* Boot stays silent unless ?ver=1 asks for the pinned chip. */
+  try {
+    var qb = new URLSearchParams(location.search);
+    var mb = String(qb.get('ver') || '');
+    if (mb === '1' || mb === 'true' || mb === 'on') show(0);
+  } catch (eB) {}
+})();
 </script>
 </body>
 </html>
