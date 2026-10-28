@@ -26,11 +26,11 @@
  *    use that endpoint for every page (including page 1) and trust
  *    has_page_next as the authoritative "is there more" signal
  *    instead of inferring it from page size.
- *  - Row shape per image: [imageHash, pageSlug, filename, ext, width,
- *    height, fullImageUrl, "", 0, "", ""]. pageSlug (index 1) is what
- *    the old HTML scrape extracted as `id` from the anchor href
- *    (postimg.cc/{pageSlug}) — submitters.json is keyed on this, so
- *    we map it the same way to keep existing submitter credits intact.
+ *  - Row shape per image: [imageHash, hotlinkHash, filename, ext, width,
+ *    height, thumbUrl, "", 0, "", ""]. Index 0/6 are the 180×180 grid
+ *    thumbnail; index 1 is the hotlink hash used by the full-size
+ *    lightbox image. `id` uses the hotlink hash because that matches the
+ *    existing gallery-data/submitters.json keys.
  */
 const fs = require('fs');
 const path = require('path');
@@ -99,13 +99,18 @@ function parseJsonPage(raw) {
     throw new Error('Unexpected response shape (no "images" array)');
   }
   const images = data.images.map(row => {
-    const [, pageSlug, filename, , width, height, imageUrl] = row;
-    if (!pageSlug || !imageUrl) return null;
+    const [imageHash, hotlinkHash, filename, ext, width, height, thumbUrl] = row;
+    if (!imageHash || !hotlinkHash || !thumbUrl) return null;
+    // Index 6 is the 180×180 grid thumbnail. The full-size "hotlink"
+    // image shares the same filename path but uses the index-1 hash.
+    const imageUrl = thumbUrl.includes(`/${imageHash}/`)
+      ? thumbUrl.replace(`/${imageHash}/`, `/${hotlinkHash}/`)
+      : `https://i.postimg.cc/${hotlinkHash}/${filename}.${ext}`;
     return {
-      id: pageSlug, // matches the old HTML scrape's id (postimg.cc/{pageSlug} from the anchor href)
+      id: hotlinkHash, // stable ID — matches existing gallery-data + submitters.json keys
       title: (filename || '').replace(/-/g, ' '),
       imageUrl,
-      thumbUrl: imageUrl, // postimg serves the same URL for both grid + lightbox — confirmed against a live gallery
+      thumbUrl,
       width: width || 0,
       height: height || 0,
     };
@@ -161,6 +166,15 @@ async function scrapeAlbum(albumHex, galleryId, existingCount) {
   }
 
   if (page > MAX_PAGES) { console.error(`  ⚠ Hit MAX_PAGES (${MAX_PAGES}) — album may be truncated.`); hadError = true; }
+
+  // A work whose imageUrl matches thumbUrl means the parser fell back to
+  // the 180×180 grid image. Refuse to save rather than silently shipping
+  // blurry artwork (this is the regression that broke the Aug 2026 refresh).
+  const thumbnailOnly = allImages.filter(i => i.imageUrl === i.thumbUrl);
+  if (thumbnailOnly.length > 0) {
+    console.error(`  ⚠ SAFETY GUARD: ${thumbnailOnly.length} image(s) resolved to thumbnail-only URLs.`);
+    return null;
+  }
 
   // ---- Safety guards. Any of these returns null and aborts the run. ----
   if (allImages.length === 0 && existingCount > 0) {
@@ -275,19 +289,27 @@ async function main() {
     process.exit(2);
   }
 
-  if (totalNew === 0) {
-    console.log('\nGallery is up to date. No changes needed.');
-    if (!DRY_RUN) saveIndex(newData, submitters);
-    process.exit(0);
-  }
-
+  // Keep curated fields (addedAt, tags, submitter credits) from the old
+  // data, but let freshly scraped URLs/dimensions win. This also heals
+  // records written by the old parser where imageUrl === thumbUrl.
+  let refreshedUrls = 0;
   for (const gallery of GALLERIES) {
     const newGallery = newData.galleries[gallery.id];
     const oldGallery = existing.galleries[gallery.id];
     if (newGallery && oldGallery && oldGallery.works) {
       const oldById = {};
       oldGallery.works.forEach(w => { oldById[w.id] = w; });
-      newGallery.works = newGallery.works.map(w => oldById[w.id] ? Object.assign({}, w, oldById[w.id]) : w);
+      newGallery.works = newGallery.works.map(w => {
+        const old = oldById[w.id];
+        if (!old) return w;
+        if (old.imageUrl !== w.imageUrl || old.thumbUrl !== w.thumbUrl) refreshedUrls++;
+        return Object.assign({}, old, {
+          imageUrl: w.imageUrl || old.imageUrl,
+          thumbUrl: w.thumbUrl || old.thumbUrl,
+          width: w.width || old.width,
+          height: w.height || old.height,
+        });
+      });
     }
   }
   Object.keys(existing.galleries).forEach(gid => {
@@ -296,6 +318,13 @@ async function main() {
       newData.totalWorks += (existing.galleries[gid].works || []).length;
     }
   });
+
+  if (totalNew === 0 && refreshedUrls === 0) {
+    console.log('\nGallery is up to date. No changes needed.');
+    if (!DRY_RUN) saveIndex(newData, submitters);
+    process.exit(0);
+  }
+  if (refreshedUrls > 0) console.log(`\nRepaired ${refreshedUrls} thumbnail-only image URL(s).`);
 
   console.log(`\nFinal total: ${newData.totalWorks} images`);
 
