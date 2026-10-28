@@ -34,12 +34,17 @@ jobs:
 
       - name: Inject gallery data into the prebuilt index.html
         run: node scripts/inject-gallery-data.js
+
+      # Rebuild the lookup that the /artwork/:id and /gallery/:room share
+      # pages read. Without this step those links 404 in production.
+      - name: Rebuild artwork-index.json (powers shareable links)
+        run: node scripts/build-artwork-index.js
       
       - name: Commit and push if changes
         run: |
           git config user.name "Gallery Bot"
           git config user.email "actions@github.com"
-          git add gallery-data.js index.html
+          git add gallery-data.js index.html artwork-index.json
           if git diff --cached --quiet; then
             echo "No changes — gallery is up to date"
           else
