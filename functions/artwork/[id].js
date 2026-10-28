@@ -1,43 +1,40 @@
-// Cloudflare Pages Function — dynamic OG tags for /artwork/:id
-// Crawlers fetch the path (hash fragments are never sent to servers),
-// so we serve index.html with og:* tags rewritten to this artwork.
+// Cloudflare Pages Function — shareable permalink for a single picture.
+//
+//   GET /artwork/<id>  →  a real, server-rendered page for that picture
+//
+// Crawlers (Discord, X, Slack, WhatsApp, iMessage, Google) get complete
+// og:* / twitter:* tags pointing at the actual image, so a shared link
+// unfurls as the picture instead of a blank card.
+
+import { loadIndex, neighbours, countInRoom, PAGE_HEADERS } from '../_lib/artworks.js';
+import { renderArtworkPage, renderNotFoundPage } from '../_lib/page.js';
+
 export async function onRequest({ request, env, params }) {
-  const id = params.id;
   const origin = new URL(request.url).origin;
+  const id = decodeURIComponent(params.id || '');
 
-  // Load the site shell + the lightweight artwork index
-  const [indexResp, htmlResp] = await Promise.all([
-    env.ASSETS.fetch(new Request(origin + '/artwork-index.json')),
-    env.ASSETS.fetch(new Request(origin + '/index.html')),
-  ]);
-  let html = await htmlResp.text();
-  let work = null;
-  try { work = (await indexResp.json())[id] || null; } catch (e) {}
+  const index = await loadIndex(env, origin);
+  const entry = index[id];
+  const work = entry ? { id, ...entry } : null;
 
-  if (work) {
-    const title = work.title || 'Untitled';
-    const desc = `From the ${work.galleryName} collection · Peet Pics — The Vault` +
-      (work.submitter ? ` · submitted by ${work.submitter.name}` : '');
-    const image = work.imageUrl || '';
-    const url = origin + '/artwork/' + encodeURIComponent(id);
-
-    html = html
-      .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${esc(title)} — Peet Pics" />`)
-      .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${esc(desc)}" />`)
-      .replace(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${esc(image)}" />`)
-      .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${esc(url)}" />`)
-      .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${esc(title)} — Peet Pics" />`)
-      .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${esc(desc)}" />`)
-      .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)} — Peet Pics</title>`);
+  if (!work) {
+    return new Response(renderNotFoundPage({ origin, id }), {
+      status: 404,
+      headers: PAGE_HEADERS,
+    });
   }
 
-  return new Response(html, {
-    status: 200,
-    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' },
-  });
-}
+  const { prev, next, position } = neighbours(index, id);
 
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const html = renderArtworkPage({
+    work,
+    prev,
+    next,
+    position,
+    total: Object.keys(index).length,
+    roomCount: countInRoom(index, work.gallery),
+    origin,
+  });
+
+  return new Response(html, { status: 200, headers: PAGE_HEADERS });
 }

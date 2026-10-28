@@ -1,39 +1,71 @@
-// Cloudflare Pages Function — dynamic OG tags for /gallery/:room
+// Cloudflare Pages Function — shareable room link.
+//
+//   GET /gallery/<room>  →  the SPA shell, with og:* tags rewritten so the
+//                           link unfurls as that collection.
+//
+// The client router is hash-based (#/room/<id>), so we also nudge the browser
+// onto the right hash — otherwise /gallery/pobots would land on the homepage.
+
+import { loadIndex, roomMeta, countInRoom, esc, PAGE_HEADERS } from '../_lib/artworks.js';
+
 export async function onRequest({ request, env, params }) {
-  const room = params.room;
   const origin = new URL(request.url).origin;
+  const roomId = decodeURIComponent(params.room || '');
 
-  const [indexResp, htmlResp] = await Promise.all([
-    env.ASSETS.fetch(new Request(origin + '/artwork-index.json')),
+  const [htmlResp, index] = await Promise.all([
     env.ASSETS.fetch(new Request(origin + '/index.html')),
+    loadIndex(env, origin),
   ]);
+
   let html = await htmlResp.text();
-  let index = {};
-  try { index = await indexResp.json(); } catch (e) {}
-
-  // Find the first work in this room for the preview image
-  const works = Object.values(index).filter(w => w.gallery === room);
+  const room = roomMeta(roomId);
+  const works = Object.values(index).filter((w) => w.gallery === roomId);
   const first = works[0];
-  const roomNames = { pobots:'Pobots', prestlers:'Prestlers', cultural:'Cultural Pics', pisc:'Pisc', submissions:'Submissions', nacky:'Nacky Nook', all:'All Works', new:'Recently Added', favourites:'Favourites' };
-  const name = roomNames[room] || room;
-  const desc = `${works.length} works in the ${name} collection · Peet Pics — The Vault`;
-  const image = first ? first.imageUrl : '';
 
-  html = html
-    .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${esc(name)} — Peet Pics" />`)
-    .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${esc(desc)}" />`)
-    .replace(/<meta property="og:image" content="[^"]*" \/>/, (image ? `<meta property="og:image" content="${esc(image)}" />` : `$&`))
-    .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${esc(name)} — Peet Pics" />`)
-    .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${esc(desc)}" />`)
-    .replace(/<title>[^<]*<\/title>/, `<title>${esc(name)} — Peet Pics</title>`);
+  const url = origin + '/gallery/' + encodeURIComponent(roomId);
+  const title = `${room.name} — Peet Pics`;
+  const description = `${works.length} works in the ${room.name} collection · ${room.tagline}`;
 
-  return new Response(html, {
-    status: 200,
-    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' },
-  });
+  html = upsert(html, [
+    ['property', 'og:title', title],
+    ['property', 'og:description', description],
+    ['property', 'og:url', url],
+    ['property', 'og:type', 'website'],
+    ['name', 'twitter:title', title],
+    ['name', 'twitter:description', description],
+  ]);
+
+  if (first) {
+    html = upsert(html, [
+      ['property', 'og:image', first.imageUrl],
+      ['property', 'og:image:alt', `${room.name} — a work from the collection`],
+      ['name', 'twitter:image', first.imageUrl],
+      ['name', 'twitter:card', 'summary_large_image'],
+    ]);
+  }
+
+  html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
+
+  const canonical = `<link rel="canonical" href="${esc(url)}" />`;
+  html = /<link rel="canonical"/i.test(html)
+    ? html.replace(/<link rel="canonical"[^>]*>/, canonical)
+    : html.replace('</head>', `  ${canonical}\n</head>`);
+
+  html = html.replace(
+      /<body([^>]*)>/,
+      `<body$1><script>(function(){var r=${JSON.stringify(roomId)};` +
+        `if(location.hash.indexOf("#/room/")!==0){location.hash="#/room/"+r;` +
+        `try{history.replaceState(null,"","/#/room/"+r)}catch(e){}}})();</script>`
+    );
+
+  return new Response(html, { status: 200, headers: PAGE_HEADERS });
 }
 
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function upsert(html, tags) {
+  for (const [attr, key, content] of tags) {
+    const tag = `<meta ${attr}="${key}" content="${esc(content)}" />`;
+    const re = new RegExp(`<meta\\s+${attr}="${key}"[^>]*>`, 'i');
+    html = re.test(html) ? html.replace(re, tag) : html.replace('</head>', `  ${tag}\n</head>`);
+  }
+  return html;
 }
