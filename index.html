@@ -45,5 +45,76 @@ Error generating stack: `+n.message+`
   </head>
   <body>
     <div id="root"></div>
+  <script data-artwork-url-bar>
+(function () {
+  var CLOSE = '[aria-label="Close viewing room"]';
+  var ID_RE = /^https?:\/\/i\.postimg\.cc\/([A-Za-z0-9]+)\//;
+  var current = null, restoreTo = null, queued = false, tries = 0;
+
+  // NOTE: .frame-brass is used by the grid tiles as well as the lightbox, so the
+  // lookup is anchored to the close button's overlay instead of the document.
+  function overlay() {
+    var btn = document.querySelector(CLOSE);
+    if (!btn) return null;
+    return btn.closest('[class*="fixed"]') || btn.parentElement;
+  }
+
+  // The lightbox renders the full-size image from i.postimg.cc/<id>/<file>;
+  // that <id> is exactly the key /artwork/<id> uses.
+  function artworkId() {
+    var ov = overlay();
+    if (!ov) return null;
+    var frames = ov.querySelectorAll('.frame-brass');
+    for (var f = frames.length - 1; f >= 0; f--) {
+      var imgs = frames[f].getElementsByTagName('img');
+      for (var i = 0; i < imgs.length; i++) {
+        if ((imgs[i].className || '').indexOf('blur') > -1) continue;
+        var m = ID_RE.exec(imgs[i].src || '');
+        if (m) return m[1];
+      }
+    }
+    return null;
+  }
+
+  function put(url) {
+    if (location.pathname + location.search + location.hash === url) return;
+    try { history.replaceState(history.state, '', url); } catch (e) {}
+  }
+
+  function sync() {
+    if (document.querySelector(CLOSE)) {
+      var id = artworkId();
+      if (!id) { if (tries++ < 90) schedule(); return; }
+      tries = 0;
+      if (id === current) return;
+      if (current === null) restoreTo = location.pathname + location.search + location.hash;
+      current = id;
+      put('/artwork/' + id);
+    } else {
+      tries = 0;
+      if (current === null) return;
+      current = null;
+      var back = restoreTo && restoreTo.indexOf('/artwork/') !== 0 ? restoreTo : '/';
+      restoreTo = null;
+      put(back);
+    }
+  }
+
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function () { queued = false; sync(); });
+  }
+
+  new MutationObserver(schedule).observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['src']
+  });
+  window.addEventListener('popstate', sync);
+  sync();
+})();
+</script>
   </body>
 </html>
